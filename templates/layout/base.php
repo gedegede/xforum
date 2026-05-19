@@ -117,6 +117,6 @@
             <?php endif; ?>
         </div>
     </nav>
-    <script src="assets/js/editor.js"></script>
+    <script src="assets/js/editor.js" defer></script>
 </body>
 </html>
