@@ -4,9 +4,9 @@
     <div class="card-header">
         <h2>编辑用户</h2>
     </div>
-    <div class="card-body">
+    <div class="card-body padded">
         <?php if ($error): ?>
-            <div class="error"><?php echo $error; ?></div>
+            <div class="error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
         <form method="post">
@@ -35,7 +35,7 @@
                     <option value="0" <?php echo $member['status'] == 0 ? 'selected' : ''; ?>>禁用</option>
                 </select>
             </div>
-            <div class="form-group flex gap-md">
+            <div class="flex justify-end gap-md mt-lg">
                 <button type="submit" class="btn btn-primary">保存修改</button>
                 <a href="index.php?c=admin&a=users" class="btn btn-secondary">取消</a>
             </div>

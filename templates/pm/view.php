@@ -3,7 +3,7 @@
         <h2>查看私信</h2>
         <a href="index.php?c=pm&a=inbox" class="btn btn-secondary">返回收件箱</a>
     </div>
-    <div class="card-body">
+    <div class="card-body padded">
         <div class="flex items-center gap-md mb-lg pb-lg border-b">
             <div class="avatar avatar-md"><?php echo strtoupper(substr($sender['username'], 0, 1)); ?></div>
             <div>

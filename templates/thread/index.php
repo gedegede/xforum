@@ -5,7 +5,7 @@
                 <div class="breadcrumb">
                     <a href="index.php">首页</a>
                     /
-                    <a href="index.php?c=forum&a=index&fid=<?php echo $thread['fid']; ?>"><?php echo htmlspecialchars($forum['name'] ?? '未知版块'); ?></a>
+                    <a href="index.php?c=forum&a=index&fid=<?php echo $thread['fid']; ?>"><?php echo htmlspecialchars($forum['name'] ?? '未命名版块'); ?></a>
                     /
                     <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>">主题</a>
                 </div>
@@ -95,7 +95,7 @@
                         <div class="user-stat-label">浏览</div>
                     </div>
                     <div class="user-stat">
-                        <div class="user-stat-value"><?php echo $thread['reply_num']; ?></div>
+                        <div class="user-stat-value" id="reply-count"><?php echo $thread['reply_num']; ?></div>
                         <div class="user-stat-label">回复</div>
                     </div>
                     <div class="user-stat">
@@ -112,15 +112,15 @@
             </div>
             <div class="sidebar-body">
                 <div class="related-topics">
-                    <a href="#" class="related-item">
+                    <a href="index.php?keyword=<?php echo urlencode('服务器性能'); ?>" class="related-item">
                         <span class="related-title">如何优化服务器性能</span>
                         <span class="related-meta">5 回复</span>
                     </a>
-                    <a href="#" class="related-item">
+                    <a href="index.php?keyword=<?php echo urlencode('VPS'); ?>" class="related-item">
                         <span class="related-title">VPS选择指南</span>
                         <span class="related-meta">12 回复</span>
                     </a>
-                    <a href="#" class="related-item">
+                    <a href="index.php?keyword=<?php echo urlencode('网站加速'); ?>" class="related-item">
                         <span class="related-title">网站加速技巧分享</span>
                         <span class="related-meta">8 回复</span>
                     </a>
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
         quotePidInput.value = pid;
         quoteUidInput.value = uid;
         if (replyTitle) replyTitle.textContent = '引用回复 #' + floor;
-        if (cancelQuoteBtn) cancelQuoteBtn.style.display = 'inline-block';
+        if (cancelQuoteBtn) cancelQuoteBtn.classList.remove('hide');
         textarea.placeholder = '回复 @' + username + '...';
         textarea.focus();
         textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
         quotePidInput.value = '';
         quoteUidInput.value = '';
         if (replyTitle) replyTitle.textContent = '回复';
-        if (cancelQuoteBtn) cancelQuoteBtn.style.display = 'none';
+        if (cancelQuoteBtn) cancelQuoteBtn.classList.add('hide');
         textarea.placeholder = '写下你的回复...';
     }
     
@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function updateReplyCount() {
-        const replyNumElement = document.querySelector('.info-item:nth-child(5) .info-value');
+        const replyNumElement = document.getElementById('reply-count');
         if (replyNumElement) {
             const currentCount = parseInt(replyNumElement.textContent) || 0;
             replyNumElement.textContent = currentCount + 1;

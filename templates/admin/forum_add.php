@@ -4,9 +4,9 @@
     <div class="card-header">
         <h2>添加版块</h2>
     </div>
-    <div class="card-body">
+    <div class="card-body padded">
         <?php if ($error): ?>
-            <div class="error"><?php echo $error; ?></div>
+            <div class="error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
         <form method="post">
@@ -25,7 +25,7 @@
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group flex gap-md">
+            <div class="flex justify-end gap-md mt-lg">
                 <button type="submit" class="btn btn-primary">添加版块</button>
                 <a href="index.php?c=admin&a=forums" class="btn btn-secondary">取消</a>
             </div>

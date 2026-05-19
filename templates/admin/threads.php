@@ -4,8 +4,10 @@
     <div class="card-header">
         <h2>主题管理</h2>
     </div>
-    <div class="card-body">
+    <div class="card-body padded">
         <form method="get">
+            <input type="hidden" name="c" value="admin">
+            <input type="hidden" name="a" value="threads">
             <div class="flex gap-sm flex-wrap">
                 <select name="fid">
                     <option value="0">全部版块</option>
@@ -53,20 +55,26 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($threads as $thread): ?>
-                        <tr>
+                <?php if (!empty($threads)): ?>
+                <?php foreach ($threads as $thread): ?>
+                    <tr>
                             <td><input type="checkbox" name="tids[]" value="<?php echo $thread['tid']; ?>"></td>
                             <td><?php echo $thread['tid']; ?></td>
                             <td><a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" target="_blank"><?php echo htmlspecialchars($thread['subject']); ?></a></td>
                             <td><?php echo $thread['fid']; ?></td>
-                            <td><?php echo htmlspecialchars($users[$thread['uid']]['username'] ?? '未知用户'); ?></td>
+                            <td><?php echo htmlspecialchars($users[$thread['uid']]['username'] ?? '已删除用户'); ?></td>
                             <td><?php echo $thread['reply_num']; ?>/<?php echo $thread['view_num']; ?></td>
                             <td><?php echo date('Y-m-d H:i', $thread['dateline']); ?></td>
                             <td>
                                 <a href="index.php?c=admin&a=threadDelete&tid=<?php echo $thread['tid']; ?>" class="btn btn-secondary" onclick="return confirm('确定删除该主题？')">删除</a>
                             </td>
-                        </tr>
-                    <?php endforeach; ?>
+                    </tr>
+                <?php endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="8" class="text-center text-secondary">暂无主题</td>
+                    </tr>
+                <?php endif; ?>
                 </tbody>
             </table>
 
@@ -103,9 +111,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     actionSelect.addEventListener('change', function() {
         if (this.value === 'move') {
-            moveFid.style.display = 'inline';
+            moveFid.classList.remove('hide');
         } else {
-            moveFid.style.display = 'none';
+            moveFid.classList.add('hide');
         }
         updateSubmit();
     });

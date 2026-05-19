@@ -2,7 +2,7 @@
     <div class="card-header">
         <h2>发送私信</h2>
     </div>
-    <div class="card-body">
+    <div class="card-body padded">
         <?php if (!empty($error)): ?>
             <div class="error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
@@ -32,7 +32,7 @@
                 <textarea name="content" required placeholder="请输入私信内容..."></textarea>
             </div>
 
-            <div class="form-group flex gap-md">
+            <div class="flex justify-end gap-md mt-lg">
                 <button type="submit" class="btn btn-primary">发送私信</button>
                 <a href="index.php?c=pm&a=inbox" class="btn btn-secondary">取消</a>
             </div>

@@ -19,7 +19,7 @@
             </div>
             <div class="form-group">
                 <label for="message">内容</label>
-                <textarea id="message" name="message" class="message-editor" placeholder="请输入主题内容..."></textarea>
+                <textarea id="message" name="message" class="message-editor" placeholder="请输入主题内容..." required></textarea>
             </div>
             <div class="flex justify-end gap-md mt-lg">
                 <a href="index.php?c=forum&a=index&fid=<?php echo $forum['fid']; ?>" class="btn btn-secondary">取消</a>

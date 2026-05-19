@@ -117,6 +117,7 @@ class ThreadModel {
     }
 
     public static function getThreadsByTids($tids) {
+        $tids = array_values(array_filter(array_unique(array_map('intval', $tids))));
         if (empty($tids)) {
             return [];
         }

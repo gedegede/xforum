@@ -4,8 +4,10 @@
     <div class="card-header">
         <h2>用户管理</h2>
     </div>
-    <div class="card-body">
+    <div class="card-body padded">
         <form method="get">
+            <input type="hidden" name="c" value="admin">
+            <input type="hidden" name="a" value="users">
             <div class="flex gap-sm flex-wrap">
                 <input type="text" name="keyword" placeholder="搜索用户名或邮箱..." value="<?php echo htmlspecialchars($keyword); ?>">
                 <select name="gid">
@@ -33,13 +35,14 @@
                 </tr>
             </thead>
             <tbody>
+                <?php if (!empty($users)): ?>
                 <?php foreach ($users as $user): ?>
                     <tr>
                         <td><?php echo $user['uid']; ?></td>
                         <td><?php echo htmlspecialchars($user['username']); ?></td>
                         <td><?php echo htmlspecialchars($user['email']); ?></td>
                         <td><?php echo $user['gid']; ?></td>
-                        <td><?php echo $user['status'] ? '正常' : '禁用'; ?></td>
+                        <td><span class="badge <?php echo $user['status'] ? 'badge-green' : 'badge-red'; ?>"><?php echo $user['status'] ? '正常' : '禁用'; ?></span></td>
                         <td><?php echo date('Y-m-d', $user['reg_date']); ?></td>
                         <td>
                             <a href="index.php?c=admin&a=userEdit&uid=<?php echo $user['uid']; ?>" class="btn btn-secondary">编辑</a>
@@ -47,6 +50,11 @@
                         </td>
                     </tr>
                 <?php endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="7" class="text-center text-secondary">暂无用户</td>
+                    </tr>
+                <?php endif; ?>
             </tbody>
         </table>
 

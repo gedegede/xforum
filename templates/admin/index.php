@@ -4,7 +4,7 @@
     <div class="card-header">
         <h2>统计信息</h2>
     </div>
-    <div class="card-body">
+    <div class="card-body padded">
         <div class="grid grid-auto gap-lg">
             <div class="stat-box">
                 <div class="stat-value"><?php echo $stats['users']; ?></div>

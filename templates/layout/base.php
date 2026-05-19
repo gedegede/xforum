@@ -10,7 +10,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo isset($title) ? $title : 'NodeSeek'; ?></title>
+    <title><?php echo htmlspecialchars(isset($title) ? $title : 'NodeSeek'); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -43,43 +43,43 @@
                 <div class="footer-section">
                     <h4>相关链接</h4>
                     <ul>
-                        <li><a href="#">关于我们</a></li>
-                        <li><a href="#">联系我们</a></li>
-                        <li><a href="#">服务条款</a></li>
-                        <li><a href="#">隐私政策</a></li>
+                        <li><a href="index.php">社区首页</a></li>
+                        <li><a href="index.php?c=forum&a=index">论坛导航</a></li>
+                        <li><a href="index.php?c=auth&a=login">用户登录</a></li>
+                        <li><a href="index.php?c=auth&a=register">注册账号</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
                     <h4>合作伙伴</h4>
                     <ul>
-                        <li><a href="#">技术支持</a></li>
-                        <li><a href="#">赞助商</a></li>
-                        <li><a href="#">友情链接</a></li>
+                        <li><a href="index.php?order=last_reply">最新讨论</a></li>
+                        <li><a href="index.php?order=replies">热门回复</a></li>
+                        <li><a href="index.php?order=views">热门浏览</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
                     <h4>社区规则</h4>
                     <ul>
-                        <li><a href="#">社区规范</a></li>
-                        <li><a href="#">发帖指南</a></li>
-                        <li><a href="#">版主申请</a></li>
+                        <li><a href="index.php?c=forum&a=index">版块列表</a></li>
+                        <li><a href="index.php?c=thread&a=create">发布主题</a></li>
+                        <li><a href="index.php?c=member&a=settings">个人设置</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
                     <h4>关注我们</h4>
                     <ul>
-                        <li><a href="#">GitHub</a></li>
-                        <li><a href="#">Twitter</a></li>
-                        <li><a href="#">Discord</a></li>
+                        <li><a href="index.php?c=pm&a=inbox">站内私信</a></li>
+                        <li><a href="index.php?c=notify&a=index">通知中心</a></li>
+                        <li><a href="index.php?c=admin&a=index">管理后台</a></li>
                     </ul>
                 </div>
             </div>
             <div class="footer-bottom">
                 <div class="footer-links">
-                    <a href="#">首页</a>
-                    <a href="#">论坛</a>
-                    <a href="#">发现</a>
-                    <a href="#">标签</a>
+                    <a href="index.php">首页</a>
+                    <a href="index.php?c=forum&a=index">论坛</a>
+                    <a href="index.php?order=views">热门</a>
+                    <a href="index.php?order=last_reply">最新</a>
                 </div>
                 <div>Copyright © 2024-2025 NodeSeek All Rights Reserved</div>
             </div>

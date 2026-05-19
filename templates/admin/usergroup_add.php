@@ -4,9 +4,9 @@
     <div class="card-header">
         <h2>添加用户组</h2>
     </div>
-    <div class="card-body">
+    <div class="card-body padded">
         <?php if ($error): ?>
-            <div class="error"><?php echo $error; ?></div>
+            <div class="error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
         <form method="post">
@@ -26,7 +26,7 @@
                 <label>积分下限</label>
                 <input type="number" name="credit_lower" value="0">
             </div>
-            <div class="form-group flex gap-md">
+            <div class="flex justify-end gap-md mt-lg">
                 <button type="submit" class="btn btn-primary">添加用户组</button>
                 <a href="index.php?c=admin&a=usergroups" class="btn btn-secondary">取消</a>
             </div>

@@ -4,12 +4,12 @@
     <div class="card-header">
         <h2>站点设置</h2>
     </div>
-    <div class="card-body">
+    <div class="card-body padded">
         <?php if ($error): ?>
-            <div class="error"><?php echo $error; ?></div>
+            <div class="error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
         <?php if ($success): ?>
-            <div class="success"><?php echo $success; ?></div>
+            <div class="success"><?php echo htmlspecialchars($success); ?></div>
         <?php endif; ?>
 
         <form method="post">
@@ -25,7 +25,7 @@
                 <label>关键词</label>
                 <input type="text" name="setting_site_keywords" value="<?php echo htmlspecialchars($settings['site_keywords'] ?? '论坛,社区,讨论'); ?>">
             </div>
-            <div class="form-group">
+            <div class="flex justify-end mt-lg">
                 <button type="submit" class="btn btn-primary">保存设置</button>
             </div>
         </form>

@@ -5,7 +5,7 @@
         <h2>用户组管理</h2>
         <a href="index.php?c=admin&a=usergroupAdd" class="btn btn-primary">添加用户组</a>
     </div>
-    <div class="card-body">
+    <div class="card-body padded">
         <table class="table">
             <thead>
                 <tr>
@@ -17,6 +17,7 @@
                 </tr>
             </thead>
             <tbody>
+                <?php if (!empty($groups)): ?>
                 <?php foreach ($groups as $group): ?>
                     <tr>
                         <td><?php echo $group['gid']; ?></td>
@@ -34,6 +35,11 @@
                         </td>
                     </tr>
                 <?php endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary">暂无用户组</td>
+                    </tr>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>

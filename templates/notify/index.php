@@ -6,7 +6,7 @@
         <?php if (!empty($notifies)): ?>
             <?php foreach ($notifies as $notify): ?>
                 <div class="list-item">
-                    <div class="item-info">
+                    <div class="item-info flex-1">
                         <div class="item-title">
                             <span class="font-bold"><?php echo htmlspecialchars($users[$notify['from_uid']]['username'] ?? '系统'); ?></span>
                             <?php echo htmlspecialchars($notify['message']); ?>

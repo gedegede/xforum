@@ -4,7 +4,7 @@
     <div class="card-header">
         <h2>管理日志</h2>
     </div>
-    <div class="card-body">
+    <div class="card-body padded">
         <table class="table">
             <thead>
                 <tr>
@@ -15,6 +15,7 @@
                 </tr>
             </thead>
             <tbody>
+                <?php if (!empty($logs)): ?>
                 <?php foreach ($logs as $log): ?>
                     <tr>
                         <td><?php echo $log['did']; ?></td>
@@ -23,6 +24,11 @@
                         <td><?php echo date('Y-m-d H:i:s', $log['dateline']); ?></td>
                     </tr>
                 <?php endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="4" class="text-center text-secondary">暂无管理日志</td>
+                    </tr>
+                <?php endif; ?>
             </tbody>
         </table>
 

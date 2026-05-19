@@ -1,16 +1,18 @@
 <div class="grid grid-cols-3">
     <div class="main-content">
         <div class="card">
-            <div class="card-header flex items-center gap-lg">
-                <div class="avatar avatar-lg">
-                    <?php echo strtoupper(substr($member['username'], 0, 1)); ?>
-                </div>
-                <div>
-                    <h2><?php echo $member['username']; ?></h2>
-                    <div class="text-secondary font-sm">
-                        注册于 <?php echo date('Y-m-d', $member['reg_date']); ?> · 
-                        <?php echo $member['thread_num']; ?> 主题 · 
-                        <?php echo $member['reply_num']; ?> 回复
+            <div class="card-header">
+                <div class="flex items-center gap-lg min-width-0">
+                    <div class="avatar avatar-lg flex-shrink-0">
+                        <?php echo strtoupper(substr($member['username'], 0, 1)); ?>
+                    </div>
+                    <div class="min-width-0">
+                        <h2><?php echo htmlspecialchars($member['username']); ?></h2>
+                        <div class="text-secondary font-sm">
+                            注册于 <?php echo date('Y-m-d', $member['reg_date']); ?> · 
+                            <?php echo $member['thread_num']; ?> 主题 · 
+                            <?php echo $member['reply_num']; ?> 回复
+                        </div>
                     </div>
                 </div>
             </div>
@@ -84,12 +86,14 @@
                 <?php endif; ?>
 
                 <?php if ($pages > 1): ?>
-                    <div class="pagination">
-                        <?php for ($i = 1; $i <= $pages; $i++): ?>
-                            <a href="index.php?c=member&a=profile&uid=<?php echo $member['uid']; ?>&type=<?php echo $type; ?>&page=<?php echo $i; ?>" class="<?php echo $page == $i ? 'active' : ''; ?>">
-                                <?php echo $i; ?>
-                            </a>
-                        <?php endfor; ?>
+                    <div class="pagination-container">
+                        <div class="pagination">
+                            <?php for ($i = 1; $i <= $pages; $i++): ?>
+                                <a href="index.php?c=member&a=profile&uid=<?php echo $member['uid']; ?>&type=<?php echo $type; ?>&page=<?php echo $i; ?>" class="<?php echo $page == $i ? 'active' : ''; ?>">
+                                    <?php echo $i; ?>
+                                </a>
+                            <?php endfor; ?>
+                        </div>
                     </div>
                 <?php endif; ?>
             </div>

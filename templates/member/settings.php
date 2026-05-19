@@ -2,7 +2,7 @@
     <div class="card-header">
         <h2>个人设置</h2>
     </div>
-    <div class="card-body">
+    <div class="card-body padded">
         <?php if (!empty($error)): ?>
             <div class="error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
@@ -31,7 +31,7 @@
                 <label>邮箱</label>
                 <input type="email" name="email" value="<?php echo htmlspecialchars($member['email']); ?>" required>
             </div>
-            <div class="form-group">
+            <div class="flex justify-end mt-lg">
                 <button type="submit" class="btn btn-primary">保存修改</button>
             </div>
         </form>
@@ -50,7 +50,7 @@
                 <label>确认密码</label>
                 <input type="password" name="confirm_password" required>
             </div>
-            <div class="form-group">
+            <div class="flex justify-end mt-lg">
                 <button type="submit" class="btn btn-primary">修改密码</button>
             </div>
         </form>
@@ -70,7 +70,7 @@
                     </label>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="flex justify-end mt-lg">
                 <button type="submit" class="btn btn-primary">保存设置</button>
             </div>
         </form>
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const tabName = this.dataset.tab;
             forms.forEach(form => {
-                form.style.display = form.id === tabName + '-form' ? 'block' : 'none';
+                form.classList.toggle('hide', form.id !== tabName + '-form');
             });
         });
     });
