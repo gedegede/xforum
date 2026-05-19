@@ -117,6 +117,6 @@
             <?php endif; ?>
         </div>
     </nav>
-    
+    <script src="assets/js/editor.js"></script>
 </body>
 </html>

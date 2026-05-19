@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/Parsedown.php';
+
 /**
  * 帖子渲染辅助类
  */
@@ -56,7 +58,11 @@ class PostHelper {
             <?php if (!empty($post['quote_pid']) && !empty($post['quote_uid'])): ?>
                 <span class="text-secondary">@<?php echo htmlspecialchars($users[$post['quote_uid']]['username'] ?? '已删除用户'); ?> #<?php echo $post['quote_floor']; ?>：</span>
             <?php endif; ?>
-            <?php echo nl2br(htmlspecialchars($post['message'])); ?>
+            <?php
+            $parsedown = new Parsedown();
+            $parsedown->setSafeMode(true);
+            echo $parsedown->line($post['message']);
+            ?>
         </div>
     </div>
 </div>

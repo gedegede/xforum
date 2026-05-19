@@ -19,8 +19,9 @@
             </div>
             <div class="form-group">
                 <label for="message">内容</label>
-                <textarea id="message" name="message" class="message-editor" placeholder="请输入主题内容..." required></textarea>
+                <textarea id="message" name="message" class="message-editor" placeholder="支持 Markdown 语法..." required></textarea>
             </div>
+            <script>initEditor('message');</script>
             <div class="flex justify-end gap-md mt-lg">
                 <a href="index.php?c=forum&a=index&fid=<?php echo $forum['fid']; ?>" class="btn btn-secondary">取消</a>
                 <button type="submit" class="btn btn-primary">发布主题</button>
