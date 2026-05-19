@@ -9,7 +9,7 @@
             <div class="error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
-        <form method="post">
+        <form method="post" action="index.php?c=admin&a=forumEdit&fid=<?php echo $forum['fid']; ?>">
             <div class="form-group">
                 <label>版块名称</label>
                 <input type="text" name="name" value="<?php echo htmlspecialchars($forum['name']); ?>" required>

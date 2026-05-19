@@ -24,6 +24,8 @@ $params = [];
 if (isset($_GET['fid'])) $params[] = $_GET['fid'];
 if (isset($_GET['tid'])) $params[] = $_GET['tid'];
 if (isset($_GET['pid'])) $params[] = $_GET['pid'];
+if (isset($_GET['gid'])) $params[] = $_GET['gid'];
+if (isset($_GET['uid'])) $params[] = $_GET['uid'];
 
 call_user_func_array([$controllerClass, $action], $params);
 ?>

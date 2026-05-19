@@ -117,7 +117,8 @@ $tables = [
         invisible INTEGER NOT NULL DEFAULT 0,
         timeoffset VARCHAR(10) NOT NULL DEFAULT '',
         search_time INTEGER NOT NULL DEFAULT 0,
-        status INTEGER NOT NULL DEFAULT 0
+        status INTEGER NOT NULL DEFAULT 0,
+        json_data TEXT NOT NULL DEFAULT ''
     )",
     'next_member_idx_username' => "CREATE INDEX idx_next_member_username ON next_member(username)",
     'next_member_idx_email' => "CREATE INDEX idx_next_member_email ON next_member(email)",

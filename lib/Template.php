@@ -15,21 +15,29 @@ class Template {
         self::$vars[$key] = $value;
     }
 
-    public static function setAll($vars) {
-        self::$vars = array_merge(self::$vars, $vars);
-    }
-
     public static function render($template, $layout = 'layout/base') {
-        extract(self::$vars);
+        $templatePath = self::$templatePath;
+
+        $renderTemplate = function () use ($template, $templatePath) {
+            extract(self::$vars, EXTR_SKIP);
+            include $templatePath . '/' . $template . '.php';
+        };
+
         ob_start();
-        include self::$templatePath . '/' . $template . '.php';
+        $renderTemplate();
         $content = ob_get_clean();
-        
+
         if ($layout) {
+            $renderLayout = function () use ($layout, $templatePath, $content) {
+                extract(self::$vars, EXTR_SKIP);
+                include $templatePath . '/' . $layout . '.php';
+            };
+
             ob_start();
-            include self::$templatePath . '/' . $layout . '.php';
+            $renderLayout();
             return ob_get_clean();
         }
+
         return $content;
     }
 

@@ -8,11 +8,11 @@ class UsergroupModel {
     }
 
     public static function get($gid) {
-        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE gid = ?", [$gid]);
+        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = :gid", ['gid' => $gid]);
     }
 
     public static function getDefaultGroup() {
-        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE group_type = 'member' ORDER BY gid ASC LIMIT 1");
+        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE group_type = :group_type ORDER BY gid ASC LIMIT 1", ['group_type' => 'member']);
     }
 
     public static function create($data) {
@@ -20,11 +20,12 @@ class UsergroupModel {
     }
 
     public static function update($gid, $data) {
-        return Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = ?", [$gid]);
+        $data['gid'] = $gid;
+        return Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = :gid");
     }
 
     public static function delete($gid) {
-        return Database::delete(self::TABLE, self::PRIMARY_KEY . " = ?", [$gid]);
+        return Database::delete(self::TABLE, self::PRIMARY_KEY . " = :gid", ['gid' => $gid]);
     }
 }
 ?>

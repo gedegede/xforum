@@ -15,7 +15,7 @@ class ForumModel {
         }
 
         $parentFids = array_unique(array_column($forums, 'up_fid'));
-        $parentFids = array_filter($parentFids, function($fid) { return $fid !== null && $fid !== ''; });
+        $parentFids = array_values(array_filter($parentFids, function($fid) { return $fid !== null && $fid !== ''; }));
         $parentNames = [];
         if (!empty($parentFids)) {
             $parentNames = self::getForumNamesByFids($parentFids);
@@ -79,6 +79,21 @@ class ForumModel {
                 self::addDepth($forum['children'], $depth + 1);
             }
         }
+    }
+
+    private static function flattenTree($tree, &$result = []) {
+        foreach ($tree as $forum) {
+            $result[] = $forum;
+            if (!empty($forum['children'])) {
+                self::flattenTree($forum['children'], $result);
+            }
+        }
+        return $result;
+    }
+
+    public static function getForumsFlat() {
+        $forums = self::getForums();
+        return self::flattenTree($forums);
     }
 
     public static function get($fid) {

@@ -56,7 +56,7 @@ class AdminController {
         Template::clear();
         self::checkAdmin();
 
-        $forums = ForumModel::getForums();
+        $forums = ForumModel::getForumsFlat();
 
         Template::set('title', '版块管理');
         Template::set('forums', $forums);
@@ -68,7 +68,7 @@ class AdminController {
         Template::clear();
         self::checkAdmin();
 
-        $parentForums = ForumModel::getForums();
+        $parentForums = ForumModel::getForumsFlat();
 
         $error = '';
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -96,19 +96,31 @@ class AdminController {
     }
 
     public static function forumEdit($fid) {
-        Template::clear();
         self::checkAdmin();
 
         $forum = ForumModel::get($fid);
-        $parentForums = ForumModel::getForums();
 
         if (!$forum) {
+            if (isset($_GET['ajax'])) {
+                echo json_encode(['success' => false, 'message' => '版块不存在']);
+                exit;
+            }
             header('Location: index.php?c=admin&a=forums');
             exit;
         }
 
+        if (isset($_GET['ajax'])) {
+            $parentForums = ForumModel::getForumsFlat();
+            echo json_encode(['success' => true, 'forum' => $forum, 'parentForums' => $parentForums]);
+            exit;
+        }
+
+        Template::clear();
+        $parentForums = ForumModel::getForumsFlat();
+
         $error = '';
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
             $name = trim($_POST['name'] ?? '');
             $upFid = (int)$_POST['up_fid'] ?? 0;
             $status = (int)$_POST['status'] ?? 0;
@@ -116,13 +128,21 @@ class AdminController {
             if (empty($name)) {
                 $error = '版块名称不能为空';
             } else {
-                ForumModel::update($fid, [
-                    'name' => $name,
-                    'up_fid' => $upFid,
-                    'status' => $status,
-                ]);
-                header('Location: index.php?c=admin&a=forums');
-                exit;
+                try {
+                    $result = ForumModel::update($fid, [
+                        'name' => $name,
+                        'up_fid' => $upFid,
+                        'status' => $status,
+                    ]);
+                    if ($result === false) {
+                        $error = '更新失败';
+                    } else {
+                        header('Location: index.php?c=admin&a=forums');
+                        exit;
+                    }
+                } catch (Exception $e) {
+                    $error = '更新出错: ' . $e->getMessage();
+                }
             }
         }
 
@@ -148,22 +168,40 @@ class AdminController {
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
         $fid = isset($_GET['fid']) ? (int)$_GET['fid'] : 0;
         $keyword = isset($_GET['keyword']) ? trim($_GET['keyword']) : '';
+        $searchType = isset($_GET['search_type']) ? $_GET['search_type'] : 'title';
 
         $where = [];
         $params = [];
+        $searchValid = true;
 
         if ($fid) {
             $where[] = 'fid = ?';
             $params[] = $fid;
         }
+        
         if ($keyword) {
-            $where[] = 'subject LIKE ?';
-            $params[] = "%$keyword%";
+            if ($searchType == 'username') {
+                $member = MemberModel::getByUsername($keyword);
+                if ($member) {
+                    $where[] = 'uid = ?';
+                    $params[] = $member['uid'];
+                } else {
+                    $searchValid = false;
+                }
+            } else {
+                $where[] = 'subject LIKE ?';
+                $params[] = "%$keyword%";
+            }
         }
 
-        $whereStr = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-        $threads = ThreadModel::search($whereStr, $params, $page);
-        $total = ThreadModel::searchCount($whereStr, $params);
+        $threads = [];
+        $total = 0;
+        
+        if ($searchValid) {
+            $whereStr = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+            $threads = ThreadModel::search($whereStr, $params, $page);
+            $total = ThreadModel::searchCount($whereStr, $params);
+        }
 
         // 获取发帖用户信息
         $users = [];
@@ -172,7 +210,7 @@ class AdminController {
             $users = MemberModel::getMembersByUids($uids);
         }
 
-        $forums = ForumModel::getForums();
+        $forums = ForumModel::getForumsFlat();
 
         Template::set('title', '主题管理');
         Template::set('threads', $threads);
@@ -180,6 +218,7 @@ class AdminController {
         Template::set('forums', $forums);
         Template::set('fid', $fid);
         Template::set('keyword', $keyword);
+        Template::set('searchType', $searchType);
         Template::set('page', $page);
         Template::set('pages', ceil($total / 20));
         Template::set('user', Session::getUser());
@@ -268,15 +307,25 @@ class AdminController {
     }
 
     public static function usergroupEdit($gid) {
-        Template::clear();
         self::checkAdmin();
 
         $group = UsergroupModel::get($gid);
 
         if (!$group) {
+            if (isset($_GET['ajax'])) {
+                echo json_encode(['success' => false, 'message' => '用户组不存在']);
+                exit;
+            }
             header('Location: index.php?c=admin&a=usergroups');
             exit;
         }
+
+        if (isset($_GET['ajax'])) {
+            echo json_encode(['success' => true, 'group' => $group]);
+            exit;
+        }
+
+        Template::clear();
 
         $error = '';
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -308,6 +357,89 @@ class AdminController {
         self::checkAdmin();
         UsergroupModel::delete($gid);
         header('Location: index.php?c=admin&a=usergroups');
+        exit;
+    }
+
+    public static function users() {
+        Template::clear();
+        self::checkAdmin();
+
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $keyword = isset($_GET['keyword']) ? trim($_GET['keyword']) : '';
+        $gid = isset($_GET['gid']) ? (int)$_GET['gid'] : 0;
+
+        $users = MemberModel::search($keyword, $gid, $page);
+        $total = MemberModel::searchCount($keyword, $gid);
+        $groups = UsergroupModel::getAll();
+
+        Template::set('title', '用户管理');
+        Template::set('users', $users);
+        Template::set('groups', $groups);
+        Template::set('keyword', $keyword);
+        Template::set('gid', $gid);
+        Template::set('page', $page);
+        Template::set('pages', ceil($total / 20));
+        Template::set('user', Session::getUser());
+        Template::display('admin/users');
+    }
+
+    public static function userEdit($uid) {
+        self::checkAdmin();
+
+        $member = MemberModel::get($uid);
+        if (!$member) {
+            if (isset($_GET['ajax'])) {
+                echo json_encode(['success' => false, 'message' => '用户不存在']);
+                exit;
+            }
+            header('Location: index.php?c=admin&a=users');
+            exit;
+        }
+
+        if (isset($_GET['ajax'])) {
+            echo json_encode(['success' => true, 'user' => $member]);
+            exit;
+        }
+
+        Template::clear();
+
+        $groups = UsergroupModel::getAll();
+        $error = '';
+
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $data = [
+                'username' => trim($_POST['username']),
+                'email' => trim($_POST['email']),
+                'gid' => (int)$_POST['gid'],
+                'status' => (int)$_POST['status'],
+            ];
+
+            if (!empty($_POST['password'])) {
+                $data['password'] = password_hash($_POST['password'], PASSWORD_DEFAULT);
+            }
+
+            MemberModel::update($uid, $data);
+            self::logAction('user_edit', "编辑用户: {$member['username']} (UID: {$uid})");
+            header('Location: index.php?c=admin&a=users');
+            exit;
+        }
+
+        Template::set('title', '编辑用户');
+        Template::set('member', $member);
+        Template::set('groups', $groups);
+        Template::set('error', $error);
+        Template::set('user', Session::getUser());
+        Template::display('admin/user_edit');
+    }
+
+    public static function userDelete($uid) {
+        self::checkAdmin();
+        $member = MemberModel::get($uid);
+        if ($member) {
+            MemberModel::delete($uid);
+            self::logAction('user_delete', "删除用户: {$member['username']} (UID: {$uid})");
+        }
+        header('Location: index.php?c=admin&a=users');
         exit;
     }
 

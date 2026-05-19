@@ -6,7 +6,7 @@
                     <div class="flex items-center justify-between gap-md">
                         <h1>XForum</h1>
                         <?php if (isset($user)): ?>
-                            <a href="index.php?c=thread&a=create" class="btn btn-primary">发布主题</a>
+                            <a href="index.php?c=forum&a=index&from=create" class="btn btn-primary">发布主题</a>
                         <?php endif; ?>
                     </div>
                 </div>

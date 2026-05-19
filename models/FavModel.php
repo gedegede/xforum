@@ -5,11 +5,11 @@ class FavModel {
 
     public static function getUserFavorites($uid, $page = 1) {
         $offset = ($page - 1) * 20;
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE uid = ? ORDER BY dateline DESC LIMIT 20 OFFSET ?", [$uid, $offset]);
+        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY dateline DESC LIMIT 20 OFFSET :offset", ['uid' => $uid, 'offset' => $offset]);
     }
 
     public static function getUserFavoriteCount($uid) {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = ?", [$uid]);
+        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = :uid", ['uid' => $uid]);
         return $result['count'] ?? 0;
     }
 
@@ -20,18 +20,18 @@ class FavModel {
             'dateline' => time(),
         ]);
         if ($result) {
-            Database::query("UPDATE next_thread SET fav_num = fav_num + 1 WHERE tid = ?", [$tid]);
+            Database::query("UPDATE next_thread SET fav_num = fav_num + 1 WHERE tid = :tid", ['tid' => $tid]);
         }
         return $result;
     }
 
     public static function removeFavorite($uid, $tid) {
-        Database::query("DELETE FROM " . self::TABLE . " WHERE uid = ? AND tid = ?", [$uid, $tid]);
-        Database::query("UPDATE next_thread SET fav_num = fav_num - 1 WHERE tid = ?", [$tid]);
+        Database::query("DELETE FROM " . self::TABLE . " WHERE uid = :uid AND tid = :tid", ['uid' => $uid, 'tid' => $tid]);
+        Database::query("UPDATE next_thread SET fav_num = fav_num - 1 WHERE tid = :tid", ['tid' => $tid]);
     }
 
     public static function isFavorite($uid, $tid) {
-        $result = Database::fetch("SELECT * FROM " . self::TABLE . " WHERE uid = ? AND tid = ?", [$uid, $tid]);
+        $result = Database::fetch("SELECT * FROM " . self::TABLE . " WHERE uid = :uid AND tid = :tid", ['uid' => $uid, 'tid' => $tid]);
         return !empty($result);
     }
 }

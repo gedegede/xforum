@@ -5,34 +5,34 @@ class NotifyModel {
 
     public static function getNotifies($uid, $page = 1) {
         $offset = ($page - 1) * 20;
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE uid = ? ORDER BY did DESC LIMIT 20 OFFSET ?", [$uid, $offset]);
+        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY did DESC LIMIT 20 OFFSET :offset", ['uid' => $uid, 'offset' => $offset]);
     }
 
     public static function getNotifyCount($uid) {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = ?", [$uid]);
+        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = :uid", ['uid' => $uid]);
         return $result['count'] ?? 0;
     }
 
     public static function getUnreadCount($uid) {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = ? AND status = 0", [$uid]);
+        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = :uid AND status = 0", ['uid' => $uid]);
         return $result['count'] ?? 0;
     }
 
     public static function markAsRead($uid) {
-        Database::query("UPDATE " . self::TABLE . " SET status = 1 WHERE uid = ? AND status = 0", [$uid]);
-        Database::query("UPDATE next_member SET notify_num = 0 WHERE uid = ?", [$uid]);
+        Database::query("UPDATE " . self::TABLE . " SET status = 1 WHERE uid = :uid AND status = 0", ['uid' => $uid]);
+        Database::query("UPDATE next_member SET notify_num = 0 WHERE uid = :uid", ['uid' => $uid]);
     }
 
     public static function addNotify($uid, $fromUid, $tid, $pid, $message) {
-        $existing = Database::fetch("SELECT * FROM " . self::TABLE . " WHERE uid = ? AND tid = ?", [$uid, $tid]);
+        $existing = Database::fetch("SELECT * FROM " . self::TABLE . " WHERE uid = :uid AND tid = :tid", ['uid' => $uid, 'tid' => $tid]);
 
         if ($existing) {
-            Database::query("UPDATE " . self::TABLE . " SET from_uid = ?, pid = ?, dateline = ?, message = ? WHERE did = ?",
-                [$fromUid, $pid, time(), $message, $existing['did']]);
+            Database::query("UPDATE " . self::TABLE . " SET from_uid = :from_uid, pid = :pid, dateline = :dateline, message = :message WHERE did = :did",
+                ['from_uid' => $fromUid, 'pid' => $pid, 'dateline' => time(), 'message' => $message, 'did' => $existing['did']]);
             return $existing['did'];
         }
 
-        Database::query("UPDATE next_member SET notify_num = notify_num + 1 WHERE uid = ?", [$uid]);
+        Database::query("UPDATE next_member SET notify_num = notify_num + 1 WHERE uid = :uid", ['uid' => $uid]);
         return Database::insert(self::TABLE, [
             'uid' => $uid,
             'from_uid' => $fromUid,
@@ -45,7 +45,7 @@ class NotifyModel {
     }
 
     public static function addPMNotify($uid, $fromUid) {
-        Database::query("UPDATE next_member SET notify_num = notify_num + 1 WHERE uid = ?", [$uid]);
+        Database::query("UPDATE next_member SET notify_num = notify_num + 1 WHERE uid = :uid", ['uid' => $uid]);
         return Database::insert(self::TABLE, [
             'uid' => $uid,
             'from_uid' => $fromUid,

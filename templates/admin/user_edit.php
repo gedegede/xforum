@@ -19,6 +19,10 @@
                 <input type="email" name="email" value="<?php echo htmlspecialchars($member['email']); ?>" required>
             </div>
             <div class="form-group">
+                <label>密码</label>
+                <input type="password" name="password" placeholder="不修改密码请留空">
+            </div>
+            <div class="form-group">
                 <label>用户组</label>
                 <select name="gid">
                     <?php foreach ($groups as $group): ?>

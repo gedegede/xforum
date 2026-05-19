@@ -13,7 +13,7 @@ class ModLogModel {
 
     public static function getLogs($page = 1) {
         $offset = ($page - 1) * 20;
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY did DESC LIMIT 20 OFFSET ?", [$offset]);
+        return Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY did DESC LIMIT 20 OFFSET :offset", ['offset' => $offset]);
     }
 
     public static function getCount() {

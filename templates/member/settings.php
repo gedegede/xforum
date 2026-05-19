@@ -1,7 +1,33 @@
-<div class="card center-card">
+<div class="card">
     <div class="card-header">
-        <h2>个人设置</h2>
+        <div class="flex items-center gap-lg min-width-0">
+            <div class="avatar avatar-lg flex-shrink-0">
+                <?php echo strtoupper(substr($member['username'], 0, 1)); ?>
+            </div>
+            <div class="min-width-0">
+                <h2><?php echo htmlspecialchars($member['username']); ?></h2>
+                <div class="text-secondary font-sm">
+                    注册于 <?php echo date('Y-m-d', $member['reg_date']); ?> · 
+                    <?php echo $member['thread_num']; ?> 主题 · 
+                    <?php echo $member['reply_num']; ?> 回复
+                </div>
+            </div>
+        </div>
     </div>
+</div>
+
+<div class="card">
+    <div class="tabs">
+        <a href="index.php?c=member&a=profile&uid=<?php echo $member['uid']; ?>&type=threads" class="tab<?php echo (isset($_GET['c']) && $_GET['c'] == 'member' && $_GET['a'] == 'profile') ? ' active' : ''; ?>">我的主题</a>
+        <a href="index.php?c=member&a=profile&uid=<?php echo $member['uid']; ?>&type=replies" class="tab">我的回复</a>
+        <a href="index.php?c=member&a=profile&uid=<?php echo $member['uid']; ?>&type=favorites" class="tab">我的收藏</a>
+        <a href="index.php?c=member&a=settings" class="tab active">个人设置</a>
+        <a href="index.php?c=admin&a=index" class="tab<?php echo (isset($_GET['c']) && $_GET['c'] == 'admin') ? ' active' : ''; ?>">站点设置</a>
+    </div>
+</div>
+
+<div class="card">
+
     <div class="card-body padded">
         <?php if (!empty($error)): ?>
             <div class="error"><?php echo htmlspecialchars($error); ?></div>
@@ -79,7 +105,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const tabs = document.querySelectorAll('.tab');
+    const tabs = document.querySelectorAll('.card-body .tabs .tab');
     const forms = document.querySelectorAll('.tab-content');
     
     tabs.forEach(tab => {

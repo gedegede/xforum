@@ -99,10 +99,7 @@ class PmController {
             }
         }
 
-        $members = MemberModel::getAllMembersExcept(Session::getUid());
-
         Template::set('title', '发送私信');
-        Template::set('members', $members);
         Template::set('toUid', $toUid);
         Template::set('receiver', $receiver);
         Template::set('error', $error);

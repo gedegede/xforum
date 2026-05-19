@@ -5,6 +5,7 @@
         <h2>管理日志</h2>
     </div>
     <div class="card-body padded">
+        <div class="table-container">
         <table class="table">
             <thead>
                 <tr>
@@ -31,6 +32,7 @@
                 <?php endif; ?>
             </tbody>
         </table>
+        </div>
 
         <?php if ($pages > 1): ?>
             <div class="pagination mt-lg">

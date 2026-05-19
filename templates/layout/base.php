@@ -61,7 +61,7 @@
                     <h4>社区规则</h4>
                     <ul>
                         <li><a href="index.php?c=forum&a=index">版块列表</a></li>
-                        <li><a href="index.php?c=thread&a=create">发布主题</a></li>
+                        <li><a href="index.php?c=forum&a=index&from=create">发布主题</a></li>
                         <li><a href="index.php?c=member&a=settings">个人设置</a></li>
                     </ul>
                 </div>

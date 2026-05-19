@@ -7,15 +7,15 @@ class MemberModel {
         if (!$uid) {
             return null;
         }
-        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = ?", [$uid]);
+        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = :uid", ['uid' => $uid]);
     }
 
     public static function getByUsername($username) {
-        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE username = ?", [$username]);
+        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE username = :username", ['username' => $username]);
     }
 
     public static function getByEmail($email) {
-        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE email = ?", [$email]);
+        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE email = :email", ['email' => $email]);
     }
 
     public static function checkPassword($username, $password) {
@@ -40,19 +40,19 @@ class MemberModel {
         $params = [];
 
         if ($keyword) {
-            $where[] = '(username LIKE ? OR email LIKE ?)';
-            $params[] = "%$keyword%";
-            $params[] = "%$keyword%";
+            $where[] = '(username LIKE :keyword1 OR email LIKE :keyword2)';
+            $params['keyword1'] = "%$keyword%";
+            $params['keyword2'] = "%$keyword%";
         }
         if ($gid) {
-            $where[] = 'gid = ?';
-            $params[] = $gid;
+            $where[] = 'gid = :gid';
+            $params['gid'] = $gid;
         }
 
         $whereStr = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-        $params[] = $offset;
+        $params['offset'] = $offset;
 
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " $whereStr ORDER BY uid DESC LIMIT 20 OFFSET ?", $params);
+        return Database::fetchAll("SELECT * FROM " . self::TABLE . " $whereStr ORDER BY uid DESC LIMIT 20 OFFSET :offset", $params);
     }
 
     public static function searchCount($keyword = '', $gid = 0) {
@@ -60,13 +60,13 @@ class MemberModel {
         $params = [];
 
         if ($keyword) {
-            $where[] = '(username LIKE ? OR email LIKE ?)';
-            $params[] = "%$keyword%";
-            $params[] = "%$keyword%";
+            $where[] = '(username LIKE :keyword1 OR email LIKE :keyword2)';
+            $params['keyword1'] = "%$keyword%";
+            $params['keyword2'] = "%$keyword%";
         }
         if ($gid) {
-            $where[] = 'gid = ?';
-            $params[] = $gid;
+            $where[] = 'gid = :gid';
+            $params['gid'] = $gid;
         }
 
         $whereStr = $where ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -79,11 +79,12 @@ class MemberModel {
     }
 
     public static function update($uid, $data) {
-        return Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = ?", [$uid]);
+        $data['uid'] = $uid;
+        return Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = :uid");
     }
 
     public static function delete($uid) {
-        return Database::delete(self::TABLE, self::PRIMARY_KEY . " = ?", [$uid]);
+        return Database::delete(self::TABLE, self::PRIMARY_KEY . " = :uid", ['uid' => $uid]);
     }
 
     public static function getJsonData($uid) {
@@ -106,16 +107,13 @@ class MemberModel {
         return $jsonData[$key] ?? $default;
     }
 
-    public static function getAllMembersExcept($uid) {
-        return Database::fetchAll("SELECT uid, username FROM " . self::TABLE . " WHERE uid != ? ORDER BY username", [$uid]);
-    }
 
     public static function getMembersByUids($uids) {
         if (empty($uids)) {
             return [];
         }
 
-        $uids = array_filter(array_unique($uids));
+        $uids = array_values(array_filter(array_unique($uids)));
         if (empty($uids)) {
             return [];
         }
@@ -124,7 +122,6 @@ class MemberModel {
         $sql = "SELECT uid, username, avatar FROM " . self::TABLE . " WHERE uid IN ($placeholders)";
         $members = Database::fetchAll($sql, $uids);
 
-        // 转换为以 uid 为键的关联数组
         $result = [];
         foreach ($members as $member) {
             $result[$member['uid']] = $member;

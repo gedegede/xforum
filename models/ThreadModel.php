@@ -16,32 +16,32 @@ class ThreadModel {
         $orderBy = isset($orderMap[$order]) ? $orderMap[$order] : 'reply_time DESC';
         
         if (!empty($keyword)) {
-            return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE fid = ? AND subject LIKE ? ORDER BY $orderBy LIMIT 20 OFFSET ?", [$fid, '%' . $keyword . '%', $offset]);
+            return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE fid = :fid AND subject LIKE :keyword ORDER BY $orderBy LIMIT 20 OFFSET :offset", ['fid' => $fid, 'keyword' => '%' . $keyword . '%', 'offset' => $offset]);
         }
         
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE fid = ? ORDER BY $orderBy LIMIT 20 OFFSET ?", [$fid, $offset]);
+        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE fid = :fid ORDER BY $orderBy LIMIT 20 OFFSET :offset", ['fid' => $fid, 'offset' => $offset]);
     }
     
     public static function getThreadCount($fid, $keyword = '') {
         if (!empty($keyword)) {
-            $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE fid = ? AND subject LIKE ?", [$fid, '%' . $keyword . '%']);
+            $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE fid = :fid AND subject LIKE :keyword", ['fid' => $fid, 'keyword' => '%' . $keyword . '%']);
         } else {
-            $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE fid = ?", [$fid]);
+            $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE fid = :fid", ['fid' => $fid]);
         }
         return $result['count'] ?? 0;
     }
 
     public static function get($tid) {
-        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = ?", [$tid]);
+        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = :tid", ['tid' => $tid]);
     }
 
     public static function getUserThreads($uid, $page = 1) {
         $offset = ($page - 1) * 20;
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE uid = ? ORDER BY tid DESC LIMIT 20 OFFSET ?", [$uid, $offset]);
+        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY tid DESC LIMIT 20 OFFSET :offset", ['uid' => $uid, 'offset' => $offset]);
     }
 
     public static function getUserThreadCount($uid) {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = ?", [$uid]);
+        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = :uid", ['uid' => $uid]);
         return $result['count'] ?? 0;
     }
 
@@ -53,11 +53,12 @@ class ThreadModel {
     }
 
     public static function update($tid, $data) {
-        return Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = ?", [$tid]);
+        $data['tid'] = $tid;
+        return Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = :tid");
     }
 
     public static function delete($tid) {
-        return Database::delete(self::TABLE, self::PRIMARY_KEY . " = ?", [$tid]);
+        return Database::delete(self::TABLE, self::PRIMARY_KEY . " = :tid", ['tid' => $tid]);
     }
 
     public static function count() {
@@ -65,17 +66,17 @@ class ThreadModel {
     }
 
     public static function updateReply($tid, $uid) {
-        Database::query("UPDATE " . self::TABLE . " SET reply_time = ?, reply_uid = ?, reply_num = reply_num + 1 WHERE tid = ?", [time(), $uid, $tid]);
+        Database::query("UPDATE " . self::TABLE . " SET reply_time = :time, reply_uid = :uid, reply_num = reply_num + 1 WHERE tid = :tid", ['time' => time(), 'uid' => $uid, 'tid' => $tid]);
     }
 
     public static function incrementView($tid) {
-        Database::query("UPDATE " . self::TABLE . " SET view_num = view_num + 1 WHERE tid = ?", [$tid]);
+        Database::query("UPDATE " . self::TABLE . " SET view_num = view_num + 1 WHERE tid = :tid", ['tid' => $tid]);
     }
 
     public static function search($whereStr = '', $params = [], $page = 1) {
         $offset = ($page - 1) * 20;
-        $sql = "SELECT * FROM " . self::TABLE . " $whereStr ORDER BY dateline DESC LIMIT 20 OFFSET ?";
-        $params[] = $offset;
+        $sql = "SELECT * FROM " . self::TABLE . " $whereStr ORDER BY dateline DESC LIMIT 20 OFFSET :offset";
+        $params['offset'] = $offset;
         return Database::fetchAll($sql, $params);
     }
 
@@ -85,7 +86,7 @@ class ThreadModel {
     }
 
     public static function getHomeThreads($limit = 30) {
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY tid DESC LIMIT ?", [$limit]);
+        return Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY tid DESC LIMIT :limit", ['limit' => $limit]);
     }
 
     public static function getHomeThreadsWithFilter($page = 1, $order = 'reply_time', $keyword = '') {
@@ -101,15 +102,15 @@ class ThreadModel {
         $orderBy = isset($orderMap[$order]) ? $orderMap[$order] : 'reply_time DESC';
         
         if (!empty($keyword)) {
-            return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE subject LIKE ? ORDER BY $orderBy LIMIT 20 OFFSET ?", ['%' . $keyword . '%', $offset]);
+            return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE subject LIKE :keyword ORDER BY $orderBy LIMIT 20 OFFSET :offset", ['keyword' => '%' . $keyword . '%', 'offset' => $offset]);
         }
         
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY $orderBy LIMIT 20 OFFSET ?", [$offset]);
+        return Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY $orderBy LIMIT 20 OFFSET :offset", ['offset' => $offset]);
     }
 
     public static function getHomeThreadCount($keyword = '') {
         if (!empty($keyword)) {
-            $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE subject LIKE ?", ['%' . $keyword . '%']);
+            $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE subject LIKE :keyword", ['keyword' => '%' . $keyword . '%']);
         } else {
             $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE);
         }

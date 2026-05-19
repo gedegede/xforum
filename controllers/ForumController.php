@@ -5,10 +5,12 @@ class ForumController {
     public static function index($fid = 0) {
         Template::clear();
         if (!$fid) {
-            $forums = ForumModel::getForums();
+            $forums = ForumModel::getForumsFlat();
+            $from = isset($_GET['from']) ? $_GET['from'] : '';
 
-            Template::set('title', '论坛导航');
+            Template::set('title', $from === 'create' ? '选择版块' : '论坛导航');
             Template::set('forums', $forums);
+            Template::set('from', $from);
             Template::set('user', Session::getUser());
             Template::display('forum/list');
             return;

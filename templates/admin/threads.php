@@ -13,11 +13,15 @@
                     <option value="0">全部版块</option>
                     <?php foreach ($forums as $forum): ?>
                         <option value="<?php echo $forum['fid']; ?>" <?php echo $fid == $forum['fid'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($forum['name']); ?>
+                            <?php echo str_repeat('├─ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <input type="text" name="keyword" placeholder="搜索主题标题..." value="<?php echo htmlspecialchars($keyword); ?>">
+                <select name="search_type">
+                    <option value="title" <?php echo (!isset($searchType) || $searchType == 'title') ? 'selected' : ''; ?>>标题</option>
+                    <option value="username" <?php echo isset($searchType) && $searchType == 'username' ? 'selected' : ''; ?>>用户名</option>
+                </select>
+                <input type="text" name="keyword" placeholder="输入关键词" value="<?php echo htmlspecialchars($keyword); ?>">
                 <button type="submit" class="btn btn-primary">搜索</button>
             </div>
         </form>
@@ -34,24 +38,32 @@
                     </select>
                     <select name="fid" id="move-fid" class="hide">
                         <?php foreach ($forums as $forum): ?>
-                            <option value="<?php echo $forum['fid']; ?>"><?php echo htmlspecialchars($forum['name']); ?></option>
+                            <option value="<?php echo $forum['fid']; ?>"><?php echo str_repeat('├─ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?></option>
                         <?php endforeach; ?>
                     </select>
                     <button type="submit" class="btn btn-secondary ml-sm" id="batch-submit" disabled>执行</button>
                 </div>
             </div>
 
+            <?php 
+$forumNames = [];
+foreach ($forums as $forum) {
+    $forumNames[$forum['fid']] = $forum['name'];
+}
+?>
+
+<div class="table-container">
             <table class="table">
                 <thead>
                     <tr>
                         <th><input type="checkbox" id="select-all"></th>
                         <th>ID</th>
                         <th>标题</th>
-                        <th>版块</th>
-                        <th>作者</th>
-                        <th>回复/浏览</th>
-                        <th>时间</th>
-                        <th>操作</th>
+                        <th class="nowrap">版块</th>
+                        <th class="nowrap">作者</th>
+                        <th class="nowrap">回复/浏览</th>
+                        <th class="nowrap">时间</th>
+                        <th class="nowrap">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -61,12 +73,12 @@
                             <td><input type="checkbox" name="tids[]" value="<?php echo $thread['tid']; ?>"></td>
                             <td><?php echo $thread['tid']; ?></td>
                             <td><a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" target="_blank"><?php echo htmlspecialchars($thread['subject']); ?></a></td>
-                            <td><?php echo $thread['fid']; ?></td>
-                            <td><?php echo htmlspecialchars($users[$thread['uid']]['username'] ?? '已删除用户'); ?></td>
-                            <td><?php echo $thread['reply_num']; ?>/<?php echo $thread['view_num']; ?></td>
-                            <td><?php echo date('Y-m-d H:i', $thread['dateline']); ?></td>
-                            <td>
-                                <a href="index.php?c=admin&a=threadDelete&tid=<?php echo $thread['tid']; ?>" class="btn btn-secondary" onclick="return confirm('确定删除该主题？')">删除</a>
+                            <td class="nowrap"><?php echo htmlspecialchars($forumNames[$thread['fid']] ?? $thread['fid']); ?></td>
+                            <td class="nowrap"><?php echo htmlspecialchars($users[$thread['uid']]['username'] ?? '已删除用户'); ?></td>
+                            <td class="nowrap"><?php echo $thread['reply_num']; ?>/<?php echo $thread['view_num']; ?></td>
+                            <td class="nowrap"><?php echo date('Y-m-d H:i', $thread['dateline']); ?></td>
+                            <td class="nowrap">
+                                <button class="btn btn-secondary delete-thread-btn" data-tid="<?php echo $thread['tid']; ?>" data-title="<?php echo htmlspecialchars($thread['subject']); ?>">删除</button>
                             </td>
                     </tr>
                 <?php endforeach; ?>
@@ -77,6 +89,7 @@
                 <?php endif; ?>
                 </tbody>
             </table>
+            </div>
 
             <?php if ($pages > 1): ?>
                 <div class="pagination mt-lg">
@@ -125,4 +138,50 @@ document.addEventListener('DOMContentLoaded', function() {
         batchAction.value = actionSelect.value;
     }
 });
+
+function openModal(modalId) {
+    document.getElementById(modalId).classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.delete-thread-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var tid = this.getAttribute('data-tid');
+            var title = this.getAttribute('data-title');
+            document.getElementById('thread-delete-confirm-text').textContent = '确定要删除主题 "' + title + '" 吗？此操作无法撤销，该主题下的所有回复也将被删除。';
+            document.getElementById('thread-delete-confirm-btn').href = 'index.php?c=admin&a=threadDelete&tid=' + tid;
+            openModal('thread-delete-modal');
+        });
+    });
+
+    document.getElementById('thread-delete-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModal('thread-delete-modal');
+        }
+    });
+});
 </script>
+
+<div id="thread-delete-modal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>确认删除</h3>
+            <button class="modal-close" onclick="closeModal('thread-delete-modal')">×</button>
+        </div>
+        <div class="modal-body">
+            <p class="modal-confirm-text" id="thread-delete-confirm-text">确定要删除该主题吗？此操作无法撤销。</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('thread-delete-modal')">取消</button>
+            <a href="#" id="thread-delete-confirm-btn" class="btn btn-primary">确认删除</a>
+        </div>
+    </div>
+</div>

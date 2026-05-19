@@ -4,16 +4,16 @@ class SettingModel {
     const PRIMARY_KEY = 'skey';
 
     public static function get($key, $default = '') {
-        $result = Database::fetch("SELECT val FROM " . self::TABLE . " WHERE skey = ?", [$key]);
+        $result = Database::fetch("SELECT val FROM " . self::TABLE . " WHERE skey = :skey", ['skey' => $key]);
         return $result ? $result['val'] : $default;
     }
 
     public static function set($key, $value) {
-        $exists = Database::fetch("SELECT * FROM " . self::TABLE . " WHERE skey = ?", [$key]);
+        $exists = Database::fetch("SELECT * FROM " . self::TABLE . " WHERE skey = :skey", ['skey' => $key]);
         if ($exists) {
-            Database::query("UPDATE " . self::TABLE . " SET val = ? WHERE skey = ?", [$value, $key]);
+            Database::query("UPDATE " . self::TABLE . " SET val = :val WHERE skey = :skey", ['val' => $value, 'skey' => $key]);
         } else {
-            Database::query("INSERT INTO " . self::TABLE . " (skey, val) VALUES (?, ?)", [$key, $value]);
+            Database::query("INSERT INTO " . self::TABLE . " (skey, val) VALUES (:skey, :val)", ['skey' => $key, 'val' => $value]);
         }
     }
 

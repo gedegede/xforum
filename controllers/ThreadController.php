@@ -50,10 +50,15 @@ class ThreadController {
         Template::display('thread/index');
     }
 
-    public static function create($fid) {
+    public static function create($fid = null) {
         Template::clear();
         if (!Session::isLoggedIn()) {
             header('Location: index.php?c=auth&a=login');
+            exit;
+        }
+
+        if (!$fid) {
+            header('Location: index.php?c=forum&a=index&from=create');
             exit;
         }
 

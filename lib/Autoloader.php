@@ -5,8 +5,6 @@ class Autoloader {
     }
 
     public static function load($class) {
-        $class = strtolower($class);
-        
         $paths = [
             ROOT_PATH . '/lib/' . $class . '.php',
             ROOT_PATH . '/models/' . $class . '.php',
