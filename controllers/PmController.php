@@ -1,8 +1,16 @@
 <?php
+declare(strict_types=1);
+
+namespace Controllers;
+
+use Lib\Session;
+use Lib\Template;
+use Models\PmModel;
+use Models\MemberModel;
+use Models\NotifyModel;
 
 class PmController {
-
-    public static function inbox() {
+    public static function inbox(): void {
         Template::clear();
         if (!Session::isLoggedIn()) {
             header('Location: index.php?c=auth&a=login');
@@ -15,7 +23,6 @@ class PmController {
 
         PmModel::markAsRead(Session::getUid());
 
-        // 获取发件人信息
         $users = [];
         if (!empty($messages)) {
             $uids = array_unique(array_column($messages, 'uid'));
@@ -26,12 +33,12 @@ class PmController {
         Template::set('messages', $messages);
         Template::set('users', $users);
         Template::set('page', $page);
-        Template::set('pages', ceil($total / 20));
+        Template::set('pages', (int)ceil($total / 20));
         Template::set('user', Session::getUser());
         Template::display('pm/inbox');
     }
 
-    public static function outbox() {
+    public static function outbox(): void {
         Template::clear();
         if (!Session::isLoggedIn()) {
             header('Location: index.php?c=auth&a=login');
@@ -42,7 +49,6 @@ class PmController {
         $messages = PmModel::getOutbox(Session::getUid(), $page);
         $total = PmModel::getOutboxCount(Session::getUid());
 
-        // 获取收件人信息
         $users = [];
         if (!empty($messages)) {
             $uids = array_unique(array_column($messages, 'to_uid'));
@@ -53,12 +59,12 @@ class PmController {
         Template::set('messages', $messages);
         Template::set('users', $users);
         Template::set('page', $page);
-        Template::set('pages', ceil($total / 20));
+        Template::set('pages', (int)ceil($total / 20));
         Template::set('user', Session::getUser());
         Template::display('pm/outbox');
     }
 
-    public static function send($toUid = 0) {
+    public static function send(int $toUid = 0): void {
         Template::clear();
         if (!Session::isLoggedIn()) {
             header('Location: index.php?c=auth&a=login');
@@ -77,7 +83,7 @@ class PmController {
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $toUid = (int)$_POST['to_uid'] ?? 0;
+            $toUid = (int)($_POST['to_uid'] ?? 0);
             $content = trim($_POST['content'] ?? '');
 
             if (!$toUid) {
@@ -107,7 +113,7 @@ class PmController {
         Template::display('pm/send');
     }
 
-    public static function view($pmid) {
+    public static function view(int $pmid): void {
         Template::clear();
         if (!Session::isLoggedIn()) {
             header('Location: index.php?c=auth&a=login');
@@ -120,16 +126,13 @@ class PmController {
             exit;
         }
 
-        // 检查权限：只能是发件人或收件人查看
         if ($message['uid'] != Session::getUid() && $message['to_uid'] != Session::getUid()) {
             header('Location: index.php?c=pm&a=inbox');
             exit;
         }
 
-        // 标记为已读
         PmModel::markSingleAsRead($pmid);
 
-        // 获取发件人信息
         $sender = MemberModel::get($message['uid']);
 
         Template::set('title', '查看私信');

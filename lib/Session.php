@@ -1,8 +1,14 @@
 <?php
-class Session {
-    private static $initialized = false;
+declare(strict_types=1);
 
-    private static function init($forceStart = false) {
+namespace Lib;
+
+use Models\MemberModel;
+
+class Session {
+    private static bool $initialized = false;
+
+    private static function init(bool $forceStart = false): void {
         if (self::$initialized) {
             return;
         }
@@ -19,16 +25,16 @@ class Session {
         }
     }
 
-    public static function start() {
+    public static function start(): void {
         self::init(true);
     }
 
-    public static function set($key, $value) {
+    public static function set(string $key, mixed $value): void {
         self::init(true);
         $_SESSION[$key] = $value;
     }
 
-    public static function get($key, $default = null) {
+    public static function get(string $key, mixed $default = null): mixed {
         self::init();
         if (!self::$initialized) {
             return $default;
@@ -36,14 +42,14 @@ class Session {
         return isset($_SESSION[$key]) ? $_SESSION[$key] : $default;
     }
 
-    public static function delete($key) {
+    public static function delete(string $key): void {
         self::init();
         if (self::$initialized && isset($_SESSION[$key])) {
             unset($_SESSION[$key]);
         }
     }
 
-    public static function clear() {
+    public static function clear(): void {
         self::init();
         if (self::$initialized) {
             session_destroy();
@@ -51,15 +57,15 @@ class Session {
         }
     }
 
-    public static function isLoggedIn() {
+    public static function isLoggedIn(): bool {
         return !empty(self::getUid());
     }
 
-    public static function getUid() {
-        return self::get('uid', 0);
+    public static function getUid(): int {
+        return (int)self::get('uid', 0);
     }
 
-    public static function getUser() {
+    public static function getUser(): ?array {
         if (!self::isLoggedIn()) {
             return null;
         }

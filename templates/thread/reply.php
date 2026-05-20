@@ -17,7 +17,7 @@
         <form method="post" action="index.php?c=thread&a=reply&tid=<?php echo $thread['tid']; ?>">
             <div class="form-group">
                 <label for="message">回复内容</label>
-                <textarea id="message" name="message" class="message-editor" placeholder="支持 Markdown 语法..." required></textarea>
+                <textarea id="message" name="message" class="message-editor" placeholder="支持 Markdown 语法..."></textarea>
             </div>
             <div class="flex justify-end gap-md mt-lg">
                 <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" class="btn btn-secondary">取消</a>

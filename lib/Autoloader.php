@@ -1,21 +1,32 @@
 <?php
+declare(strict_types=1);
+
+namespace Lib;
+
 class Autoloader {
-    public static function register() {
+    public static function register(): void {
         spl_autoload_register([__CLASS__, 'load']);
     }
 
-    public static function load($class) {
-        $paths = [
-            ROOT_PATH . '/lib/' . $class . '.php',
-            ROOT_PATH . '/models/' . $class . '.php',
-            ROOT_PATH . '/controllers/' . $class . '.php',
+    public static function load(string $class): void {
+        if (strpos($class, '\\') === false) {
+            return;
+        }
+
+        [$namespace, $className] = explode('\\', $class, 2);
+
+        $pathMap = [
+            'Lib' => ROOT_PATH . '/lib/',
+            'Models' => ROOT_PATH . '/models/',
+            'Controllers' => ROOT_PATH . '/controllers/',
         ];
-        
-        foreach ($paths as $path) {
+
+        if (isset($pathMap[$namespace])) {
+            $path = $pathMap[$namespace] . $className . '.php';
             if (file_exists($path)) {
                 require $path;
-                return;
             }
         }
     }
 }
+?>

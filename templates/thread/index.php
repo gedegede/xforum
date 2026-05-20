@@ -26,7 +26,7 @@
             
             <div class="post-list">
                 <?php foreach ($posts as $index => $post): ?>
-                    <?php echo PostHelper::renderPost($post, $users, $index + 1, $index === 0); ?>
+                    <?php echo Lib\PostHelper::renderPost($post, $users, $index + 1, $index === 0, $user ?? null); ?>
                 <?php endforeach; ?>
             </div>
 
@@ -51,7 +51,9 @@
                     <form id="reply-form" action="index.php?c=thread&a=reply&tid=<?php echo $thread['tid']; ?>" method="post">
                         <input type="hidden" name="quote_pid" id="quote-pid" value="">
                         <input type="hidden" name="quote_uid" id="quote-uid" value="">
-                        <textarea name="message" id="reply-message" class="reply-textarea" placeholder="写下你的回复..." required></textarea>
+                        
+                        <textarea name="message" id="reply-message" class="reply-textarea" placeholder="支持 Markdown 语法..."></textarea>
+                        
                         <div class="flex justify-end gap-md mt-sm">
                             <button type="button" id="cancel-quote" class="btn btn-secondary hide">取消引用</button>
                             <button type="submit" id="reply-submit" class="btn btn-primary">发表回复</button>
@@ -133,13 +135,49 @@
 <?php if (isset($user)): ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('click', function(e) {
+        const deleteBtn = e.target.closest('.delete-btn');
+        if (deleteBtn) {
+            const pid = deleteBtn.dataset.pid;
+            if (confirm('确定要删除这条回复吗？')) {
+                fetch('index.php?c=thread&a=deletePost&pid=' + pid, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const postEl = document.getElementById('post-' + pid);
+                        if (postEl) {
+                            postEl.remove();
+                        }
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        } else {
+                            updateReplyCount(-1);
+                        }
+                    } else {
+                        alert(data.message || '删除失败，请重试');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('网络错误，请重试');
+                });
+            }
+        }
+    });
+
     const form = document.getElementById('reply-form');
-    const textarea = document.getElementById('reply-message');
+    const messageInput = document.getElementById('reply-message');
     const submitBtn = document.getElementById('reply-submit');
     const cancelQuoteBtn = document.getElementById('cancel-quote');
     const quotePidInput = document.getElementById('quote-pid');
     const quoteUidInput = document.getElementById('quote-uid');
     const replyTitle = document.getElementById('reply-title');
+    const originalPlaceholder = messageInput.placeholder;
     
     if (!form) return;
     
@@ -166,9 +204,9 @@ document.addEventListener('DOMContentLoaded', function() {
         quoteUidInput.value = uid;
         if (replyTitle) replyTitle.textContent = '引用回复 #' + floor;
         if (cancelQuoteBtn) cancelQuoteBtn.classList.remove('hide');
-        textarea.placeholder = '回复 @' + username + '...';
-        textarea.focus();
-        textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        messageInput.placeholder = '回复 @' + username + '...';
+        messageInput.focus();
+        messageInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     
     function clearQuoteReply() {
@@ -176,13 +214,13 @@ document.addEventListener('DOMContentLoaded', function() {
         quoteUidInput.value = '';
         if (replyTitle) replyTitle.textContent = '回复';
         if (cancelQuoteBtn) cancelQuoteBtn.classList.add('hide');
-        textarea.placeholder = '写下你的回复...';
+        messageInput.placeholder = originalPlaceholder;
     }
     
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         
-        const message = textarea.value.trim();
+        const message = messageInput.value.trim();
         if (!message) {
             alert('请填写回复内容');
             return;
@@ -204,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 addReplyToPage(data.html, data.postIndex);
-                textarea.value = '';
+                messageInput.value = '';
                 clearQuoteReply();
                 updateReplyCount();
             } else {
@@ -237,11 +275,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function updateReplyCount() {
+    function updateReplyCount(delta) {
         const replyNumElement = document.getElementById('reply-count');
         if (replyNumElement) {
             const currentCount = parseInt(replyNumElement.textContent) || 0;
-            replyNumElement.textContent = currentCount + 1;
+            replyNumElement.textContent = Math.max(0, currentCount + (delta || 1));
         }
     }
     

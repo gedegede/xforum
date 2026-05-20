@@ -1,47 +1,53 @@
 <?php
+declare(strict_types=1);
+
+namespace Models;
+
+use Lib\Database;
+
 class PostModel {
     const TABLE = 'next_post';
     const PRIMARY_KEY = 'pid';
 
-    public static function getPosts($tid, $page = 1) {
+    public static function getPosts(int $tid, int $page = 1): array {
         $offset = ($page - 1) * 20;
         return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid ASC LIMIT 20 OFFSET :offset", ['tid' => $tid, 'offset' => $offset]);
     }
 
-    public static function get($pid) {
+    public static function get(int $pid): ?array {
         return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = :pid", ['pid' => $pid]);
     }
 
-    public static function getPostCount($tid) {
+    public static function getPostCount(int $tid): int {
         $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE tid = :tid", ['tid' => $tid]);
-        return $result['count'] ?? 0;
+        return (int)($result['count'] ?? 0);
     }
 
-    public static function getUserPosts($uid, $page = 1) {
+    public static function getUserPosts(int $uid, int $page = 1): array {
         $offset = ($page - 1) * 20;
         return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE uid = :uid AND is_thread = 0 ORDER BY pid DESC LIMIT 20 OFFSET :offset", ['uid' => $uid, 'offset' => $offset]);
     }
 
-    public static function getUserPostCount($uid) {
+    public static function getUserPostCount(int $uid): int {
         $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = :uid AND is_thread = 0", ['uid' => $uid]);
-        return $result['count'] ?? 0;
+        return (int)($result['count'] ?? 0);
     }
 
-    public static function create($data) {
+    public static function create(array $data): int {
         $data['dateline'] = time();
         $data['ip'] = $_SERVER['REMOTE_ADDR'];
         return Database::insert(self::TABLE, $data);
     }
 
-    public static function deleteByTid($tid) {
+    public static function deleteByTid(int $tid): void {
         Database::query("DELETE FROM " . self::TABLE . " WHERE tid = :tid", ['tid' => $tid]);
     }
 
-    public static function getLastPostByTid($tid) {
+    public static function getLastPostByTid(int $tid): ?array {
         return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid DESC LIMIT 1", ['tid' => $tid]);
     }
 
-    public static function getPostFloor($pid) {
+    public static function getPostFloor(int $pid): int {
         $post = self::get($pid);
         if (!$post) {
             return 0;
@@ -52,7 +58,17 @@ class PostModel {
             ['tid' => $post['tid'], 'pid' => $pid]
         );
 
-        return $count['count'] ?? 0;
+        return (int)($count['count'] ?? 0);
+    }
+
+    public static function update(int $pid, array $data): int {
+        $data['pid'] = $pid;
+        $data['edited'] = time();
+        return Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = :pid");
+    }
+
+    public static function delete(int $pid): int {
+        return Database::delete(self::TABLE, self::PRIMARY_KEY . " = :pid", ['pid' => $pid]);
     }
 }
 ?>

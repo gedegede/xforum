@@ -1,8 +1,16 @@
 <?php
+declare(strict_types=1);
+
+namespace Controllers;
+
+use Lib\Session;
+use Lib\Template;
+use Models\ForumModel;
+use Models\ThreadModel;
+use Models\MemberModel;
 
 class ForumController {
-
-    public static function index($fid = 0) {
+    public static function index(int $fid = 0): void {
         Template::clear();
         if (!$fid) {
             $forums = ForumModel::getForumsFlat();
@@ -37,7 +45,7 @@ class ForumController {
         
         $threads = ThreadModel::getThreads($fid, $page, $order, $keyword);
         $total = ThreadModel::getThreadCount($fid, $keyword);
-        $pages = ceil($total / 20);
+        $pages = (int)ceil($total / 20);
 
         $users = [];
         if (!empty($threads)) {

@@ -1,11 +1,19 @@
 <?php
+declare(strict_types=1);
+
+namespace Controllers;
+
+use Lib\Template;
+use Lib\Session;
+use Models\ForumModel;
+use Models\ThreadModel;
+use Models\MemberModel;
 
 class HomeController {
-
-    public static function index() {
+    public static function index(): void {
         Template::clear();
         
-        $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
         $page = $page < 1 ? 1 : $page;
         
         $order = isset($_GET['order']) ? trim($_GET['order']) : 'reply_time';
@@ -19,7 +27,7 @@ class HomeController {
         $forums = ForumModel::getForums();
         $threads = ThreadModel::getHomeThreadsWithFilter($page, $order, $keyword);
         $total = ThreadModel::getHomeThreadCount($keyword);
-        $pages = ceil($total / 20);
+        $pages = (int)ceil($total / 20);
 
         $users = [];
         if (!empty($threads)) {

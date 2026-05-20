@@ -1,9 +1,13 @@
 <?php
-class Template {
-    private static $vars = [];
-    private static $templatePath = '';
+declare(strict_types=1);
 
-    public static function init($templatePath = '') {
+namespace Lib;
+
+class Template {
+    private static array $vars = [];
+    private static string $templatePath = '';
+
+    public static function init(string $templatePath = ''): void {
         if (empty($templatePath)) {
             self::$templatePath = ROOT_PATH . '/templates';
         } else {
@@ -11,14 +15,14 @@ class Template {
         }
     }
 
-    public static function set($key, $value) {
+    public static function set(string $key, mixed $value): void {
         self::$vars[$key] = $value;
     }
 
-    public static function render($template, $layout = 'layout/base') {
+    public static function render(string $template, string $layout = 'layout/base'): string {
         $templatePath = self::$templatePath;
 
-        $renderTemplate = function () use ($template, $templatePath) {
+        $renderTemplate = function () use ($template, $templatePath): void {
             extract(self::$vars, EXTR_SKIP);
             include $templatePath . '/' . $template . '.php';
         };
@@ -28,7 +32,7 @@ class Template {
         $content = ob_get_clean();
 
         if ($layout) {
-            $renderLayout = function () use ($layout, $templatePath, $content) {
+            $renderLayout = function () use ($layout, $templatePath, $content): void {
                 extract(self::$vars, EXTR_SKIP);
                 include $templatePath . '/' . $layout . '.php';
             };
@@ -38,14 +42,15 @@ class Template {
             return ob_get_clean();
         }
 
-        return $content;
+        return (string)$content;
     }
 
-    public static function display($template) {
+    public static function display(string $template): void {
         echo self::render($template);
     }
 
-    public static function clear() {
+    public static function clear(): void {
         self::$vars = [];
     }
 }
+?>

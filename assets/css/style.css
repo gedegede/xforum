@@ -738,7 +738,7 @@ nav>div>a.active {
 }
 
 .form-group textarea {
-    min-height: 90px;
+    min-height: 300px;
 }
 
 .message-editor {
@@ -1910,4 +1910,51 @@ nav>div>a.active {
     .footer-content {
         grid-template-columns: 1fr;
     }
+}
+
+/* SimpleMDE editor styles */
+.editor-toolbar {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card);
+}
+
+.editor-toolbar a {
+    color: var(--text-secondary);
+    border-color: var(--border);
+}
+
+.editor-toolbar a:hover,
+.editor-toolbar a.active {
+    background: var(--bg-hover);
+    color: var(--text);
+}
+
+.editor-preview {
+    background: var(--bg-card);
+}
+
+.CodeMirror {
+    border: none;
+    background: var(--bg-card);
+    color: var(--text);
+}
+
+/* Reply textarea styles */
+.reply-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    color: var(--text);
+    font-family: inherit;
+    font-size: inherit;
+    resize: vertical;
+}
+
+.reply-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }

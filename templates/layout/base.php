@@ -117,16 +117,5 @@
             <?php endif; ?>
         </div>
     </nav>
-    <script src="assets/js/editor.js" defer></script>
-<script>
-    // Initialize editors after DOM is ready and editor.js is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.message-editor').forEach(function(textarea) {
-            if (typeof initEditor === 'function') {
-                initEditor(textarea.id);
-            }
-        });
-    });
-</script>
 </body>
 </html>

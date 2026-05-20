@@ -1,22 +1,29 @@
 <?php
+declare(strict_types=1);
+
+namespace Lib;
+
+use PDO;
+use PDOStatement;
+
 class Database {
-    private static $instance = null;
-    private $connection = null;
-    private $config = null;
+    private static ?Database $instance = null;
+    private ?PDO $connection = null;
+    private ?array $config = null;
 
     private function __construct() {
         $this->config = require ROOT_PATH . '/config/database.php';
         $this->connect();
     }
 
-    public static function getInstance() {
+    public static function getInstance(): Database {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
 
-    private function connect() {
+    private function connect(): void {
         $default = $this->config['default'];
         $connection = $this->config['connections'][$default];
 
@@ -33,35 +40,35 @@ class Database {
         $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     }
 
-    private static function getConnection() {
+    private static function getConnection(): PDO {
         return self::getInstance()->connection;
     }
 
-    public static function query($sql, $params = []) {
+    public static function query(string $sql, array $params = []): PDOStatement {
         $stmt = self::getConnection()->prepare($sql);
         $stmt->execute($params);
         return $stmt;
     }
 
-    public static function fetch($sql, $params = []) {
+    public static function fetch(string $sql, array $params = []): ?array {
         $stmt = self::query($sql, $params);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
-    public static function fetchAll($sql, $params = []) {
+    public static function fetchAll(string $sql, array $params = []): array {
         $stmt = self::query($sql, $params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public static function insert($table, $data) {
+    public static function insert(string $table, array $data): int {
         $columns = implode(', ', array_keys($data));
         $placeholders = ':' . implode(', :', array_keys($data));
         $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
-        $stmt = self::query($sql, $data);
-        return self::getConnection()->lastInsertId();
+        self::query($sql, $data);
+        return (int)self::getConnection()->lastInsertId();
     }
 
-    public static function update($table, $data, $where, $params = []) {
+    public static function update(string $table, array $data, string $where, array $params = []): int {
         $set = [];
         foreach ($data as $key => $value) {
             $set[] = "{$key} = :{$key}";
@@ -72,16 +79,16 @@ class Database {
         return $stmt->rowCount();
     }
 
-    public static function delete($table, $where, $params = []) {
+    public static function delete(string $table, string $where, array $params = []): int {
         $sql = "DELETE FROM {$table} WHERE {$where}";
         $stmt = self::query($sql, $params);
         return $stmt->rowCount();
     }
 
-    public static function count($table, $where = '', $params = []) {
-        $sql = "SELECT COUNT(*) as count FROM {$table}" . ($where ? " WHERE {$where}" : '');
+    public static function count(string $table, string $where = '', array $params = []): int {
+        $sql = "SELECT COUNT(*) as count FROM " . $table . ($where ? " WHERE {$where}" : '');
         $result = self::fetch($sql, $params);
-        return $result['count'] ?? 0;
+        return (int)($result['count'] ?? 0);
     }
 }
 ?>

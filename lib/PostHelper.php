@@ -1,21 +1,11 @@
 <?php
-require_once __DIR__ . '/Parsedown.php';
+declare(strict_types=1);
 
-/**
- * 帖子渲染辅助类
- */
+namespace Lib;
+
 class PostHelper {
-
-    /**
-     * 渲染单个帖子 HTML
-     *
-     * @param array $post 帖子数据
-     * @param array $users 用户数据数组
-     * @param int $index 帖子索引（从1开始）
-     * @param bool $isFirst 是否为楼主
-     * @return string 渲染后的 HTML
-     */
-    public static function renderPost($post, $users, $index, $isFirst = false) {
+    public static function renderPost(array $post, array $users, int $index, bool $isFirst = false, ?array $currentUser = null): string {
+        $canEdit = $currentUser && ($post['uid'] == $currentUser['uid'] || $currentUser['gid'] == 1);
         ob_start();
         ?>
 <div class="post-item" id="post-<?php echo $post['pid']; ?>">
@@ -51,6 +41,14 @@ class PostHelper {
                     <path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/>
                 </svg>
             </button>
+            <?php if ($canEdit): ?>
+            <a href="index.php?c=thread&a=edit&pid=<?php echo $post['pid']; ?>" class="btn btn-ghost text-muted" aria-label="编辑">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+            </a>
+            <?php endif; ?>
         </div>
     </div>
     <div class="post-body">
@@ -58,15 +56,12 @@ class PostHelper {
             <?php if (!empty($post['quote_pid']) && !empty($post['quote_uid'])): ?>
                 <span class="text-secondary">@<?php echo htmlspecialchars($users[$post['quote_uid']]['username'] ?? '已删除用户'); ?> #<?php echo $post['quote_floor']; ?>：</span>
             <?php endif; ?>
-            <?php
-            $parsedown = new Parsedown();
-            $parsedown->setSafeMode(true);
-            echo $parsedown->line($post['message']);
-            ?>
+            <?php echo $post['message_html']; ?>
         </div>
     </div>
 </div>
         <?php
-        return ob_get_clean();
+        return (string)ob_get_clean();
     }
 }
+?>

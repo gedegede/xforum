@@ -1,8 +1,22 @@
 <?php
+declare(strict_types=1);
+
+namespace Controllers;
+
+use Lib\Template;
+use Lib\Session;
+use Lib\MarkdownHelper;
+use Lib\PostHelper;
+use Models\ThreadModel;
+use Models\PostModel;
+use Models\ForumModel;
+use Models\MemberModel;
+use Models\NotifyModel;
+use Models\FavModel;
+use Models\PmModel;
 
 class ThreadController {
-
-    public static function index($tid) {
+    public static function index(int $tid): void {
         Template::clear();
         if (!$tid) {
             header('Location: index.php');
@@ -17,18 +31,15 @@ class ThreadController {
 
         $forum = ForumModel::get($thread['fid']);
 
-        // 增加浏览次数
         ThreadModel::incrementView($tid);
 
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
         $posts = PostModel::getPosts($tid, $page);
         $total = PostModel::getPostCount($tid);
-        $pages = ceil($total / 20);
+        $pages = (int)ceil($total / 20);
 
-        // 收集所有需要的用户 ID（包括帖子作者和引用帖子的作者）
         $uids = array_unique(array_merge([$thread['uid']], array_column($posts, 'uid')));
         
-        // 收集引用帖子的用户 ID
         $quoteUids = array_filter(array_unique(array_column($posts, 'quote_uid')));
         if (!empty($quoteUids)) {
             $uids = array_unique(array_merge($uids, $quoteUids));
@@ -50,7 +61,7 @@ class ThreadController {
         Template::display('thread/index');
     }
 
-    public static function create($fid = null) {
+    public static function create(?int $fid = null): void {
         Template::clear();
         if (!Session::isLoggedIn()) {
             header('Location: index.php?c=auth&a=login');
@@ -82,11 +93,13 @@ class ThreadController {
                     'subject' => $subject,
                 ]);
 
+                $messageHtml = MarkdownHelper::parse($message);
                 PostModel::create([
                     'fid' => $fid,
                     'tid' => $tid,
                     'uid' => Session::getUid(),
                     'message' => $message,
+                    'message_html' => $messageHtml,
                     'is_thread' => 1,
                 ]);
 
@@ -102,10 +115,9 @@ class ThreadController {
         Template::display('thread/create');
     }
 
-    public static function reply($tid) {
+    public static function reply(int $tid): void {
         Template::clear();
         if (!Session::isLoggedIn()) {
-            // AJAX 请求返回 JSON
             if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'message' => '请先登录']);
@@ -133,13 +145,11 @@ class ThreadController {
 
             if (empty($message)) {
                 $errorMsg = '请填写回复内容';
-                // AJAX 请求返回 JSON
                 if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
                     header('Content-Type: application/json');
                     echo json_encode(['success' => false, 'message' => $errorMsg]);
                     exit;
                 }
-                // 传统表单提交
                 Template::set('title', '回复帖子');
                 Template::set('thread', $thread);
                 Template::set('error', $errorMsg);
@@ -148,7 +158,6 @@ class ThreadController {
                 exit;
             }
 
-            // 处理引用回复
             $quoteFloor = 0;
             if ($quotePid > 0 && $quoteUid > 0) {
                 $quotePost = PostModel::get($quotePid);
@@ -160,11 +169,13 @@ class ThreadController {
                 }
             }
 
+            $messageHtml = MarkdownHelper::parse($message);
             $pid = PostModel::create([
                 'fid' => $thread['fid'],
                 'tid' => $tid,
                 'uid' => Session::getUid(),
                 'message' => $message,
+                'message_html' => $messageHtml,
                 'is_thread' => 0,
                 'quote_pid' => $quotePid,
                 'quote_uid' => $quoteUid,
@@ -177,7 +188,6 @@ class ThreadController {
                 NotifyModel::addNotify($thread['uid'], Session::getUid(), $tid, $pid, '回复了你的主题');
             }
 
-            // 如果引用了其他用户的帖子，发送通知
             if ($quoteUid > 0 && $quoteUid != Session::getUid() && $quoteUid != $thread['uid']) {
                 NotifyModel::addNotify($quoteUid, Session::getUid(), $tid, $pid, '引用了你的回复');
             }
@@ -186,31 +196,25 @@ class ThreadController {
 
             PmModel::markAsRead($thread['uid']);
 
-            // AJAX 请求返回渲染好的 HTML
             if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-                // 获取当前用户信息
                 $currentUser = Session::getUser();
-                
-                // 计算帖子索引（当前回复数）
                 $postIndex = PostModel::getPostCount($tid);
                 
-                // 准备帖子数据
                 $newPost = [
                     'pid' => $pid,
                     'uid' => Session::getUid(),
                     'message' => $message,
+                    'message_html' => $messageHtml,
                     'dateline' => time(),
                     'quote_pid' => $quotePid,
                     'quote_uid' => $quoteUid,
                     'quote_floor' => $quoteFloor,
                 ];
                 
-                // 准备用户数据
                 $users = [
                     Session::getUid() => $currentUser,
                 ];
                 
-                // 如果有引用，也需要获取被引用用户的信息
                 if ($quoteUid > 0) {
                     $quoteUser = MemberModel::get($quoteUid);
                     if ($quoteUser) {
@@ -218,8 +222,7 @@ class ThreadController {
                     }
                 }
                 
-                // 使用辅助函数渲染 HTML
-                $html = PostHelper::renderPost($newPost, $users, $postIndex, false);
+                $html = PostHelper::renderPost($newPost, $users, $postIndex, false, $currentUser);
                 
                 header('Content-Type: application/json');
                 echo json_encode([
@@ -231,7 +234,6 @@ class ThreadController {
                 exit;
             }
 
-            // 传统表单提交重定向
             header("Location: index.php?c=thread&a=index&tid={$tid}");
             exit;
         }
@@ -243,7 +245,7 @@ class ThreadController {
         Template::display('thread/reply');
     }
 
-    private static function handleAtMentions($message, $tid, $pid) {
+    private static function handleAtMentions(string $message, int $tid, int $pid): void {
         preg_match_all('/@(\w+)/', $message, $matches);
 
         if (!empty($matches[1])) {
@@ -256,7 +258,7 @@ class ThreadController {
         }
     }
 
-    public static function favorite($tid) {
+    public static function favorite(int $tid): void {
         if (!Session::isLoggedIn()) {
             if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
                 header('Content-Type: application/json');
@@ -277,6 +279,109 @@ class ThreadController {
         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
             header('Content-Type: application/json');
             echo json_encode(['success' => true, 'favorited' => !$isFavorited]);
+            exit;
+        }
+
+        header("Location: index.php?c=thread&a=index&tid={$tid}");
+        exit;
+    }
+
+    public static function edit(int $pid): void {
+        Template::clear();
+        if (!Session::isLoggedIn()) {
+            header('Location: index.php?c=auth&a=login');
+            exit;
+        }
+
+        $post = PostModel::get($pid);
+        if (!$post) {
+            header('Location: index.php');
+            exit;
+        }
+
+        $user = Session::getUser();
+        if ($post['uid'] != $user['uid'] && $user['gid'] != 1) {
+            header('Location: index.php?c=thread&a=index&tid=' . $post['tid']);
+            exit;
+        }
+
+        $thread = ThreadModel::get($post['tid']);
+        $forum = ForumModel::get($post['fid']);
+
+        $error = '';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $message = trim($_POST['message'] ?? '');
+
+            if (empty($message)) {
+                $error = '请填写内容';
+            } else {
+                $messageHtml = MarkdownHelper::parse($message);
+                PostModel::update($pid, ['message' => $message, 'message_html' => $messageHtml]);
+                header("Location: index.php?c=thread&a=index&tid={$post['tid']}");
+                exit;
+            }
+        }
+
+        Template::set('title', '编辑帖子');
+        Template::set('post', $post);
+        Template::set('thread', $thread);
+        Template::set('forum', $forum);
+        Template::set('error', $error);
+        Template::set('user', $user);
+        Template::display('thread/edit');
+    }
+
+    public static function deletePost(int $pid): void {
+        if (!Session::isLoggedIn()) {
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => '请先登录']);
+                exit;
+            }
+            header('Location: index.php?c=auth&a=login');
+            exit;
+        }
+
+        $post = PostModel::get($pid);
+        if (!$post) {
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => '帖子不存在']);
+                exit;
+            }
+            header('Location: index.php');
+            exit;
+        }
+
+        $user = Session::getUser();
+        if ($post['uid'] != $user['uid'] && $user['gid'] != 1) {
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => '没有权限删除']);
+                exit;
+            }
+            header('Location: index.php?c=thread&a=index&tid=' . $post['tid']);
+            exit;
+        }
+
+        $tid = $post['tid'];
+        PostModel::delete($pid);
+
+        if ($post['is_thread'] == 1) {
+            PostModel::deleteByTid($tid);
+            ThreadModel::delete($tid);
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => '主题已删除', 'redirect' => 'index.php?c=forum&a=index&fid=' . $post['fid']]);
+                exit;
+            }
+            header('Location: index.php?c=forum&a=index&fid=' . $post['fid']);
+            exit;
+        }
+
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => '删除成功']);
             exit;
         }
 

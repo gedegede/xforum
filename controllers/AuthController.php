@@ -1,8 +1,15 @@
 <?php
+declare(strict_types=1);
+
+namespace Controllers;
+
+use Lib\Session;
+use Lib\Template;
+use Models\MemberModel;
+use Models\UsergroupModel;
 
 class AuthController {
-
-    public static function login() {
+    public static function login(): void {
         Template::clear();
         if (Session::isLoggedIn()) {
             header('Location: index.php');
@@ -30,7 +37,7 @@ class AuthController {
         Template::display('auth/login');
     }
 
-    public static function register() {
+    public static function register(): void {
         Template::clear();
         if (Session::isLoggedIn()) {
             header('Location: index.php');
@@ -77,7 +84,7 @@ class AuthController {
         Template::display('auth/register');
     }
 
-    public static function logout() {
+    public static function logout(): void {
         Session::clear();
         header('Location: index.php');
         exit;

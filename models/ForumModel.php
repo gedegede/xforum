@@ -1,9 +1,15 @@
 <?php
+declare(strict_types=1);
+
+namespace Models;
+
+use Lib\Database;
+
 class ForumModel {
     const TABLE = 'next_forum';
     const PRIMARY_KEY = 'fid';
 
-    public static function getForums($upFid = null) {
+    public static function getForums(?int $upFid = null): array {
         if ($upFid !== null) {
             $forums = Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE up_fid = ? ORDER BY sort_order ASC", [$upFid]);
         } else {
@@ -34,7 +40,7 @@ class ForumModel {
         return $forums;
     }
 
-    private static function getForumNamesByFids($fids) {
+    private static function getForumNamesByFids(array $fids): array {
         if (empty($fids)) {
             return [];
         }
@@ -46,7 +52,7 @@ class ForumModel {
         return array_column($results, 'name', 'fid');
     }
 
-    private static function buildTree($forums) {
+    private static function buildTree(array $forums): array {
         $tree = [];
         $map = [];
 
@@ -69,7 +75,7 @@ class ForumModel {
         return $tree;
     }
 
-    private static function addDepth(&$forums, $depth) {
+    private static function addDepth(array &$forums, int $depth): void {
         if (!is_array($forums)) {
             return;
         }
@@ -81,7 +87,7 @@ class ForumModel {
         }
     }
 
-    private static function flattenTree($tree, &$result = []) {
+    private static function flattenTree(array $tree, array &$result = []): array {
         foreach ($tree as $forum) {
             $result[] = $forum;
             if (!empty($forum['children'])) {
@@ -91,21 +97,21 @@ class ForumModel {
         return $result;
     }
 
-    public static function getForumsFlat() {
+    public static function getForumsFlat(): array {
         $forums = self::getForums();
         return self::flattenTree($forums);
     }
 
-    public static function get($fid) {
+    public static function get(int $fid): ?array {
         return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE fid = ?", [$fid]);
     }
 
-    public static function getForumName($fid) {
+    public static function getForumName(int $fid): string {
         $result = Database::fetch("SELECT name FROM " . self::TABLE . " WHERE fid = ?", [$fid]);
         return $result['name'] ?? '';
     }
 
-    public static function create($data) {
+    public static function create(array $data): int {
         if (!isset($data['sort_order'])) {
             $data['sort_order'] = 0;
         }
@@ -115,15 +121,15 @@ class ForumModel {
         return Database::insert(self::TABLE, $data);
     }
 
-    public static function update($fid, $data) {
+    public static function update(int $fid, array $data): int {
         return Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = ?", [$fid]);
     }
 
-    public static function delete($fid) {
+    public static function delete(int $fid): int {
         return Database::delete(self::TABLE, self::PRIMARY_KEY . " = ?", [$fid]);
     }
 
-    public static function count() {
+    public static function count(): int {
         return Database::count(self::TABLE);
     }
 }

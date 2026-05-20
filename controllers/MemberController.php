@@ -1,8 +1,17 @@
 <?php
+declare(strict_types=1);
+
+namespace Controllers;
+
+use Lib\Session;
+use Lib\Template;
+use Models\MemberModel;
+use Models\ThreadModel;
+use Models\PostModel;
+use Models\FavModel;
 
 class MemberController {
-
-    public static function profile() {
+    public static function profile(): void {
         Template::clear();
         $uid = isset($_GET['uid']) ? (int)$_GET['uid'] : 0;
         if (!$uid) {
@@ -18,11 +27,15 @@ class MemberController {
 
         $type = isset($_GET['type']) ? $_GET['type'] : 'threads';
 
+        $threads = [];
+        $posts = [];
+        $favorites = [];
+        $total = 0;
+
         switch ($type) {
             case 'replies':
                 $posts = PostModel::getUserPosts($uid, isset($_GET['page']) ? (int)$_GET['page'] : 1);
                 $total = PostModel::getUserPostCount($uid);
-                $threads = [];
                 if (!empty($posts)) {
                     $tids = array_unique(array_column($posts, 'tid'));
                     $threads = ThreadModel::getThreadsByTids($tids);
@@ -35,7 +48,6 @@ class MemberController {
                 }
                 $favorites = FavModel::getUserFavorites($uid, isset($_GET['page']) ? (int)$_GET['page'] : 1);
                 $total = FavModel::getUserFavoriteCount($uid);
-                $threads = [];
                 if (!empty($favorites)) {
                     $tids = array_column($favorites, 'tid');
                     $threads = ThreadModel::getThreadsByTids($tids);
@@ -53,16 +65,16 @@ class MemberController {
         Template::set('member', $member);
         Template::set('type', $type);
         Template::set('isSelf', $isSelf);
-        Template::set('threads', isset($threads) ? $threads : []);
-        Template::set('posts', isset($posts) ? $posts : []);
-        Template::set('favorites', isset($favorites) ? $favorites : []);
+        Template::set('threads', $threads);
+        Template::set('posts', $posts);
+        Template::set('favorites', $favorites);
         Template::set('page', isset($_GET['page']) ? (int)$_GET['page'] : 1);
-        Template::set('pages', ceil($total / 20));
+        Template::set('pages', (int)ceil($total / 20));
         Template::set('user', Session::getUser());
         Template::display('member/profile');
     }
 
-    public static function settings() {
+    public static function settings(): void {
         Template::clear();
         if (!Session::isLoggedIn()) {
             header('Location: index.php?c=auth&a=login');

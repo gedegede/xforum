@@ -1,15 +1,27 @@
 <?php
+declare(strict_types=1);
+
+namespace Controllers;
+
+use Lib\Session;
+use Lib\Template;
+use Models\MemberModel;
+use Models\ThreadModel;
+use Models\ForumModel;
+use Models\SettingModel;
+use Models\UsergroupModel;
+use Models\PostModel;
+use Models\ModLogModel;
 
 class AdminController {
-
-    private static function checkAdmin() {
+    private static function checkAdmin(): void {
         if (!Session::isLoggedIn() || Session::getUser()['gid'] != 1) {
             header('Location: index.php');
             exit;
         }
     }
 
-    public static function index() {
+    public static function index(): void {
         Template::clear();
         self::checkAdmin();
 
@@ -25,7 +37,7 @@ class AdminController {
         Template::display('admin/index');
     }
 
-    public static function settings() {
+    public static function settings(): void {
         Template::clear();
         self::checkAdmin();
 
@@ -36,7 +48,7 @@ class AdminController {
             foreach ($_POST as $key => $value) {
                 if (strpos($key, 'setting_') === 0) {
                     $skey = substr($key, 8);
-                    SettingModel::set($skey, $value);
+                    SettingModel::set($skey, (string)$value);
                 }
             }
             $success = '设置已保存';
@@ -52,7 +64,7 @@ class AdminController {
         Template::display('admin/settings');
     }
 
-    public static function forums() {
+    public static function forums(): void {
         Template::clear();
         self::checkAdmin();
 
@@ -64,7 +76,7 @@ class AdminController {
         Template::display('admin/forums');
     }
 
-    public static function forumAdd() {
+    public static function forumAdd(): void {
         Template::clear();
         self::checkAdmin();
 
@@ -73,7 +85,7 @@ class AdminController {
         $error = '';
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = trim($_POST['name'] ?? '');
-            $upFid = (int)$_POST['up_fid'] ?? 0;
+            $upFid = (int)($_POST['up_fid'] ?? 0);
 
             if (empty($name)) {
                 $error = '版块名称不能为空';
@@ -95,7 +107,7 @@ class AdminController {
         Template::display('admin/forum_add');
     }
 
-    public static function forumEdit($fid) {
+    public static function forumEdit(int $fid): void {
         self::checkAdmin();
 
         $forum = ForumModel::get($fid);
@@ -120,10 +132,9 @@ class AdminController {
 
         $error = '';
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
             $name = trim($_POST['name'] ?? '');
-            $upFid = (int)$_POST['up_fid'] ?? 0;
-            $status = (int)$_POST['status'] ?? 0;
+            $upFid = (int)($_POST['up_fid'] ?? 0);
+            $status = (int)($_POST['status'] ?? 0);
 
             if (empty($name)) {
                 $error = '版块名称不能为空';
@@ -154,14 +165,14 @@ class AdminController {
         Template::display('admin/forum_edit');
     }
 
-    public static function forumDelete($fid) {
+    public static function forumDelete(int $fid): void {
         self::checkAdmin();
         ForumModel::delete($fid);
         header('Location: index.php?c=admin&a=forums');
         exit;
     }
 
-    public static function threads() {
+    public static function threads(): void {
         Template::clear();
         self::checkAdmin();
 
@@ -203,7 +214,6 @@ class AdminController {
             $total = ThreadModel::searchCount($whereStr, $params);
         }
 
-        // 获取发帖用户信息
         $users = [];
         if (!empty($threads)) {
             $uids = array_unique(array_column($threads, 'uid'));
@@ -220,12 +230,12 @@ class AdminController {
         Template::set('keyword', $keyword);
         Template::set('searchType', $searchType);
         Template::set('page', $page);
-        Template::set('pages', ceil($total / 20));
+        Template::set('pages', (int)ceil($total / 20));
         Template::set('user', Session::getUser());
         Template::display('admin/threads');
     }
 
-    public static function threadDelete($tid) {
+    public static function threadDelete(int $tid): void {
         self::checkAdmin();
         PostModel::deleteByTid($tid);
         ThreadModel::delete($tid);
@@ -236,7 +246,7 @@ class AdminController {
         exit;
     }
 
-    public static function threadBatch() {
+    public static function threadBatch(): void {
         self::checkAdmin();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -245,8 +255,8 @@ class AdminController {
 
             if ($action == 'delete' && $tids) {
                 foreach ($tids as $tid) {
-                    PostModel::deleteByTid($tid);
-                    ThreadModel::delete($tid);
+                    PostModel::deleteByTid((int)$tid);
+                    ThreadModel::delete((int)$tid);
                 }
 
                 self::logAction('batch_delete_thread', "批量删除主题: " . implode(',', $tids));
@@ -254,7 +264,7 @@ class AdminController {
                 $fid = (int)$_POST['fid'];
 
                 foreach ($tids as $tid) {
-                    ThreadModel::update($tid, ['fid' => $fid]);
+                    ThreadModel::update((int)$tid, ['fid' => $fid]);
                 }
 
                 self::logAction('batch_move_thread', "批量移动主题到版块$fid: " . implode(',', $tids));
@@ -265,7 +275,7 @@ class AdminController {
         exit;
     }
 
-    public static function usergroups() {
+    public static function usergroups(): void {
         Template::clear();
         self::checkAdmin();
 
@@ -277,7 +287,7 @@ class AdminController {
         Template::display('admin/usergroups');
     }
 
-    public static function usergroupAdd() {
+    public static function usergroupAdd(): void {
         Template::clear();
         self::checkAdmin();
 
@@ -285,7 +295,7 @@ class AdminController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $title = trim($_POST['title'] ?? '');
             $groupType = $_POST['group_type'] ?? 'member';
-            $creditLower = (int)$_POST['credit_lower'] ?? 0;
+            $creditLower = (int)($_POST['credit_lower'] ?? 0);
 
             if (empty($title)) {
                 $error = '用户组名称不能为空';
@@ -306,7 +316,7 @@ class AdminController {
         Template::display('admin/usergroup_add');
     }
 
-    public static function usergroupEdit($gid) {
+    public static function usergroupEdit(int $gid): void {
         self::checkAdmin();
 
         $group = UsergroupModel::get($gid);
@@ -331,7 +341,7 @@ class AdminController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $title = trim($_POST['title'] ?? '');
             $groupType = $_POST['group_type'] ?? 'member';
-            $creditLower = (int)$_POST['credit_lower'] ?? 0;
+            $creditLower = (int)($_POST['credit_lower'] ?? 0);
 
             if (empty($title)) {
                 $error = '用户组名称不能为空';
@@ -353,14 +363,14 @@ class AdminController {
         Template::display('admin/usergroup_edit');
     }
 
-    public static function usergroupDelete($gid) {
+    public static function usergroupDelete(int $gid): void {
         self::checkAdmin();
         UsergroupModel::delete($gid);
         header('Location: index.php?c=admin&a=usergroups');
         exit;
     }
 
-    public static function users() {
+    public static function users(): void {
         Template::clear();
         self::checkAdmin();
 
@@ -378,12 +388,12 @@ class AdminController {
         Template::set('keyword', $keyword);
         Template::set('gid', $gid);
         Template::set('page', $page);
-        Template::set('pages', ceil($total / 20));
+        Template::set('pages', (int)ceil($total / 20));
         Template::set('user', Session::getUser());
         Template::display('admin/users');
     }
 
-    public static function userEdit($uid) {
+    public static function userEdit(int $uid): void {
         self::checkAdmin();
 
         $member = MemberModel::get($uid);
@@ -432,7 +442,7 @@ class AdminController {
         Template::display('admin/user_edit');
     }
 
-    public static function userDelete($uid) {
+    public static function userDelete(int $uid): void {
         self::checkAdmin();
         $member = MemberModel::get($uid);
         if ($member) {
@@ -443,7 +453,7 @@ class AdminController {
         exit;
     }
 
-    public static function logs() {
+    public static function logs(): void {
         Template::clear();
         self::checkAdmin();
 
@@ -451,7 +461,6 @@ class AdminController {
         $logs = ModLogModel::getLogs($page);
         $total = ModLogModel::getCount();
 
-        // 获取操作用户信息
         $users = [];
         if (!empty($logs)) {
             $uids = array_unique(array_column($logs, 'uid'));
@@ -462,12 +471,12 @@ class AdminController {
         Template::set('logs', $logs);
         Template::set('users', $users);
         Template::set('page', $page);
-        Template::set('pages', ceil($total / 20));
+        Template::set('pages', (int)ceil($total / 20));
         Template::set('user', Session::getUser());
         Template::display('admin/logs');
     }
 
-    private static function logAction($action, $message) {
+    private static function logAction(string $action, string $message): void {
         ModLogModel::addLog(Session::getUid(), $action, $message);
     }
 }

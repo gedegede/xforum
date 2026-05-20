@@ -1,8 +1,16 @@
 <?php
+declare(strict_types=1);
+
+namespace Controllers;
+
+use Lib\Session;
+use Lib\Template;
+use Models\NotifyModel;
+use Models\MemberModel;
+use Models\ThreadModel;
 
 class NotifyController {
-
-    public static function index() {
+    public static function index(): void {
         Template::clear();
         if (!Session::isLoggedIn()) {
             header('Location: index.php?c=auth&a=login');
@@ -15,7 +23,6 @@ class NotifyController {
 
         NotifyModel::markAsRead(Session::getUid());
 
-        // 获取通知相关数据
         $users = [];
         $threads = [];
         if (!empty($notifies)) {
@@ -35,7 +42,7 @@ class NotifyController {
         Template::set('users', $users);
         Template::set('threads', $threads);
         Template::set('page', $page);
-        Template::set('pages', ceil($total / 20));
+        Template::set('pages', (int)ceil($total / 20));
         Template::set('user', Session::getUser());
         Template::display('notify/index');
     }
