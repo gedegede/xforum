@@ -20,7 +20,20 @@ class ThreadtypeModel {
             return array_values($cache);
         }
 
-        $data = Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY fid ASC, sort_order ASC");
+        $data = Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY typeid ASC");
+        usort($data, static function (array $a, array $b): int {
+            $fidCompare = (int)$a['fid'] <=> (int)$b['fid'];
+            if ($fidCompare !== 0) {
+                return $fidCompare;
+            }
+
+            $sortCompare = (int)$a['sort_order'] <=> (int)$b['sort_order'];
+            if ($sortCompare !== 0) {
+                return $sortCompare;
+            }
+
+            return (int)$a['typeid'] <=> (int)$b['typeid'];
+        });
         $indexed = [];
         foreach ($data as $item) {
             $indexed[$item['typeid']] = $item;

@@ -7,10 +7,13 @@ use Lib\Template;
 use Lib\Session;
 use Lib\Request;
 use Lib\Permission;
+use Lib\ViewCounter;
 use Models\SessionModel;
 
 Autoloader::register();
 Template::init();
+
+ViewCounter::flushIfDue();
 
 $uid = 0;
 $gid = 0;

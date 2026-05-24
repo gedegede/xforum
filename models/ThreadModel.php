@@ -8,32 +8,44 @@ if (!defined('ROOT_PATH')) {
 }
 
 use Lib\Database;
+use Lib\ViewCounter;
 
 class ThreadModel {
     const TABLE = 'next_thread';
     const PRIMARY_KEY = 'tid';
+    private const PAGE_SIZE = 20;
+    private const FILTER_BATCH_SIZE = 100;
     
     private static array $memoryCache = [];
 
     public static function getThreads(int $fid, int $page = 1, string $order = 'tid', string $keyword = ''): array {
-        $offset = ($page - 1) * 20;
+        $threads = Database::fetchFilteredPage(
+            "SELECT * FROM " . self::TABLE . " WHERE fid = :fid ORDER BY tid DESC LIMIT :limit OFFSET :offset",
+            ['fid' => $fid],
+            static function (array $thread) use ($keyword): bool {
+                return self::isApproved($thread) && self::matchesKeyword($thread, $keyword);
+            },
+            $page,
+            self::PAGE_SIZE,
+            self::FILTER_BATCH_SIZE
+        );
         
-        if (!empty($keyword)) {
-            $threads = Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE fid = :fid AND subject LIKE :keyword ORDER BY tid DESC LIMIT 20 OFFSET :offset", ['fid' => $fid, 'keyword' => '%' . $keyword . '%', 'offset' => $offset]);
-        } else {
-            $threads = Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE fid = :fid ORDER BY tid DESC LIMIT 20 OFFSET :offset", ['fid' => $fid, 'offset' => $offset]);
-        }
-        
-        return self::sortThreads($threads, $order);
+        return self::sortThreads(ViewCounter::applyPendingToThreads($threads), $order);
     }
     
     public static function getThreadCount(int $fid, string $keyword = ''): int {
-        if (!empty($keyword)) {
-            $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE fid = :fid AND subject LIKE :keyword", ['fid' => $fid, 'keyword' => '%' . $keyword . '%']);
-        } else {
-            $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE fid = :fid", ['fid' => $fid]);
+        if ($keyword === '') {
+            $forum = ForumModel::get($fid);
+            return (int)($forum['thread_num'] ?? 0);
         }
-        return (int)($result['count'] ?? 0);
+
+        return Database::countFiltered(
+            "SELECT tid, subject, sort_order FROM " . self::TABLE . " WHERE fid = :fid ORDER BY tid DESC LIMIT :limit OFFSET :offset",
+            ['fid' => $fid],
+            static function (array $thread) use ($keyword): bool {
+                return self::isApproved($thread) && self::matchesKeyword($thread, $keyword);
+            }
+        );
     }
 
     public static function get(int $tid): ?array {
@@ -47,19 +59,30 @@ class ThreadModel {
         
         $result = Database::fetch("SELECT * FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = :tid", ['tid' => $tid]);
         if ($result) {
+            $result = ViewCounter::applyPendingToThread($result);
             self::$memoryCache[$tid] = $result;
         }
         return $result;
     }
 
     public static function getUserThreads(int $uid, int $page = 1): array {
-        $offset = ($page - 1) * 20;
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY tid DESC LIMIT 20 OFFSET :offset", ['uid' => $uid, 'offset' => $offset]);
+        $threads = Database::fetchFilteredPage(
+            "SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY tid DESC LIMIT :limit OFFSET :offset",
+            ['uid' => $uid],
+            static function (array $thread): bool {
+                return self::isApproved($thread);
+            },
+            $page,
+            self::PAGE_SIZE,
+            self::FILTER_BATCH_SIZE
+        );
+
+        return ViewCounter::applyPendingToThreads($threads);
     }
 
     public static function getUserThreadCount(int $uid): int {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = :uid", ['uid' => $uid]);
-        return (int)($result['count'] ?? 0);
+        $member = MemberModel::get($uid);
+        return (int)($member['thread_num'] ?? 0);
     }
 
     public static function create(array $data): int {
@@ -91,7 +114,9 @@ class ThreadModel {
 
     public static function incrementView(int $tid): void {
         unset(self::$memoryCache[$tid]);
-        Database::query("UPDATE " . self::TABLE . " SET view_num = view_num + 1 WHERE tid = :tid", ['tid' => $tid]);
+        if (!ViewCounter::increment($tid)) {
+            Database::query("UPDATE " . self::TABLE . " SET view_num = view_num + 1 WHERE tid = :tid", ['tid' => $tid]);
+        }
     }
 
     public static function incrementFavNum(int $tid): void {
@@ -106,105 +131,109 @@ class ThreadModel {
         Database::query("UPDATE " . self::TABLE . " SET fav_num = CASE WHEN fav_num > 0 THEN fav_num - 1 ELSE 0 END WHERE tid = :tid", ['tid' => $tid]);
     }
 
-    public static function search(string $whereStr = '', array $params = [], int $page = 1, string $order = 'tid'): array {
-        $offset = ($page - 1) * 20;
-        $sql = "SELECT * FROM " . self::TABLE . " $whereStr ORDER BY tid DESC LIMIT 20 OFFSET :offset";
-        $params['offset'] = $offset;
-        $threads = Database::fetchAll($sql, $params);
+    public static function search(int $page = 1, string $order = 'tid', int $fid = 0, int $uid = 0, string $keyword = ''): array {
+        [$sql, $params] = self::buildIndexedListQuery($fid, $uid);
+        $threads = Database::fetchFilteredPage(
+            $sql,
+            $params,
+            static function (array $thread) use ($fid, $uid, $keyword): bool {
+                return self::matchesThreadFilters($thread, $fid, $uid, $keyword, false);
+            },
+            $page,
+            self::PAGE_SIZE,
+            self::FILTER_BATCH_SIZE
+        );
         
-        return self::sortThreads($threads, $order);
+        return self::sortThreads(ViewCounter::applyPendingToThreads($threads), $order);
     }
 
-    public static function searchCount(string $whereStr = '', array $params = []): int {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " $whereStr", $params);
-        return (int)($result['count'] ?? 0);
+    public static function searchCount(int $fid = 0, int $uid = 0, string $keyword = ''): int {
+        [$sql, $params] = self::buildIndexedListQuery($fid, $uid);
+        return Database::countFiltered(
+            $sql,
+            $params,
+            static function (array $thread) use ($fid, $uid, $keyword): bool {
+                return self::matchesThreadFilters($thread, $fid, $uid, $keyword, false);
+            }
+        );
     }
 
     public static function getHomeThreads(int $limit = 30): array {
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY tid DESC LIMIT :limit", ['limit' => $limit]);
+        $threads = Database::fetchFilteredLimit(
+            "SELECT * FROM " . self::TABLE . " ORDER BY tid DESC LIMIT :limit OFFSET :offset",
+            [],
+            static function (array $thread): bool {
+                return self::isApproved($thread);
+            },
+            $limit,
+            self::FILTER_BATCH_SIZE
+        );
+
+        return ViewCounter::applyPendingToThreads($threads);
     }
 
     public static function getHomeThreadsWithFilter(int $page = 1, string $order = 'tid', string $keyword = ''): array {
-        $offset = ($page - 1) * 20;
+        $threads = Database::fetchFilteredPage(
+            "SELECT * FROM " . self::TABLE . " ORDER BY tid DESC LIMIT :limit OFFSET :offset",
+            [],
+            static function (array $thread) use ($keyword): bool {
+                return self::isApproved($thread) && self::matchesKeyword($thread, $keyword);
+            },
+            $page,
+            self::PAGE_SIZE,
+            self::FILTER_BATCH_SIZE
+        );
         
-        $where = [];
-        $params = [];
-        
-        if (!empty($keyword)) {
-            $where[] = 'subject LIKE :keyword';
-            $params['keyword'] = '%' . $keyword . '%';
-        }
-        
-        $whereStr = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-        $params['offset'] = $offset;
-        
-        $threads = Database::fetchAll("SELECT * FROM " . self::TABLE . " $whereStr ORDER BY tid DESC LIMIT 20 OFFSET :offset", $params);
-        
-        return self::sortThreads($threads, $order);
+        return self::sortThreads(ViewCounter::applyPendingToThreads($threads), $order);
     }
 
     public static function getHomeThreadCount(string $keyword = ''): int {
-        $where = [];
-        $params = [];
-        
-        if (!empty($keyword)) {
-            $where[] = 'subject LIKE :keyword';
-            $params['keyword'] = '%' . $keyword . '%';
+        if ($keyword === '') {
+            return max(0, self::count() - DataModel::getInt('pending_threads'));
         }
-        
-        $whereStr = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " $whereStr", $params);
-        return (int)($result['count'] ?? 0);
+
+        return Database::countFiltered(
+            "SELECT tid, subject, sort_order FROM " . self::TABLE . " ORDER BY tid DESC LIMIT :limit OFFSET :offset",
+            [],
+            static function (array $thread) use ($keyword): bool {
+                return self::isApproved($thread) && self::matchesKeyword($thread, $keyword);
+            }
+        );
     }
 
     public static function getCollapsedThreads(int $page = 1, string $order = 'tid', string $keyword = '', array $includeFids = []): array {
-        $offset = ($page - 1) * 20;
+        $includeMap = array_flip(array_map('intval', $includeFids));
+        $threads = Database::fetchFilteredPage(
+            "SELECT * FROM " . self::TABLE . " ORDER BY tid DESC LIMIT :limit OFFSET :offset",
+            [],
+            static function (array $thread) use ($keyword, $includeMap): bool {
+                return self::isApproved($thread)
+                    && (empty($includeMap) || isset($includeMap[(int)$thread['fid']]))
+                    && self::matchesKeyword($thread, $keyword);
+            },
+            $page,
+            self::PAGE_SIZE,
+            self::FILTER_BATCH_SIZE
+        );
         
-        $where = [];
-        $params = [];
-        
-        if (!empty($keyword)) {
-            $where[] = 'subject LIKE :keyword';
-            $params['keyword'] = '%' . $keyword . '%';
-        }
-        
-        if (!empty($includeFids)) {
-            $placeholders = implode(',', array_fill(0, count($includeFids), '?'));
-            $where[] = "fid IN ($placeholders)";
-            $params = array_merge($params, $includeFids);
-        }
-        
-        $whereStr = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-        $params['offset'] = $offset;
-        
-        $threads = Database::fetchAll("SELECT * FROM " . self::TABLE . " $whereStr ORDER BY tid DESC LIMIT 20 OFFSET :offset", $params);
-        
-        return self::sortThreads($threads, $order);
+        return self::sortThreads(ViewCounter::applyPendingToThreads($threads), $order);
     }
 
     public static function getCollapsedThreadCount(string $keyword = '', array $includeFids = []): int {
-        $where = [];
-        $params = [];
-        
-        if (!empty($keyword)) {
-            $where[] = 'subject LIKE :keyword';
-            $params['keyword'] = '%' . $keyword . '%';
-        }
-        
-        if (!empty($includeFids)) {
-            $placeholders = implode(',', array_fill(0, count($includeFids), '?'));
-            $where[] = "fid IN ($placeholders)";
-            $params = array_merge($params, $includeFids);
-        }
-        
-        $whereStr = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " $whereStr", $params);
-        return (int)($result['count'] ?? 0);
+        $includeMap = array_flip(array_map('intval', $includeFids));
+        return Database::countFiltered(
+            "SELECT tid, fid, subject, sort_order FROM " . self::TABLE . " ORDER BY tid DESC LIMIT :limit OFFSET :offset",
+            [],
+            static function (array $thread) use ($keyword, $includeMap): bool {
+                return self::isApproved($thread)
+                    && (empty($includeMap) || isset($includeMap[(int)$thread['fid']]))
+                    && self::matchesKeyword($thread, $keyword);
+            }
+        );
     }
 
     public static function getPendingApproveCount(): int {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE sort_order = -1");
-        return (int)($result['count'] ?? 0);
+        return DataModel::getInt('pending_threads');
     }
 
     public static function getThreadsByTids(array $tids): array {
@@ -217,7 +246,62 @@ class ThreadModel {
         $sql = "SELECT tid, subject, fid, reply_num, view_num, dateline FROM " . self::TABLE . " WHERE tid IN ($placeholders)";
         $threads = Database::fetchAll($sql, $tids);
 
-        return array_column($threads, null, 'tid');
+        return array_column(ViewCounter::applyPendingToThreads($threads), null, 'tid');
+    }
+
+    public static function getHotThreadsByFid(int $fid, int $limit = 5, int $excludeTid = 0): array {
+        $threads = Database::fetchAll(
+            "SELECT tid, subject, fid, reply_num, view_num, dateline, sort_order FROM " . self::TABLE . " WHERE fid = :fid ORDER BY tid DESC LIMIT :limit",
+            ['fid' => $fid, 'limit' => max($limit, 20)]
+        );
+
+        $threads = array_values(array_filter($threads, static function (array $thread) use ($excludeTid): bool {
+            return self::isApproved($thread) && (int)$thread['tid'] !== $excludeTid;
+        }));
+
+        return array_slice(self::sortThreads(ViewCounter::applyPendingToThreads($threads), 'reply_num'), 0, $limit);
+    }
+
+    private static function isApproved(array $thread): bool {
+        return (int)($thread['sort_order'] ?? 0) >= 0;
+    }
+
+    private static function matchesKeyword(array $thread, string $keyword): bool {
+        return $keyword === '' || stripos((string)($thread['subject'] ?? ''), $keyword) !== false;
+    }
+
+    private static function matchesThreadFilters(array $thread, int $fid, int $uid, string $keyword, bool $approvedOnly): bool {
+        if ($approvedOnly && !self::isApproved($thread)) {
+            return false;
+        }
+        if ($fid > 0 && (int)$thread['fid'] !== $fid) {
+            return false;
+        }
+        if ($uid > 0 && (int)$thread['uid'] !== $uid) {
+            return false;
+        }
+        return self::matchesKeyword($thread, $keyword);
+    }
+
+    private static function buildIndexedListQuery(int $fid, int $uid): array {
+        if ($fid > 0) {
+            return [
+                "SELECT * FROM " . self::TABLE . " WHERE fid = :fid ORDER BY tid DESC LIMIT :limit OFFSET :offset",
+                ['fid' => $fid],
+            ];
+        }
+
+        if ($uid > 0) {
+            return [
+                "SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY tid DESC LIMIT :limit OFFSET :offset",
+                ['uid' => $uid],
+            ];
+        }
+
+        return [
+            "SELECT * FROM " . self::TABLE . " ORDER BY tid DESC LIMIT :limit OFFSET :offset",
+            [],
+        ];
     }
     
     private static function sortThreads(array $threads, string $order): array {
@@ -230,7 +314,7 @@ class ThreadModel {
             $valB = $b[$order] ?? 0;
             
             if ($valA == $valB) {
-                return 0;
+                return ((int)($b['tid'] ?? 0)) <=> ((int)($a['tid'] ?? 0));
             }
             
             return $valA < $valB ? 1 : -1;

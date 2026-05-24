@@ -17,6 +17,7 @@ use Models\PostModel;
 use Models\SettingModel;
 use Models\SessionModel;
 use Models\UsergroupModel;
+use Models\DataModel;
 use Lib\Permission;
 
 class HomeController {
@@ -132,11 +133,7 @@ class HomeController {
     }
 
     private static function getPendingReportCount(): int {
-        $reportFid = SettingModel::getReportForumFid();
-        if ($reportFid <= 0) {
-            return 0;
-        }
-        return ThreadModel::getThreadCount($reportFid);
+        return DataModel::getInt('pending_reports');
     }
 
     private static function getOnlineCount(): int {

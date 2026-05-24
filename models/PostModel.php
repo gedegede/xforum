@@ -13,15 +13,24 @@ use Models\ThreadModel;
 class PostModel {
     const TABLE = 'next_post';
     const PRIMARY_KEY = 'pid';
+    private const PAGE_SIZE = 20;
+    private const FILTER_BATCH_SIZE = 100;
 
-    public static function getPosts(int $tid, int $page = 1): array {
-        $offset = ($page - 1) * 20;
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid ASC LIMIT 20 OFFSET :offset", ['tid' => $tid, 'offset' => $offset]);
+    public static function getPosts(int $tid, int $page = 1, bool $includePending = false): array {
+        return Database::fetchFilteredPage(
+            "SELECT * FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid ASC LIMIT :limit OFFSET :offset",
+            ['tid' => $tid],
+            static function (array $post) use ($includePending): bool {
+                return $includePending || (int)($post['sort_order'] ?? 0) >= 0;
+            },
+            $page,
+            self::PAGE_SIZE,
+            self::FILTER_BATCH_SIZE
+        );
     }
 
     public static function getPendingApproveCount(): int {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE sort_order = -1 AND is_thread = 0");
-        return (int)($result['count'] ?? 0);
+        return DataModel::getInt('pending_posts');
     }
 
     public static function get(int $pid): ?array {
@@ -37,13 +46,21 @@ class PostModel {
     }
 
     public static function getUserPosts(int $uid, int $page = 1): array {
-        $offset = ($page - 1) * 20;
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE uid = :uid AND is_thread = 0 ORDER BY pid DESC LIMIT 20 OFFSET :offset", ['uid' => $uid, 'offset' => $offset]);
+        return Database::fetchFilteredPage(
+            "SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY pid DESC LIMIT :limit OFFSET :offset",
+            ['uid' => $uid],
+            static function (array $post): bool {
+                return (int)($post['is_thread'] ?? 0) === 0 && (int)($post['sort_order'] ?? 0) >= 0;
+            },
+            $page,
+            self::PAGE_SIZE,
+            self::FILTER_BATCH_SIZE
+        );
     }
 
     public static function getUserPostCount(int $uid): int {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = :uid AND is_thread = 0", ['uid' => $uid]);
-        return (int)($result['count'] ?? 0);
+        $member = MemberModel::get($uid);
+        return (int)($member['reply_num'] ?? 0);
     }
 
     public static function create(array $data): int {
@@ -61,7 +78,17 @@ class PostModel {
     }
 
     public static function getLastPostByTid(int $tid): ?array {
-        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid DESC LIMIT 1", ['tid' => $tid]);
+        $posts = Database::fetchFilteredLimit(
+            "SELECT * FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid DESC LIMIT :limit OFFSET :offset",
+            ['tid' => $tid],
+            static function (array $post): bool {
+                return (int)($post['sort_order'] ?? 0) >= 0;
+            },
+            1,
+            self::FILTER_BATCH_SIZE
+        );
+
+        return $posts[0] ?? null;
     }
 
     public static function getPostFloor(int $pid): int {
@@ -70,12 +97,20 @@ class PostModel {
             return 0;
         }
 
-        $count = Database::fetch(
-            "SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE tid = :tid AND pid <= :pid",
-            ['tid' => $post['tid'], 'pid' => $pid]
+        $posts = Database::fetchAll(
+            "SELECT pid FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid ASC",
+            ['tid' => $post['tid']]
         );
 
-        return (int)($count['count'] ?? 0);
+        $floor = 0;
+        foreach ($posts as $row) {
+            $floor++;
+            if ((int)$row['pid'] === $pid) {
+                return $floor;
+            }
+        }
+
+        return 0;
     }
 
     public static function update(int $pid, array $data): int {

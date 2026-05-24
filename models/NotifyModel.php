@@ -13,6 +13,8 @@ use Models\MemberModel;
 class NotifyModel {
     const TABLE = 'next_notify';
     const PRIMARY_KEY = 'did';
+    private const PAGE_SIZE = 20;
+    private const FILTER_BATCH_SIZE = 100;
 
     public static function getNotifies(int $uid, int $page = 1): array {
         $offset = ($page - 1) * 20;
@@ -25,8 +27,8 @@ class NotifyModel {
     }
 
     public static function getUnreadCount(int $uid): int {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = :uid AND status = 0", ['uid' => $uid]);
-        return (int)($result['count'] ?? 0);
+        $member = MemberModel::get($uid);
+        return (int)($member['notify_num'] ?? 0);
     }
 
     public static function markAsRead(int $uid): void {
@@ -35,7 +37,16 @@ class NotifyModel {
     }
 
     public static function addNotify(int $uid, int $fromUid, int $tid, int $pid, string $message): int {
-        $existing = Database::fetch("SELECT * FROM " . self::TABLE . " WHERE uid = :uid AND tid = :tid", ['uid' => $uid, 'tid' => $tid]);
+        $existingRows = Database::fetchFilteredLimit(
+            "SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY did DESC LIMIT :limit OFFSET :offset",
+            ['uid' => $uid],
+            static function (array $notify) use ($tid): bool {
+                return (int)$notify['tid'] === $tid;
+            },
+            1,
+            self::FILTER_BATCH_SIZE
+        );
+        $existing = $existingRows[0] ?? null;
 
         if ($existing) {
             Database::query("UPDATE " . self::TABLE . " SET from_uid = :from_uid, pid = :pid, dateline = :dateline, message = :message WHERE did = :did",

@@ -305,16 +305,17 @@
             </div>
             <div class="sidebar-body">
                 <?php if (!empty($template_hotForums)): ?>
-                    <div class="related-topics">
+                    <div class="hot-forum-list">
                         <?php foreach ($template_hotForums as $index => $forum): ?>
-                            <a href="index.php?c=forum&a=index&fid=<?php echo $forum['fid']; ?>" class="related-item">
-                                <div class="flex items-center justify-between gap-md">
-                                    <span class="badge <?php echo $index < 3 ? 'badge-green' : 'badge-gray'; ?>">TOP <?php echo $index + 1; ?></span>
-                                    <span class="text-muted font-sm">今日 <?php echo (int)$forum['today_num']; ?></span>
-                                </div>
-                                <div class="related-title"><?php echo htmlspecialchars($forum['name']); ?></div>
-                                <div class="related-meta">
-                                    <?php echo (int)$forum['thread_num']; ?> 主题 · <?php echo (int)$forum['reply_num']; ?> 回复
+                            <a href="index.php?c=forum&a=index&fid=<?php echo $forum['fid']; ?>" class="hot-forum-item">
+                                <span class="hot-forum-rank <?php echo $index < 3 ? 'is-top' : ''; ?>"><?php echo $index + 1; ?></span>
+                                <span class="hot-forum-main">
+                                    <span class="hot-forum-name"><?php echo htmlspecialchars($forum['name']); ?></span>
+                                    <span class="hot-forum-meta"><?php echo (int)$forum['thread_num']; ?> 主题 · <?php echo (int)$forum['reply_num']; ?> 回复</span>
+                                </span>
+                                <div class="hot-forum-today">
+                                    <strong><?php echo (int)$forum['today_num']; ?></strong>
+                                    <span>今日</span>
                                 </div>
                             </a>
                         <?php endforeach; ?>
@@ -342,19 +343,48 @@
 </div>
 
 <script>
-function toggleCollapsed() {
+var collapsedStateKey = 'xforum.home.collapsedThreads.expanded';
+
+function setCollapsedExpanded(expanded) {
     var content = document.getElementById('collapsed-content');
     var header = document.getElementById('collapse-header');
     var icon = document.querySelector('.collapse-icon');
+    var hint = header ? header.querySelector('.collapse-hint') : null;
 
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        header.classList.remove('collapsed');
-        icon.style.transform = 'rotate(90deg)';
-    } else {
-        content.style.display = 'none';
-        header.classList.add('collapsed');
-        icon.style.transform = 'rotate(0deg)';
+    if (!content || !header || !icon) {
+        return;
+    }
+
+    content.style.display = expanded ? 'block' : 'none';
+    header.classList.toggle('collapsed', !expanded);
+    icon.style.transform = expanded ? 'rotate(90deg)' : 'rotate(0deg)';
+
+    if (hint) {
+        hint.textContent = expanded ? '点击收起' : '点击展开';
     }
 }
+
+function toggleCollapsed() {
+    var content = document.getElementById('collapsed-content');
+    if (!content) {
+        return;
+    }
+
+    var expanded = content.style.display === 'none';
+    setCollapsedExpanded(expanded);
+
+    try {
+        sessionStorage.setItem(collapsedStateKey, expanded ? '1' : '0');
+    } catch (e) {
+        // Ignore storage errors in private browsing or restricted environments.
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        setCollapsedExpanded(sessionStorage.getItem(collapsedStateKey) === '1');
+    } catch (e) {
+        setCollapsedExpanded(false);
+    }
+});
 </script>

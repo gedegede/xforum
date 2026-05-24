@@ -184,27 +184,17 @@ class AdminController {
         $keyword = Request::getString('keyword');
         $searchType = Request::getString('search_type', 'title');
 
-        $where = [];
-        $params = [];
         $searchValid = true;
-
-        if ($fid) {
-            $where[] = 'fid = ?';
-            $params[] = $fid;
-        }
+        $uid = 0;
         
         if ($keyword) {
             if ($searchType == 'username') {
                 $member = MemberModel::getByUsername($keyword);
                 if ($member) {
-                    $where[] = 'uid = ?';
-                    $params[] = $member['uid'];
+                    $uid = (int)$member['uid'];
                 } else {
                     $searchValid = false;
                 }
-            } else {
-                $where[] = 'subject LIKE ?';
-                $params[] = "%$keyword%";
             }
         }
 
@@ -212,9 +202,9 @@ class AdminController {
         $total = 0;
         
         if ($searchValid) {
-            $whereStr = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-            $threads = ThreadModel::search($whereStr, $params, $page);
-            $total = ThreadModel::searchCount($whereStr, $params);
+            $subjectKeyword = $searchType == 'username' ? '' : $keyword;
+            $threads = ThreadModel::search($page, 'tid', $fid, $uid, $subjectKeyword);
+            $total = ThreadModel::searchCount($fid, $uid, $subjectKeyword);
         }
 
         $users = [];

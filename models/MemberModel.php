@@ -12,6 +12,8 @@ use Lib\Database;
 class MemberModel {
     const TABLE = 'next_member';
     const PRIMARY_KEY = 'uid';
+    private const PAGE_SIZE = 20;
+    private const FILTER_BATCH_SIZE = 100;
 
     private static $memoryCache = [];
 
@@ -56,47 +58,62 @@ class MemberModel {
     }
 
     public static function search(string $keyword = '', int $gid = 0, int $page = 1): array {
-        $offset = ($page - 1) * 20;
-        $where = [];
-        $params = [];
+        [$sql, $params] = self::buildIndexedListQuery($gid);
 
-        if ($keyword) {
-            $where[] = '(username LIKE :keyword1 OR email LIKE :keyword2)';
-            $params['keyword1'] = "%$keyword%";
-            $params['keyword2'] = "%$keyword%";
-        }
-        if ($gid) {
-            $where[] = 'gid = :gid';
-            $params['gid'] = $gid;
-        }
-
-        $whereStr = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-        $params['offset'] = $offset;
-
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " $whereStr ORDER BY uid DESC LIMIT 20 OFFSET :offset", $params);
+        return Database::fetchFilteredPage(
+            $sql,
+            $params,
+            static function (array $member) use ($keyword, $gid): bool {
+                if ($gid > 0 && (int)$member['gid'] !== $gid) {
+                    return false;
+                }
+                return $keyword === ''
+                    || stripos((string)$member['username'], $keyword) !== false
+                    || stripos((string)$member['email'], $keyword) !== false;
+            },
+            $page,
+            self::PAGE_SIZE,
+            self::FILTER_BATCH_SIZE
+        );
     }
 
     public static function searchCount(string $keyword = '', int $gid = 0): int {
-        $where = [];
-        $params = [];
-
-        if ($keyword) {
-            $where[] = '(username LIKE :keyword1 OR email LIKE :keyword2)';
-            $params['keyword1'] = "%$keyword%";
-            $params['keyword2'] = "%$keyword%";
-        }
-        if ($gid) {
-            $where[] = 'gid = :gid';
-            $params['gid'] = $gid;
+        if ($keyword === '' && $gid === 0) {
+            return self::count();
         }
 
-        $whereStr = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " $whereStr", $params);
-        return (int)($result['count'] ?? 0);
+        [$sql, $params] = self::buildIndexedListQuery($gid, 'uid, username, email, gid');
+
+        return Database::countFiltered(
+            $sql,
+            $params,
+            static function (array $member) use ($keyword, $gid): bool {
+                if ($gid > 0 && (int)$member['gid'] !== $gid) {
+                    return false;
+                }
+                return $keyword === ''
+                    || stripos((string)$member['username'], $keyword) !== false
+                    || stripos((string)$member['email'], $keyword) !== false;
+            }
+        );
     }
 
     public static function count(): int {
         return Database::count(self::TABLE);
+    }
+
+    private static function buildIndexedListQuery(int $gid, string $columns = '*'): array {
+        if ($gid > 0) {
+            return [
+                "SELECT {$columns} FROM " . self::TABLE . " WHERE gid = :gid ORDER BY uid DESC LIMIT :limit OFFSET :offset",
+                ['gid' => $gid],
+            ];
+        }
+
+        return [
+            "SELECT {$columns} FROM " . self::TABLE . " ORDER BY uid DESC LIMIT :limit OFFSET :offset",
+            [],
+        ];
     }
 
     public static function update(int $uid, array $data): int {

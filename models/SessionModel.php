@@ -107,11 +107,20 @@ class SessionModel {
 
     public static function getOnlineMemberCount(): int {
         $timeout = time() - self::ONLINE_TIMEOUT;
-        $result = Database::fetch(
-            "SELECT COUNT(DISTINCT uid) as count FROM " . self::TABLE . " WHERE dateline > :timeout AND uid > 0",
+        $rows = Database::fetchAll(
+            "SELECT uid FROM " . self::TABLE . " WHERE dateline > :timeout ORDER BY dateline DESC",
             ['timeout' => $timeout]
         );
-        return (int)($result['count'] ?? 0);
+
+        $uids = [];
+        foreach ($rows as $row) {
+            $uid = (int)($row['uid'] ?? 0);
+            if ($uid > 0) {
+                $uids[$uid] = true;
+            }
+        }
+
+        return count($uids);
     }
 
     public static function getOnlineUsers(): array {

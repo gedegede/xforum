@@ -53,7 +53,7 @@ class ThreadController {
         $isModerator = Permission::isModerator($thread['fid']);
 
         $page = Request::getInt('page', 1);
-        $posts = PostModel::getPosts($tid, $page);
+        $posts = PostModel::getPosts($tid, $page, $isModerator);
         $total = (int)($thread['reply_num'] ?? 0) + 1;
         
         ThreadModel::incrementView($tid);
@@ -69,6 +69,7 @@ class ThreadController {
         $users = MemberModel::getMembersByUids($uids);
 
         $isFavorited = Session::isLoggedIn() && FavModel::isFavorite(Session::getUid(), $tid);
+        $hotThreads = ThreadModel::getHotThreadsByFid((int)$thread['fid'], 5, $tid);
 
         Template::set('title', $thread['subject']);
         Template::set('thread', $thread);
@@ -80,6 +81,7 @@ class ThreadController {
         Template::set('user', Session::getUser());
         Template::set('isFavorited', $isFavorited);
         Template::set('isModerator', $isModerator);
+        Template::set('hotThreads', $hotThreads);
         Template::display('thread/index');
     }
 

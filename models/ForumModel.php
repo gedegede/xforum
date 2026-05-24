@@ -19,7 +19,8 @@ class ForumModel {
         if ($cache !== null) {
             $forums = array_values($cache);
         } else {
-            $forums = Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY up_fid ASC, sort_order ASC");
+            $forums = Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY fid ASC");
+            self::sortForums($forums);
             $indexed = [];
             foreach ($forums as $forum) {
                 $indexed[$forum['fid']] = $forum;
@@ -50,6 +51,22 @@ class ForumModel {
 
         return array_filter($forums, function($forum) use ($upFid) {
             return $forum['up_fid'] == $upFid;
+        });
+    }
+
+    private static function sortForums(array &$forums): void {
+        usort($forums, static function (array $a, array $b): int {
+            $upCompare = (int)$a['up_fid'] <=> (int)$b['up_fid'];
+            if ($upCompare !== 0) {
+                return $upCompare;
+            }
+
+            $sortCompare = (int)$a['sort_order'] <=> (int)$b['sort_order'];
+            if ($sortCompare !== 0) {
+                return $sortCompare;
+            }
+
+            return (int)$a['fid'] <=> (int)$b['fid'];
         });
     }
 
@@ -247,10 +264,27 @@ class ForumModel {
     }
 
     public static function getHotForums(int $limit = 10): array {
-        return Database::fetchAll(
-            "SELECT * FROM " . self::TABLE . " ORDER BY today_num DESC LIMIT ?",
-            [$limit]
-        );
+        $cache = CacheHelper::getCache(self::TABLE);
+        if ($cache !== null) {
+            $forums = array_values($cache);
+            usort($forums, static function (array $a, array $b): int {
+                return (int)($b['today_num'] ?? 0) <=> (int)($a['today_num'] ?? 0);
+            });
+
+            return array_slice($forums, 0, $limit);
+        }
+
+        $forums = Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY fid ASC");
+        usort($forums, static function (array $a, array $b): int {
+            $todayCompare = (int)($b['today_num'] ?? 0) <=> (int)($a['today_num'] ?? 0);
+            if ($todayCompare !== 0) {
+                return $todayCompare;
+            }
+
+            return (int)$a['fid'] <=> (int)$b['fid'];
+        });
+
+        return array_slice($forums, 0, $limit);
     }
 
     public static function getForumsByIds(array $fids): array {

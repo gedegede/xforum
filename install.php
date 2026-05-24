@@ -52,6 +52,7 @@ $tables = [
         dateline INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (tid, uid)
     )",
+    'next_fav_idx_uid_dateline' => "CREATE INDEX idx_next_fav_uid_dateline ON next_fav(uid, dateline DESC)",
     'next_forum' => "CREATE TABLE next_forum (
         fid INTEGER PRIMARY KEY AUTOINCREMENT,
         up_fid INTEGER NOT NULL DEFAULT 0,
@@ -187,7 +188,7 @@ $tables = [
         quote_floor INTEGER NOT NULL DEFAULT 0
     )",
     'next_post_idx_tid_pid' => "CREATE INDEX idx_next_post_tid_pid ON next_post(tid, pid ASC)",
-    'next_post_idx_uid_is_thread_pid' => "CREATE INDEX idx_next_post_uid_is_thread_pid ON next_post(uid, is_thread, pid DESC)",
+    'next_post_idx_uid_pid' => "CREATE INDEX idx_next_post_uid_pid ON next_post(uid, pid DESC)",
     'next_rate' => "CREATE TABLE next_rate (
         uid INTEGER NOT NULL DEFAULT 0,
         pid INTEGER NOT NULL DEFAULT 0,
@@ -206,6 +207,7 @@ $tables = [
         ip VARCHAR(50) NOT NULL DEFAULT '',
         UNIQUE(session_key)
     )",
+    'next_session_idx_dateline' => "CREATE INDEX idx_next_session_dateline ON next_session(dateline DESC)",
     'next_setting' => "CREATE TABLE next_setting (
         skey VARCHAR(32) NOT NULL DEFAULT '',
         val TEXT NOT NULL,
@@ -233,6 +235,7 @@ $tables = [
         fav_num INTEGER NOT NULL DEFAULT 0,
         log_num INTEGER NOT NULL DEFAULT 0
     )",
+    'next_thread_idx_tid' => "CREATE INDEX idx_next_thread_tid ON next_thread(tid DESC)",
     'next_thread_idx_fid_reply' => "CREATE INDEX idx_next_thread_fid_reply ON next_thread(fid, tid DESC)",
     'next_thread_idx_uid_tid' => "CREATE INDEX idx_next_thread_uid_tid ON next_thread(uid, tid DESC)",
 

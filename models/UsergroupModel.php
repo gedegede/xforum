@@ -85,7 +85,14 @@ class UsergroupModel {
             return null;
         }
 
-        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE group_type = :group_type ORDER BY gid ASC LIMIT 1", ['group_type' => 'member']);
+        $groups = Database::fetchAll("SELECT * FROM " . self::TABLE . " ORDER BY gid ASC");
+        foreach ($groups as $group) {
+            if ($group['group_type'] == 'member') {
+                return self::parseJsonDataItem($group);
+            }
+        }
+
+        return null;
     }
 
     public static function create(array $data): int {

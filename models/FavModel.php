@@ -14,15 +14,25 @@ use Models\ThreadModel;
 class FavModel {
     const TABLE = 'next_fav';
     const PRIMARY_KEY = 'tid';
+    private const PAGE_SIZE = 20;
+    private const FILTER_BATCH_SIZE = 100;
 
     public static function getUserFavorites(int $uid, int $page = 1): array {
-        $offset = ($page - 1) * 20;
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY dateline DESC LIMIT 20 OFFSET :offset", ['uid' => $uid, 'offset' => $offset]);
+        return Database::fetchFilteredPage(
+            "SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY dateline DESC LIMIT :limit OFFSET :offset",
+            ['uid' => $uid],
+            static function (array $favorite): bool {
+                return true;
+            },
+            $page,
+            self::PAGE_SIZE,
+            self::FILTER_BATCH_SIZE
+        );
     }
 
     public static function getUserFavoriteCount(int $uid): int {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE uid = :uid", ['uid' => $uid]);
-        return (int)($result['count'] ?? 0);
+        $member = MemberModel::get($uid);
+        return (int)($member['fav_num'] ?? 0);
     }
 
     public static function addFavorite(int $uid, int $tid): int {
@@ -45,7 +55,7 @@ class FavModel {
     }
 
     public static function isFavorite(int $uid, int $tid): bool {
-        $result = Database::fetch("SELECT * FROM " . self::TABLE . " WHERE uid = :uid AND tid = :tid", ['uid' => $uid, 'tid' => $tid]);
+        $result = Database::fetch("SELECT * FROM " . self::TABLE . " WHERE tid = :tid AND uid = :uid", ['tid' => $tid, 'uid' => $uid]);
         return !empty($result);
     }
 }

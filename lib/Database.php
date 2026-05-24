@@ -87,6 +87,67 @@ class Database {
         return $result;
     }
 
+    public static function fetchFilteredLimit(string $sql, array $params, callable $filter, int $limit, int $batchSize = 100): array {
+        $limit = max(0, $limit);
+        if ($limit === 0) {
+            return [];
+        }
+
+        $batchSize = max($limit, $batchSize);
+        $offset = 0;
+        $result = [];
+
+        do {
+            $batchParams = $params;
+            $batchParams['limit'] = $batchSize;
+            $batchParams['offset'] = $offset;
+            $rows = self::fetchAll($sql, $batchParams);
+            $offset += count($rows);
+
+            foreach ($rows as $row) {
+                if ($filter($row)) {
+                    $result[] = $row;
+                    if (count($result) >= $limit) {
+                        return $result;
+                    }
+                }
+            }
+        } while (count($rows) === $batchSize);
+
+        return $result;
+    }
+
+    public static function fetchFilteredPage(string $sql, array $params, callable $filter, int $page, int $pageSize = 20, int $batchSize = 100): array {
+        $page = max(1, $page);
+        $pageSize = max(1, $pageSize);
+        $needed = $page * $pageSize;
+        $rows = self::fetchFilteredLimit($sql, $params, $filter, $needed, $batchSize);
+
+        return array_slice($rows, ($page - 1) * $pageSize, $pageSize);
+    }
+
+    public static function countFiltered(string $sql, array $params, callable $filter, int $batchSize = 500): int {
+        $batchSize = max(1, $batchSize);
+        $offset = 0;
+        $count = 0;
+
+        do {
+            $batchParams = $params;
+            $batchParams['limit'] = $batchSize;
+            $batchParams['offset'] = $offset;
+            $rows = self::fetchAll($sql, $batchParams);
+            $offset += count($rows);
+
+            foreach ($rows as $row) {
+                if ($filter($row)) {
+                    $count++;
+                }
+            }
+        } while (count($rows) === $batchSize);
+
+        return $count;
+    }
+
     public static function insert(string $table, array $data): int {
         $columns = implode(', ', array_keys($data));
         $placeholders = ':' . implode(', :', array_keys($data));

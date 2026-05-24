@@ -61,8 +61,8 @@ class PmModel {
     }
 
     public static function getUnreadCount(int $uid): int {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE to_uid = :uid AND is_read = 0", ['uid' => $uid]);
-        return (int)($result['count'] ?? 0);
+        $member = MemberModel::get($uid);
+        return (int)($member['inbox_num'] ?? 0);
     }
 }
 ?>

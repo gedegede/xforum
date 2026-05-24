@@ -123,26 +123,25 @@
 
         <div class="card">
             <div class="sidebar-header">
-                <h3>相关主题</h3>
+                <h3>版块内热门主题</h3>
             </div>
             <div class="sidebar-body">
-                <div class="related-topics">
-                    <a href="index.php?keyword=<?php echo urlencode('服务器性能'); ?>" class="related-item">
-                        <span class="badge badge-gray">搜索建议</span>
-                        <span class="related-title">如何优化服务器性能</span>
-                        <span class="related-meta">查看同类经验与调优思路</span>
-                    </a>
-                    <a href="index.php?keyword=<?php echo urlencode('VPS'); ?>" class="related-item">
-                        <span class="badge badge-gray">搜索建议</span>
-                        <span class="related-title">VPS选择指南</span>
-                        <span class="related-meta">查看配置对比与购买建议</span>
-                    </a>
-                    <a href="index.php?keyword=<?php echo urlencode('网站加速'); ?>" class="related-item">
-                        <span class="badge badge-gray">搜索建议</span>
-                        <span class="related-title">网站加速技巧分享</span>
-                        <span class="related-meta">继续浏览网络优化相关主题</span>
-                    </a>
-                </div>
+                <?php if (!empty($template_hotThreads)): ?>
+                    <div class="related-topics">
+                        <?php foreach ($template_hotThreads as $hotThread): ?>
+                            <a href="index.php?c=thread&a=index&tid=<?php echo $hotThread['tid']; ?>" class="related-item">
+                                <span class="related-title"><?php echo htmlspecialchars($hotThread['subject']); ?></span>
+                                <span class="related-meta">
+                                    <?php echo (int)$hotThread['reply_num']; ?> 回复 · <?php echo (int)$hotThread['view_num']; ?> 浏览
+                                </span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-state">
+                        <p>暂无热门主题</p>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
