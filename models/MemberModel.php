@@ -125,6 +125,26 @@ class MemberModel {
         return $result;
     }
 
+    public static function changeCredit(int $uid, int $credit): bool {
+        if ($uid <= 0 || $credit === 0) return false;
+        if ($credit < 0) {
+            $stmt = Database::query(
+                "UPDATE " . self::TABLE . " SET credit = credit + :credit WHERE uid = :uid AND credit >= :cost",
+                ['credit' => $credit, 'uid' => $uid, 'cost' => abs($credit)]
+            );
+        } else {
+            $stmt = Database::query("UPDATE " . self::TABLE . " SET credit = credit + :credit WHERE uid = :uid", ['credit' => $credit, 'uid' => $uid]);
+        }
+        unset(self::$memoryCache[$uid]);
+        return $stmt->rowCount() > 0;
+    }
+
+    public static function updateSigninTime(int $uid, int $time): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET signin_time = :time WHERE uid = :uid", ['time' => $time, 'uid' => $uid]);
+        unset(self::$memoryCache[$uid]);
+    }
+
     public static function delete(int $uid): int {
         $result = Database::delete(self::TABLE, self::PRIMARY_KEY . " = :uid", ['uid' => $uid]);
         if ($result && isset(self::$memoryCache[$uid])) {

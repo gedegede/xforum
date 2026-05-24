@@ -10,10 +10,12 @@
                     注册于 <?php echo date('Y-m-d', $template_member['reg_date']); ?> · 
                     <?php echo $template_member['thread_num']; ?> 主题 · 
                     <?php echo $template_member['reply_num']; ?> 回复
+                    · <?php echo (int)($template_member['credit'] ?? 0); ?> 金币
                 </div>
                 <div class="member-badges">
                     <span class="badge badge-gray"><?php echo (int)$template_member['thread_num']; ?> 个主题</span>
                     <span class="badge badge-gray"><?php echo (int)$template_member['reply_num']; ?> 条回复</span>
+                    <span class="badge badge-gray"><?php echo (int)($template_member['credit'] ?? 0); ?> 金币</span>
                     <?php if ($template_isSelf): ?>
                         <span class="badge badge-green"><?php echo (int)($template_member['fav_num'] ?? 0); ?> 条收藏</span>
                     <?php endif; ?>
@@ -29,6 +31,7 @@
         <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=threads" class="tab<?php echo $template_type == 'threads' ? ' active' : ''; ?>">我的主题</a>
         <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=replies" class="tab<?php echo $template_type == 'replies' ? ' active' : ''; ?>">我的回复</a>
         <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=favorites" class="tab<?php echo $template_type == 'favorites' ? ' active' : ''; ?>">我的收藏</a>
+        <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=credits" class="tab<?php echo $template_type == 'credits' ? ' active' : ''; ?>">金币明细</a>
         <a href="index.php?c=member&a=settings" class="tab<?php echo (isset($_GET['c']) && $_GET['c'] == 'member' && $_GET['a'] == 'settings') ? ' active' : ''; ?>">个人设置</a>
         <a href="index.php?c=admin&a=index" class="tab<?php echo (isset($_GET['c']) && $_GET['c'] == 'admin') ? ' active' : ''; ?>">站点设置</a>
     </div>
@@ -38,24 +41,37 @@
 <div class="card member-list-card">
     <div class="card-body">
         <div class="member-section-head">
-            <h3>
-                <?php if ($template_type == 'threads'): ?>
-                    <?php echo $template_isSelf ? '我的主题' : 'Ta 的主题'; ?>
-                <?php elseif ($template_type == 'replies'): ?>
-                    <?php echo $template_isSelf ? '我的回复' : 'Ta 的回复'; ?>
-                <?php else: ?>
-                    我的收藏
-                <?php endif; ?>
-            </h3>
-            <p>
-                <?php if ($template_type == 'threads'): ?>
-                    这里集中展示该用户发起的主题内容。
-                <?php elseif ($template_type == 'replies'): ?>
-                    这里集中展示该用户最近参与过的讨论。
-                <?php else: ?>
-                    这里集中展示你收藏保存的主题。
-                <?php endif; ?>
-            </p>
+            <div>
+                <h3>
+                    <?php if ($template_type == 'threads'): ?>
+                        <?php echo $template_isSelf ? '我的主题' : 'Ta 的主题'; ?>
+                    <?php elseif ($template_type == 'replies'): ?>
+                        <?php echo $template_isSelf ? '我的回复' : 'Ta 的回复'; ?>
+                    <?php elseif ($template_type == 'favorites'): ?>
+                        我的收藏
+                    <?php else: ?>
+                        金币明细
+                    <?php endif; ?>
+                </h3>
+                <p>
+                    <?php if ($template_type == 'threads'): ?>
+                        这里集中展示该用户发起的主题内容。
+                    <?php elseif ($template_type == 'replies'): ?>
+                        这里集中展示该用户最近参与过的讨论。
+                    <?php elseif ($template_type == 'favorites'): ?>
+                        这里集中展示你收藏保存的主题。
+                    <?php else: ?>
+                        这里记录你的金币获得和消耗明细。
+                    <?php endif; ?>
+                </p>
+            </div>
+            <?php if ($template_type == 'credits' && $template_isSelf): ?>
+                <form method="post" action="index.php?c=member&a=signin">
+                    <button type="submit" class="btn <?php echo !empty($template_signedToday) ? 'btn-secondary' : 'btn-primary'; ?> btn-sm" <?php echo !empty($template_signedToday) ? 'disabled' : ''; ?>>
+                        <?php echo !empty($template_signedToday) ? '今日已签到' : '每日签到'; ?>
+                    </button>
+                </form>
+            <?php endif; ?>
         </div>
 
         <?php if ($template_type == 'threads'): ?>
@@ -87,7 +103,7 @@
                 <div class="member-list">
                 <?php foreach ($template_posts as $post): ?>
                     <?php $thread = $template_threads[$post['tid']] ?? null; ?>
-                    <a href="index.php?c=thread&a=index&tid=<?php echo $post['tid']; ?>" class="member-list-item">
+                    <a href="index.php?c=thread&a=index&tid=<?php echo $post['tid']; ?>&pid=<?php echo $post['pid']; ?>" class="member-list-item">
                         <div class="member-list-main">
                             <div class="member-list-title">
                                 <?php echo $thread ? htmlspecialchars($thread['subject']) : '已删除'; ?>
@@ -129,6 +145,32 @@
             <?php else: ?>
                 <div class="empty-state member-empty">
                     <p>暂无收藏</p>
+                </div>
+            <?php endif; ?>
+        <?php elseif ($template_type == 'credits'): ?>
+            <?php if ($template_credits): ?>
+                <div class="member-list">
+                <?php foreach ($template_credits as $credit): ?>
+                    <?php $creditValue = (int)$credit['credit']; ?>
+                    <?php $creditUrl = trim((string)($credit['url'] ?? '')); ?>
+                    <<?php echo $creditUrl !== '' ? 'a href="' . htmlspecialchars($creditUrl) . '"' : 'div'; ?> class="member-list-item credit-list-item">
+                        <div class="member-list-main">
+                            <div class="member-list-title">
+                                <?php echo htmlspecialchars($credit['message']); ?>
+                            </div>
+                            <div class="member-list-meta">
+                                <span><?php echo date('Y-m-d H:i', (int)$credit['dateline']); ?></span>
+                            </div>
+                        </div>
+                        <div class="credit-delta <?php echo $creditValue >= 0 ? 'is-plus' : 'is-minus'; ?>">
+                            <?php echo $creditValue > 0 ? '+' . $creditValue : $creditValue; ?>
+                        </div>
+                    </<?php echo $creditUrl !== '' ? 'a' : 'div'; ?>>
+                <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="empty-state member-empty">
+                    <p>暂无金币明细</p>
                 </div>
             <?php endif; ?>
         <?php endif; ?>

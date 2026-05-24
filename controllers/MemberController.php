@@ -15,6 +15,7 @@ use Models\MemberModel;
 use Models\ThreadModel;
 use Models\PostModel;
 use Models\FavModel;
+use Models\CreditModel;
 use Models\SessionModel;
 use Models\UsergroupModel;
 use Lib\Permission;
@@ -37,6 +38,7 @@ class MemberController {
         $threads = [];
         $posts = [];
         $favorites = [];
+        $credits = [];
         $total = 0;
 
         $page = Request::getInt('page', 1);
@@ -60,6 +62,13 @@ class MemberController {
                     $threads = ThreadModel::getThreadsByTids($tids);
                 }
                 break;
+            case 'credits':
+                if ($uid != Session::getUid()) {
+                    Response::redirect("index.php?c=member&a=profile&uid={$uid}");
+                }
+                $credits = CreditModel::getUserCredits($uid, $page);
+                $total = CreditModel::getUserCreditCount($uid);
+                break;
             default:
                 $threads = ThreadModel::getUserThreads($uid, $page);
                 $total = (int)($member['thread_num'] ?? 0);
@@ -75,10 +84,27 @@ class MemberController {
         Template::set('threads', $threads);
         Template::set('posts', $posts);
         Template::set('favorites', $favorites);
+        Template::set('credits', $credits);
+        Template::set('signedToday', $isSelf ? CreditModel::hasSignedToday($uid) : false);
         Template::set('page', $page);
         Template::set('pages', (int)ceil($total / 20));
         Template::set('user', Session::getUser());
         Template::display('member/profile');
+    }
+
+    public static function signin(): void {
+        Permission::requireLogin();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            Response::redirect('index.php?c=member&a=profile&uid=' . Session::getUid() . '&type=credits');
+        }
+
+        $result = CreditModel::signin(Session::getUid());
+        if (Response::isAjaxRequest()) {
+            Response::json($result, $result['success'] ? 200 : 400);
+        }
+
+        Response::redirect('index.php?c=member&a=profile&uid=' . Session::getUid() . '&type=credits');
     }
 
     public static function settings(): void {

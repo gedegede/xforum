@@ -92,25 +92,20 @@ class PostModel {
     }
 
     public static function getPostFloor(int $pid): int {
-        $post = self::get($pid);
-        if (!$post) {
+        return Database::count(
+            self::TABLE,
+            "tid = (SELECT tid FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = :target_pid) AND " . self::PRIMARY_KEY . " <= :pid",
+            ['target_pid' => $pid, 'pid' => $pid]
+        );
+    }
+
+    public static function getPostPage(int $pid, int $pageSize = self::PAGE_SIZE): int {
+        $floor = self::getPostFloor($pid);
+        if ($floor <= 0) {
             return 0;
         }
 
-        $posts = Database::fetchAll(
-            "SELECT pid FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid ASC",
-            ['tid' => $post['tid']]
-        );
-
-        $floor = 0;
-        foreach ($posts as $row) {
-            $floor++;
-            if ((int)$row['pid'] === $pid) {
-                return $floor;
-            }
-        }
-
-        return 0;
+        return (int)ceil($floor / max(1, $pageSize));
     }
 
     public static function update(int $pid, array $data): int {

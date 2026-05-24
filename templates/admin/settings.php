@@ -125,6 +125,73 @@
                 </div>
             </div>
 
+            <div class="settings-section">
+                <div class="settings-section-title">金币规则</div>
+                <div class="setting-row">
+                    <div class="setting-meta">
+                        <div class="setting-label">每日签到金币</div>
+                        <p class="help-text">设置签到时随机获得的金币范围；每天只能签到一次。</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="credit-range-grid">
+                            <label class="credit-number-field">
+                                <span>最低获得</span>
+                                <input type="number" name="signin_credit_min" value="<?php echo (int)($template_signinRange[0] ?? 1); ?>" min="0" step="1">
+                            </label>
+                            <label class="credit-number-field">
+                                <span>最高获得</span>
+                                <input type="number" name="signin_credit_max" value="<?php echo (int)($template_signinRange[1] ?? 5); ?>" min="0" step="1">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-meta">
+                        <div class="setting-label">动作金币规则</div>
+                        <p class="help-text">直接配置每个行为的金币变化。正数为奖励，负数为消耗；每日上限只限制奖励。</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="credit-rules-panel">
+                            <div class="credit-rules-head" aria-hidden="true">
+                                <span>行为</span>
+                                <span>状态</span>
+                                <span>单次变化</span>
+                                <span>每日奖励上限</span>
+                            </div>
+                            <?php foreach ($template_creditActionLabels as $action => $label): ?>
+                                <?php
+                                if ($action === 'Signin') {
+                                    continue;
+                                }
+                                $rule = $template_creditRules[$action] ?? ['credit' => 0, 'daily_max' => 0];
+                                $credit = (int)($rule['credit'] ?? 0);
+                                $dailyMax = max(0, (int)($rule['daily_max'] ?? 0));
+                                $enabled = $credit !== 0 || $dailyMax > 0;
+                                ?>
+                                <div class="credit-rule-row">
+                                    <div class="credit-rule-action">
+                                        <strong><?php echo htmlspecialchars($label); ?></strong>
+                                        <span><?php echo htmlspecialchars($action); ?></span>
+                                    </div>
+                                    <label class="credit-rule-toggle">
+                                        <input type="checkbox" name="credit_rule_enabled[<?php echo htmlspecialchars($action); ?>]" value="1" <?php echo $enabled ? 'checked' : ''; ?>>
+                                        <span>启用</span>
+                                    </label>
+                                    <label class="credit-number-field">
+                                        <span>金币</span>
+                                        <input type="number" name="credit_rule_credit[<?php echo htmlspecialchars($action); ?>]" value="<?php echo $credit; ?>" step="1">
+                                    </label>
+                                    <label class="credit-number-field">
+                                        <span>上限</span>
+                                        <input type="number" name="credit_rule_daily_max[<?php echo htmlspecialchars($action); ?>]" value="<?php echo $dailyMax; ?>" min="0" step="1">
+                                    </label>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="settings-actions">
                 <button type="submit" class="btn btn-primary">保存设置</button>
             </div>

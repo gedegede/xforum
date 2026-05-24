@@ -13,9 +13,9 @@ class SessionModel {
     const TABLE = 'next_session';
     const ONLINE_TIMEOUT = 1800;
 
-    private static $onlineUsersCache = [];
-    private static $onlineCountCache = null;
-    private static $cacheTime = 0;
+    private static ?int $onlineCountCache = null;
+    private static array $onlineUsersCache = [];
+    private static int $cacheTime = 0;
     const CACHE_TTL = 60;
 
     public static function updateOnline(int $uid = 0, int $gid = 0, int $invisible = 0, int $fid = 0, int $tid = 0): void {

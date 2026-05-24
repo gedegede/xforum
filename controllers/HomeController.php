@@ -18,6 +18,7 @@ use Models\SettingModel;
 use Models\SessionModel;
 use Models\UsergroupModel;
 use Models\DataModel;
+use Models\CreditModel;
 use Lib\Permission;
 
 class HomeController {
@@ -75,9 +76,11 @@ class HomeController {
                 'thread_count' => (int)($currentUser['thread_num'] ?? 0),
                 'post_count' => (int)($currentUser['reply_num'] ?? 0),
                 'fav_count' => (int)($currentUser['fav_num'] ?? 0),
+                'credit' => (int)($currentUser['credit'] ?? 0),
                 'inbox_num' => (int)($currentUser['inbox_num'] ?? 0),
                 'outbox_num' => (int)($currentUser['outbox_num'] ?? 0),
                 'notify_num' => (int)($currentUser['notify_num'] ?? 0),
+                'signed_today' => CreditModel::hasSignedToday((int)$currentUser['uid']),
             ];
         }
 

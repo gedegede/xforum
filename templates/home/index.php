@@ -229,16 +229,21 @@
                             <div class="user-stat-label">回复</div>
                         </div>
                         <div class="user-stat">
-                            <div class="user-stat-value"><?php echo (int)($template_userStats['notify_num'] ?? 0); ?></div>
-                            <div class="user-stat-label">通知</div>
+                            <div class="user-stat-value"><?php echo (int)($template_userStats['credit'] ?? 0); ?></div>
+                            <div class="user-stat-label">金币</div>
                         </div>
                     </div>
                     <div class="user-actions">
+                        <form method="post" action="index.php?c=member&a=signin" class="signin-form">
+                            <button type="submit" class="btn <?php echo !empty($template_userStats['signed_today']) ? 'btn-secondary' : 'btn-primary'; ?> btn-sm w-full" <?php echo !empty($template_userStats['signed_today']) ? 'disabled' : ''; ?>>
+                                <?php echo !empty($template_userStats['signed_today']) ? '今日已签到' : '每日签到'; ?>
+                            </button>
+                        </form>
                         <div class="grid grid-cols-2 gap-sm">
                             <a href="index.php?c=member&a=settings" class="btn btn-secondary btn-sm">个人设置</a>
                             <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid']; ?>&type=favorites" class="btn btn-secondary btn-sm">我的收藏</a>
                             <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid']; ?>&type=threads" class="btn btn-secondary btn-sm">我的话题</a>
-                            <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid']; ?>&type=replies" class="btn btn-secondary btn-sm">我的回复</a>
+                            <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid']; ?>&type=credits" class="btn btn-secondary btn-sm">金币明细</a>
                         </div>
                     </div>
                 <?php else: ?>

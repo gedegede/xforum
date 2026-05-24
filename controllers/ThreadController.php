@@ -26,9 +26,10 @@ use Models\UsergroupModel;
 use Models\DataModel;
 use Models\SessionModel;
 use Models\ModeratorModel;
+use Models\CreditModel;
 
 class ThreadController {
-    public static function index(int $tid): void {
+    public static function index(int $tid, int $pid = 0): void {
         Template::clear();
         if (!$tid) {
             Response::redirect('index.php');
@@ -52,7 +53,19 @@ class ThreadController {
 
         $isModerator = Permission::isModerator($thread['fid']);
 
+        $targetPid = $pid > 0 ? $pid : Request::getInt('pid', 0);
         $page = Request::getInt('page', 1);
+        if ($targetPid > 0) {
+            $targetPost = PostModel::get($targetPid);
+            if ($targetPost && (int)$targetPost['tid'] === $tid) {
+                $targetPage = PostModel::getPostPage($targetPid);
+                if ($targetPage > 0) {
+                    $page = $targetPage;
+                }
+            } else {
+                $targetPid = 0;
+            }
+        }
         $posts = PostModel::getPosts($tid, $page, $isModerator);
         $total = (int)($thread['reply_num'] ?? 0) + 1;
         
@@ -78,6 +91,7 @@ class ThreadController {
         Template::set('users', $users);
         Template::set('page', $page);
         Template::set('pages', $pages);
+        Template::set('targetPid', $targetPid);
         Template::set('user', Session::getUser());
         Template::set('isFavorited', $isFavorited);
         Template::set('isModerator', $isModerator);
@@ -125,42 +139,82 @@ class ThreadController {
                     }
 
                     $sortOrder = $needApprove ? -1 : 0;
+                    $creditRule = CreditModel::getRule(CreditModel::ACTION_THREAD_CREATE);
+                    $creditDid = 0;
+                    $inTransaction = false;
 
-                    $tid = ThreadModel::create([
-                        'fid' => $fid,
-                        'uid' => Session::getUid(),
-                        'subject' => $subject,
-                        'sort_order' => $sortOrder,
-                    ]);
+                    if (!$error) {
+                        try {
+                            Database::beginTransaction();
+                            $inTransaction = true;
 
-                    PostModel::create([
-                        'fid' => $fid,
-                        'tid' => $tid,
-                        'uid' => Session::getUid(),
-                        'message' => $message,
-                        'is_thread' => 1,
-                        'sort_order' => $sortOrder,
-                    ]);
+                            if ((int)$creditRule['credit'] < 0) {
+                                $creditDid = CreditModel::applyWithId(
+                                    CreditModel::ACTION_THREAD_CREATE,
+                                    Session::getUid(),
+                                    '发布主题：' . $subject
+                                );
+                                if ($creditDid === 0) {
+                                    throw new \RuntimeException(CreditModel::getInsufficientMessage(CreditModel::ACTION_THREAD_CREATE));
+                                }
+                            }
 
-                    ForumModel::incrementTodayNum($fid);
+                            $tid = ThreadModel::create([
+                                'fid' => $fid,
+                                'uid' => Session::getUid(),
+                                'subject' => $subject,
+                                'sort_order' => $sortOrder,
+                            ]);
 
-                    if ($needApprove) {
-                        DataModel::updateCount('pending_threads', 1);
-                        Template::set('title', '发布成功');
-                        Template::set('message', '主题已提交，等待审核');
-                        Template::set('user', Session::getUser());
-                        Template::display('thread/pending');
-                        exit;
+                            PostModel::create([
+                                'fid' => $fid,
+                                'tid' => $tid,
+                                'uid' => Session::getUid(),
+                                'message' => $message,
+                                'is_thread' => 1,
+                                'sort_order' => $sortOrder,
+                            ]);
+
+                            ForumModel::incrementTodayNum($fid);
+
+                            $creditUrl = "index.php?c=thread&a=index&tid={$tid}";
+                            CreditModel::updateCreditUrl($creditDid, $creditUrl);
+                            if (!$needApprove && (int)$creditRule['credit'] > 0) {
+                                CreditModel::apply(CreditModel::ACTION_THREAD_CREATE, Session::getUid(), '发布主题：' . $subject, $creditUrl);
+                            }
+
+                            if ($needApprove) {
+                                DataModel::updateCount('pending_threads', 1);
+                            } else {
+                                MemberModel::incrementThreadNum(Session::getUid());
+                                ForumModel::incrementThreadNum($fid, $tid);
+                            }
+
+                            Database::commit();
+                            $inTransaction = false;
+                        } catch (\Throwable $e) {
+                            if ($inTransaction) {
+                                Database::rollBack();
+                            }
+                            $error = $e instanceof \RuntimeException ? $e->getMessage() : '发布失败，请稍后重试';
+                        }
+
+                        if (!$error && $needApprove) {
+                            Template::set('title', '发布成功');
+                            Template::set('message', '主题已提交，等待审核');
+                            Template::set('user', Session::getUser());
+                            Template::display('thread/pending');
+                            exit;
+                        }
+
+                        if (!$error) {
+                            // 发帖成功后更新在线状态
+                            $user = Session::getUser();
+                            SessionModel::updateOnline($user['uid'], $user['gid'], $user['invisible'], $fid, $tid);
+
+                            Response::redirect("index.php?c=thread&a=index&tid={$tid}");
+                        }
                     }
-
-                    MemberModel::incrementThreadNum(Session::getUid());
-                    ForumModel::incrementThreadNum($fid, $tid);
-                    
-                    // 发帖成功后更新在线状态
-                    $user = Session::getUser();
-                    SessionModel::updateOnline($user['uid'], $user['gid'], $user['invisible'], $fid, $tid);
-
-                    Response::redirect("index.php?c=thread&a=index&tid={$tid}");
                 }
             }
         }
@@ -228,6 +282,8 @@ class ThreadController {
             }
 
             $sortOrder = $needApprove ? -1 : 0;
+            $creditRule = CreditModel::getRule(CreditModel::ACTION_THREAD_REPLY);
+            $creditDid = 0;
 
             $quoteFloor = 0;
             if ($quotePid > 0 && $quoteUid > 0) {
@@ -240,25 +296,75 @@ class ThreadController {
                 }
             }
 
-            $pid = PostModel::create([
-                'fid' => $thread['fid'],
-                'tid' => $tid,
-                'uid' => Session::getUid(),
-                'message' => $message,
-                'is_thread' => 0,
-                'quote_pid' => $quotePid,
-                'quote_uid' => $quoteUid,
-                'quote_floor' => $quoteFloor,
-                'sort_order' => $sortOrder,
-            ]);
+            $pid = 0;
+            $errorMsg = '';
+            $inTransaction = false;
+            try {
+                Database::beginTransaction();
+                $inTransaction = true;
 
-            if (!$needApprove) {
-                ForumModel::incrementTodayNum($thread['fid']);
-                ThreadModel::updateReply($tid, Session::getUid());
-                MemberModel::incrementReplyNum(Session::getUid());
-                ForumModel::incrementReplyNum($thread['fid'], $tid);
-            } else {
-                DataModel::updateCount('pending_posts', 1);
+                if ((int)$creditRule['credit'] < 0) {
+                $creditDid = CreditModel::applyWithId(
+                    CreditModel::ACTION_THREAD_REPLY,
+                    Session::getUid(),
+                    '回复主题：' . ($thread['subject'] ?? ''),
+                    "index.php?c=thread&a=index&tid={$tid}"
+                );
+                    if ($creditDid === 0) {
+                        throw new \RuntimeException(CreditModel::getInsufficientMessage(CreditModel::ACTION_THREAD_REPLY));
+                    }
+                }
+
+                $pid = PostModel::create([
+                    'fid' => $thread['fid'],
+                    'tid' => $tid,
+                    'uid' => Session::getUid(),
+                    'message' => $message,
+                    'is_thread' => 0,
+                    'quote_pid' => $quotePid,
+                    'quote_uid' => $quoteUid,
+                    'quote_floor' => $quoteFloor,
+                    'sort_order' => $sortOrder,
+                ]);
+                CreditModel::updateCreditUrl($creditDid, "index.php?c=thread&a=index&tid={$tid}&pid={$pid}");
+
+                if (!$needApprove) {
+                    ForumModel::incrementTodayNum($thread['fid']);
+                    ThreadModel::updateReply($tid, Session::getUid());
+                    MemberModel::incrementReplyNum(Session::getUid());
+                    ForumModel::incrementReplyNum($thread['fid'], $tid);
+                } else {
+                    DataModel::updateCount('pending_posts', 1);
+                }
+
+                if (!$needApprove && (int)$creditRule['credit'] > 0) {
+                    CreditModel::apply(
+                        CreditModel::ACTION_THREAD_REPLY,
+                        Session::getUid(),
+                        '回复主题：' . ($thread['subject'] ?? ''),
+                        "index.php?c=thread&a=index&tid={$tid}&pid={$pid}"
+                    );
+                }
+
+                Database::commit();
+                $inTransaction = false;
+            } catch (\Throwable $e) {
+                if ($inTransaction) {
+                    Database::rollBack();
+                }
+                $errorMsg = $e instanceof \RuntimeException ? $e->getMessage() : '回复失败，请稍后重试';
+            }
+
+            if ($errorMsg !== '') {
+                if (Response::isAjaxRequest()) {
+                    Response::error($errorMsg);
+                }
+                Template::set('title', '回复帖子');
+                Template::set('thread', $thread);
+                Template::set('error', $errorMsg);
+                Template::set('user', Session::getUser());
+                Template::display('thread/reply');
+                exit;
             }
 
             if ($thread['uid'] != Session::getUid()) {
@@ -460,23 +566,58 @@ class ThreadController {
 
         $thread = ThreadModel::get($post['tid']);
         $reportSubject = "[举报] " . ($thread['subject'] ?? '未知主题');
-        $reportMessage = "举报链接: index.php?c=thread&a=index&tid={$post['tid']}#pid{$pid}\n\n举报理由: {$reason}\n\n帖子作者ID: {$post['uid']}\n帖子ID: {$pid}";
+        $reportMessage = "举报链接: index.php?c=thread&a=index&tid={$post['tid']}&pid={$pid}\n\n举报理由: {$reason}\n\n帖子作者ID: {$post['uid']}\n帖子ID: {$pid}";
+        $creditRule = CreditModel::getRule(CreditModel::ACTION_THREAD_REPORT);
+        $creditMessage = '举报主题：' . ($thread['subject'] ?? '未知主题');
+        $creditUrl = "index.php?c=thread&a=index&tid={$post['tid']}&pid={$pid}";
 
-        $tid = ThreadModel::create([
-            'fid' => $reportFid,
-            'uid' => Session::getUid(),
-            'subject' => $reportSubject,
-        ]);
+        $inTransaction = false;
+        try {
+            Database::beginTransaction();
+            $inTransaction = true;
 
-        PostModel::create([
-            'fid' => $reportFid,
-            'tid' => $tid,
-            'uid' => Session::getUid(),
-            'message' => $reportMessage,
-            'is_thread' => 1,
-        ]);
+            if ((int)$creditRule['credit'] < 0) {
+                $creditChanged = CreditModel::apply(
+                    CreditModel::ACTION_THREAD_REPORT,
+                    Session::getUid(),
+                    $creditMessage,
+                    $creditUrl
+                );
+                if ($creditChanged === 0) {
+                    throw new \RuntimeException(CreditModel::getInsufficientMessage(CreditModel::ACTION_THREAD_REPORT));
+                }
+            }
 
-        DataModel::updateCount('pending_reports', 1);
+            $tid = ThreadModel::create([
+                'fid' => $reportFid,
+                'uid' => Session::getUid(),
+                'subject' => $reportSubject,
+            ]);
+
+            PostModel::create([
+                'fid' => $reportFid,
+                'tid' => $tid,
+                'uid' => Session::getUid(),
+                'message' => $reportMessage,
+                'is_thread' => 1,
+            ]);
+
+            DataModel::updateCount('pending_reports', 1);
+            ForumModel::incrementTodayNum($reportFid);
+            ForumModel::incrementThreadNum($reportFid, $tid);
+            if ((int)$creditRule['credit'] > 0) {
+                CreditModel::apply(CreditModel::ACTION_THREAD_REPORT, Session::getUid(), $creditMessage, $creditUrl);
+            }
+
+            Database::commit();
+            $inTransaction = false;
+        } catch (\Throwable $e) {
+            if ($inTransaction) {
+                Database::rollBack();
+            }
+            $message = $e instanceof \RuntimeException ? $e->getMessage() : '举报失败，请稍后重试';
+            Response::error($message);
+        }
 
         Response::json(['success' => true, 'message' => '举报已提交']);
     }
@@ -487,15 +628,26 @@ class ThreadController {
             Response::redirect('index.php');
         }
 
+        $wasPending = (int)($thread['sort_order'] ?? 0) < 0;
         ThreadModel::update($tid, ['sort_order' => 0]);
         PostModel::approveByTid($tid);
 
-        DataModel::updateCount('pending_threads', -1);
+        if ($wasPending) {
+            DataModel::updateCount('pending_threads', -1);
+        }
 
-        if ($thread) {
+        if ($thread && $wasPending) {
             MemberModel::incrementThreadNum($thread['uid']);
             ForumModel::incrementThreadNum($thread['fid'], $tid);
             ForumModel::incrementTodayNum($thread['fid']);
+            if ((int)CreditModel::getRule(CreditModel::ACTION_THREAD_CREATE)['credit'] > 0) {
+                CreditModel::apply(
+                    CreditModel::ACTION_THREAD_CREATE,
+                    (int)$thread['uid'],
+                    '发布主题：' . ($thread['subject'] ?? ''),
+                    "index.php?c=thread&a=index&tid={$tid}"
+                );
+            }
         }
 
         Response::redirect("index.php?c=thread&a=index&tid={$tid}");
@@ -508,14 +660,23 @@ class ThreadController {
         }
 
         if ($post) {
+            $wasPending = (int)($post['sort_order'] ?? 0) < 0;
             PostModel::update($pid, ['sort_order' => 0]);
-            if ($post['is_thread'] == 0) {
+            if ($post['is_thread'] == 0 && $wasPending) {
                 DataModel::updateCount('pending_posts', -1);
                 $thread = ThreadModel::get($post['tid']);
                 if ($thread) {
                     MemberModel::incrementReplyNum($post['uid']);
                     ForumModel::incrementReplyNum($thread['fid'], $post['tid']);
                     ForumModel::incrementTodayNum($thread['fid']);
+                    if ((int)CreditModel::getRule(CreditModel::ACTION_THREAD_REPLY)['credit'] > 0) {
+                        CreditModel::apply(
+                            CreditModel::ACTION_THREAD_REPLY,
+                            (int)$post['uid'],
+                            '回复主题：' . ($thread['subject'] ?? ''),
+                            "index.php?c=thread&a=index&tid={$post['tid']}&pid={$pid}"
+                        );
+                    }
                 }
             }
         }

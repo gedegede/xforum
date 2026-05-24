@@ -9,12 +9,13 @@
                 <div class="member-hero-meta">
                     注册于 <?php echo date('Y-m-d', $template_member['reg_date']); ?> · 
                     <?php echo $template_member['thread_num']; ?> 主题 · 
-                    <?php echo $template_member['reply_num']; ?> 回复
+                    <?php echo $template_member['reply_num']; ?> 回复 ·
+                    <?php echo (int)($template_member['credit'] ?? 0); ?> 金币
                 </div>
                 <div class="member-badges">
                     <span class="badge badge-gray">资料管理</span>
                     <span class="badge badge-gray">账号安全</span>
-                    <span class="badge badge-green">主题模式</span>
+                    <span class="badge badge-green"><?php echo (int)($template_member['credit'] ?? 0); ?> 金币</span>
                 </div>
             </div>
         </div>
@@ -26,6 +27,7 @@
         <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=threads" class="tab<?php echo (isset($_GET['c']) && $_GET['c'] == 'member' && $_GET['a'] == 'profile') ? ' active' : ''; ?>">我的主题</a>
         <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=replies" class="tab">我的回复</a>
         <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=favorites" class="tab">我的收藏</a>
+        <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=credits" class="tab">金币明细</a>
         <a href="index.php?c=member&a=settings" class="tab active">个人设置</a>
         <a href="index.php?c=admin&a=index" class="tab<?php echo (isset($_GET['c']) && $_GET['c'] == 'admin') ? ' active' : ''; ?>">站点设置</a>
     </div>

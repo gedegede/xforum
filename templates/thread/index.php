@@ -147,6 +147,23 @@
     </div>
 </div>
 
+<?php if (!empty($template_targetPid)): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const targetPost = document.getElementById('post-<?php echo (int)$template_targetPid; ?>');
+    if (!targetPost) return;
+
+    requestAnimationFrame(function() {
+        targetPost.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetPost.classList.add('post-target-highlight');
+        setTimeout(function() {
+            targetPost.classList.remove('post-target-highlight');
+        }, 2600);
+    });
+});
+</script>
+<?php endif; ?>
+
 <?php if (isset($template_user)): ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {

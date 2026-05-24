@@ -38,7 +38,7 @@ class PostHelper {
         $canViewContent = !$isPending || $isModerator;
         ob_start();
         ?>
-<div class="post-item" id="post-<?php echo $postPid; ?>">
+<div class="post-item" id="post-<?php echo $postPid; ?>" data-pid="<?php echo $postPid; ?>">
     <div class="post-header justify-between">
         <div class="flex items-center gap-md">
             <a href="index.php?c=member&a=profile&uid=<?php echo $postUid; ?>" class="avatar avatar-post">

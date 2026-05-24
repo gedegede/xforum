@@ -29,7 +29,7 @@
                 <input type="text"
                     id="subject"
                     name="subject"
-                    placeholder="用一句清晰的话概括你的问题或观点"
+                    placeholder=""
                     required>
             </div>
 
@@ -39,7 +39,7 @@
                 <textarea id="message"
                     name="message"
                     class="message-editor"
-                    placeholder="支持 Markdown。建议补充背景、现象、已尝试方案和预期结果。"></textarea>
+                    placeholder=""></textarea>
             </div>
 
             <div class="flex justify-end gap-md mt-lg">
@@ -58,24 +58,3 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simplemde@1.11.2/dist/simplemde.min.css">
-<script src="https://cdn.jsdelivr.net/npm/simplemde@1.11.2/dist/simplemde.min.js"></script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const simplemde = new SimpleMDE({
-        element: document.getElementById('message'),
-        toolbar: [
-            'bold', 'italic', 'strikethrough', '|',
-            'heading-1', 'heading-2', 'heading-3', '|',
-            'code', 'quote', '|',
-            'unordered-list', 'ordered-list', '|',
-            'link', 'image', '|',
-            'preview', '|',
-            'guide'
-        ],
-        status: false,
-        placeholder: '支持 Markdown 语法...'
-    });
-});
-</script>

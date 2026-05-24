@@ -178,6 +178,27 @@ class Database {
         $result = self::fetch($sql, $params);
         return (int)($result['count'] ?? 0);
     }
+
+    public static function beginTransaction(): void {
+        $connection = self::getConnection();
+        if (!$connection->inTransaction()) {
+            $connection->beginTransaction();
+        }
+    }
+
+    public static function commit(): void {
+        $connection = self::getConnection();
+        if ($connection->inTransaction()) {
+            $connection->commit();
+        }
+    }
+
+    public static function rollBack(): void {
+        $connection = self::getConnection();
+        if ($connection->inTransaction()) {
+            $connection->rollBack();
+        }
+    }
     
     public static function getQueryLog(): array {
         return self::$queryLog;

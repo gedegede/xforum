@@ -20,6 +20,7 @@ use Models\UsergroupModel;
 use Models\PostModel;
 use Models\ModLogModel;
 use Models\ModeratorModel;
+use Models\CreditModel;
 
 class AdminController {
     public static function index(): void {
@@ -46,10 +47,30 @@ class AdminController {
         $success = '';
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $handledSettings = [];
+            if (isset($_POST['signin_credit_min']) || isset($_POST['signin_credit_max'])) {
+                SettingModel::set('signin_credit_range', self::buildSigninCreditRange());
+                $handledSettings[] = 'signin_credit_range';
+            }
+            if (isset($_POST['credit_rule_credit']) || isset($_POST['credit_rule_daily_max']) || isset($_POST['credit_rule_enabled'])) {
+                SettingModel::set(
+                    'credit_rules',
+                    self::buildCreditRuleText(
+                        Request::postArray('credit_rule_credit'),
+                        Request::postArray('credit_rule_daily_max'),
+                        Request::postArray('credit_rule_enabled')
+                    )
+                );
+                $handledSettings[] = 'credit_rules';
+            }
+
             $postData = Request::all();
             foreach ($postData as $key => $value) {
                 if (strpos($key, 'setting_') === 0) {
                     $skey = substr($key, 8);
+                    if (in_array($skey, $handledSettings, true)) {
+                        continue;
+                    }
                     if ($skey === 'collapsed_fids' && is_array($value)) {
                         $value = implode(',', array_filter($value));
                     } elseif (is_array($value)) {
@@ -67,10 +88,51 @@ class AdminController {
         Template::set('title', '站点设置');
         Template::set('settings', $settings);
         Template::set('forums', $forums);
+        Template::set('creditRules', CreditModel::getRules());
+        Template::set('creditActionLabels', CreditModel::getActionLabels());
+        Template::set('signinRange', CreditModel::getSigninRange());
         Template::set('error', $error);
         Template::set('success', $success);
         Template::set('user', Session::getUser());
         Template::display('admin/settings');
+    }
+
+    private static function buildSigninCreditRange(): string {
+        [$currentMin, $currentMax] = CreditModel::getSigninRange();
+        $min = isset($_POST['signin_credit_min']) ? max(0, (int)$_POST['signin_credit_min']) : $currentMin;
+        $max = isset($_POST['signin_credit_max']) ? max(0, (int)$_POST['signin_credit_max']) : $currentMax;
+
+        if ($min > $max) {
+            [$min, $max] = [$max, $min];
+        }
+
+        return $min . ',' . $max;
+    }
+
+    private static function buildCreditRuleText(array $credits, array $dailyMaxes, array $enabledActions): string {
+        $currentRules = CreditModel::getRules();
+        $lines = [];
+
+        foreach (CreditModel::getActionLabels() as $action => $label) {
+            if ($action === CreditModel::ACTION_SIGNIN) {
+                continue;
+            }
+
+            $enabled = isset($enabledActions[$action]);
+            $currentRule = $currentRules[$action] ?? ['credit' => 0, 'daily_max' => 0];
+            $credit = $enabled ? (int)($credits[$action] ?? $currentRule['credit']) : 0;
+            $dailyMax = $enabled ? max(0, (int)($dailyMaxes[$action] ?? $currentRule['daily_max'])) : 0;
+
+            if ($credit <= 0) {
+                $dailyMax = 0;
+            } elseif ($dailyMax < $credit) {
+                $dailyMax = $credit;
+            }
+
+            $lines[] = $action . ',' . $credit . ',' . $dailyMax;
+        }
+
+        return implode("\n", $lines);
     }
 
     public static function forums(): void {

@@ -19,33 +19,23 @@ $tables = [
         dateline INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (uid, action)
     )",
-    'next_attach' => "CREATE TABLE next_attach (
-        aid INTEGER PRIMARY KEY AUTOINCREMENT,
-        tid INTEGER NOT NULL DEFAULT 0,
-        pid INTEGER NOT NULL DEFAULT 0,
-        uid INTEGER NOT NULL DEFAULT 0,
-        dateline INTEGER NOT NULL DEFAULT 0,
-        filename VARCHAR(150) NOT NULL DEFAULT '',
-        filesize INTEGER NOT NULL DEFAULT 0,
-        filepath VARCHAR(150) NOT NULL DEFAULT '',
-        filetype VARCHAR(10) NOT NULL DEFAULT '',
-        down_num INTEGER NOT NULL DEFAULT 0,
-        sort_order INTEGER NOT NULL DEFAULT 0
-    )",
+
     'next_credit' => "CREATE TABLE next_credit (
         did INTEGER PRIMARY KEY AUTOINCREMENT,
         uid INTEGER NOT NULL DEFAULT 0,
         credit INTEGER NOT NULL DEFAULT 0,
-        credit_key VARCHAR(32) NOT NULL DEFAULT '',
         dateline INTEGER NOT NULL DEFAULT 0,
         message TEXT NOT NULL,
         url VARCHAR(255) NOT NULL DEFAULT ''
     )",
+    'next_credit_idx_uid_did' => "CREATE INDEX idx_next_credit_uid_did ON next_credit(uid, did DESC)",
+
     'next_data' => "CREATE TABLE next_data (
         dkey VARCHAR(32) NOT NULL DEFAULT '',
         val TEXT NOT NULL,
         PRIMARY KEY (dkey)
     )",
+
     'next_fav' => "CREATE TABLE next_fav (
         tid INTEGER NOT NULL DEFAULT 0,
         uid INTEGER NOT NULL DEFAULT 0,
@@ -53,6 +43,7 @@ $tables = [
         PRIMARY KEY (tid, uid)
     )",
     'next_fav_idx_uid_dateline' => "CREATE INDEX idx_next_fav_uid_dateline ON next_fav(uid, dateline DESC)",
+
     'next_forum' => "CREATE TABLE next_forum (
         fid INTEGER PRIMARY KEY AUTOINCREMENT,
         up_fid INTEGER NOT NULL DEFAULT 0,
@@ -66,32 +57,7 @@ $tables = [
         last_tid INTEGER NOT NULL DEFAULT 0,
         json_data TEXT NOT NULL
     )",
-    'next_forum_idx_today_num' => "CREATE INDEX idx_next_forum_today_num ON next_forum(today_num DESC)",
-    
-    'next_guest' => "CREATE TABLE next_guest (
-        ip CHAR(50) NOT NULL DEFAULT '',
-        fid INTEGER NOT NULL DEFAULT 0,
-        tid INTEGER NOT NULL DEFAULT 0,
-        dateline INTEGER NOT NULL DEFAULT 0,
-        PRIMARY KEY (ip)
-    )",
-    'next_guest_action' => "CREATE TABLE next_guest_action (
-        ip CHAR(50) NOT NULL DEFAULT '',
-        action CHAR(15) NOT NULL DEFAULT '',
-        num INTEGER NOT NULL DEFAULT 0,
-        dateline INTEGER NOT NULL DEFAULT 0,
-        PRIMARY KEY (ip, action)
-    )",
-    'next_invite' => "CREATE TABLE next_invite (
-        did INTEGER PRIMARY KEY AUTOINCREMENT,
-        code CHAR(10) NOT NULL DEFAULT '',
-        uid INTEGER NOT NULL DEFAULT 0,
-        dateline INTEGER NOT NULL DEFAULT 0,
-        reg_uid INTEGER NOT NULL DEFAULT 0,
-        reg_dateline INTEGER NOT NULL DEFAULT 0,
-        pay_credit INTEGER NOT NULL DEFAULT 0,
-        add_credit INTEGER NOT NULL DEFAULT 0
-    )",
+
     'next_member' => "CREATE TABLE next_member (
         uid INTEGER PRIMARY KEY AUTOINCREMENT,
         username VARCHAR(50) NOT NULL DEFAULT '',
@@ -125,6 +91,7 @@ $tables = [
     'next_member_idx_username' => "CREATE INDEX idx_next_member_username ON next_member(username)",
     'next_member_idx_email' => "CREATE INDEX idx_next_member_email ON next_member(email)",
     'next_member_idx_gid' => "CREATE INDEX idx_next_member_gid ON next_member(gid)",
+
     'next_mod_log' => "CREATE TABLE next_mod_log (
         did INTEGER PRIMARY KEY AUTOINCREMENT,
         tid INTEGER NOT NULL DEFAULT 0,
@@ -135,7 +102,7 @@ $tables = [
         post_message TEXT NOT NULL,
         dateline INTEGER NOT NULL DEFAULT 0
     )",
-    'next_mod_log_idx_uid_did' => "CREATE INDEX idx_next_mod_log_uid_did ON next_mod_log(uid, did DESC)",
+
     'next_moderator' => "CREATE TABLE next_moderator (
         uid INTEGER NOT NULL DEFAULT 0,
         fid INTEGER NOT NULL DEFAULT 0,
@@ -143,6 +110,7 @@ $tables = [
         sort_order INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (uid, fid)
     )",
+
     'next_notify' => "CREATE TABLE next_notify (
         did INTEGER PRIMARY KEY AUTOINCREMENT,
         uid INTEGER NOT NULL DEFAULT 0,
@@ -155,8 +123,8 @@ $tables = [
         message VARCHAR(255) NOT NULL DEFAULT ''
     )",
     'next_notify_idx_uid_did' => "CREATE INDEX idx_next_notify_uid_did ON next_notify(uid, did DESC)",
-    'next_notify_idx_uid_status' => "CREATE INDEX idx_next_notify_uid_status ON next_notify(uid, status)",
     'next_notify_idx_uid_tid' => "CREATE INDEX idx_next_notify_uid_tid ON next_notify(uid, tid)",
+
     'next_pm' => "CREATE TABLE next_pm (
         pmid INTEGER PRIMARY KEY AUTOINCREMENT,
         uid INTEGER NOT NULL DEFAULT 0,
@@ -169,6 +137,7 @@ $tables = [
     'next_pm_idx_to_uid_pmid' => "CREATE INDEX idx_next_pm_to_uid_pmid ON next_pm(to_uid, pmid DESC)",
     'next_pm_idx_uid_pmid' => "CREATE INDEX idx_next_pm_uid_pmid ON next_pm(uid, pmid DESC)",
     'next_pm_idx_to_uid_is_read' => "CREATE INDEX idx_next_pm_to_uid_is_read ON next_pm(to_uid, is_read)",
+
     'next_post' => "CREATE TABLE next_post (
         pid INTEGER PRIMARY KEY AUTOINCREMENT,
         fid INTEGER NOT NULL DEFAULT 0,
@@ -189,12 +158,14 @@ $tables = [
     )",
     'next_post_idx_tid_pid' => "CREATE INDEX idx_next_post_tid_pid ON next_post(tid, pid ASC)",
     'next_post_idx_uid_pid' => "CREATE INDEX idx_next_post_uid_pid ON next_post(uid, pid DESC)",
+
     'next_rate' => "CREATE TABLE next_rate (
         uid INTEGER NOT NULL DEFAULT 0,
         pid INTEGER NOT NULL DEFAULT 0,
         dateline INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (uid, pid)
     )",
+    
     'next_session' => "CREATE TABLE next_session (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_key VARCHAR(64) NOT NULL DEFAULT '',
@@ -208,11 +179,13 @@ $tables = [
         UNIQUE(session_key)
     )",
     'next_session_idx_dateline' => "CREATE INDEX idx_next_session_dateline ON next_session(dateline DESC)",
+
     'next_setting' => "CREATE TABLE next_setting (
         skey VARCHAR(32) NOT NULL DEFAULT '',
         val TEXT NOT NULL,
         PRIMARY KEY (skey)
     )",
+
     'next_thread' => "CREATE TABLE next_thread (
         tid INTEGER PRIMARY KEY AUTOINCREMENT,
         fid INTEGER NOT NULL DEFAULT 0,
@@ -235,7 +208,6 @@ $tables = [
         fav_num INTEGER NOT NULL DEFAULT 0,
         log_num INTEGER NOT NULL DEFAULT 0
     )",
-    'next_thread_idx_tid' => "CREATE INDEX idx_next_thread_tid ON next_thread(tid DESC)",
     'next_thread_idx_fid_reply' => "CREATE INDEX idx_next_thread_fid_reply ON next_thread(fid, tid DESC)",
     'next_thread_idx_uid_tid' => "CREATE INDEX idx_next_thread_uid_tid ON next_thread(uid, tid DESC)",
 
@@ -245,24 +217,20 @@ $tables = [
         dateline INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (tid, up_tid)
     )",
+
     'next_threadtype' => "CREATE TABLE next_threadtype (
         typeid INTEGER PRIMARY KEY AUTOINCREMENT,
         fid INTEGER NOT NULL DEFAULT 0,
         sort_order INTEGER NOT NULL DEFAULT 0,
         name VARCHAR(50) NOT NULL DEFAULT ''
     )",
+
     'next_usergroup' => "CREATE TABLE next_usergroup (
         gid INTEGER PRIMARY KEY AUTOINCREMENT,
         group_type VARCHAR(20) NOT NULL DEFAULT 'member',
         title VARCHAR(50) NOT NULL DEFAULT '',
         credit_lower INTEGER NOT NULL DEFAULT 0,
         json_data TEXT NOT NULL
-    )",
-    'next_view_log' => "CREATE TABLE next_view_log (
-        tid INTEGER NOT NULL DEFAULT 0,
-        uid_ip CHAR(50) NOT NULL DEFAULT '',
-        dateline INTEGER NOT NULL DEFAULT 0,
-        PRIMARY KEY (tid, uid_ip)
     )"
 ];
 
@@ -284,6 +252,8 @@ $db->exec("INSERT INTO next_setting (skey, val) VALUES ('report_forum_fid', '4')
 $db->exec("INSERT INTO next_setting (skey, val) VALUES ('collapsed_fids', '')");
 $db->exec("INSERT INTO next_setting (skey, val) VALUES ('approve_keywords', '')");
 $db->exec("INSERT INTO next_setting (skey, val) VALUES ('block_keywords', '')");
+$db->exec("INSERT INTO next_setting (skey, val) VALUES ('signin_credit_range', '1,5')");
+$db->exec("INSERT INTO next_setting (skey, val) VALUES ('credit_rules', 'ThreadCreate,1,10\nThreadReply,1,10\nPmSend,0,0\nThreadReport,0,0')");
 
 echo "安装成功！管理员账号: admin，密码: admin123";
 ?>

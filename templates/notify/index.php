@@ -13,7 +13,7 @@
                         </div>
                         <div class="item-meta">
                             <?php if (!empty($notify['tid']) && isset($template_threads[$notify['tid']])): ?>
-                                <a href="index.php?c=thread&a=index&tid=<?php echo $notify['tid']; ?>">查看主题</a>
+                                <a href="index.php?c=thread&a=index&tid=<?php echo $notify['tid']; ?><?php echo !empty($notify['pid']) ? '&pid=' . (int)$notify['pid'] : ''; ?>">查看主题</a>
                                 <span>·</span>
                             <?php endif; ?>
                             <span><?php echo date('Y-m-d', $notify['dateline']); ?></span>

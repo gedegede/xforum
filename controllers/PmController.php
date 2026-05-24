@@ -7,6 +7,7 @@ if (!defined('ROOT_PATH')) {
     exit('Access denied');
 }
 
+use Lib\Database;
 use Lib\Session;
 use Lib\Template;
 use Lib\Response;
@@ -14,6 +15,7 @@ use Lib\Request;
 use Models\PmModel;
 use Models\MemberModel;
 use Models\NotifyModel;
+use Models\CreditModel;
 use Lib\Permission;
 
 class PmController {
@@ -95,8 +97,57 @@ class PmController {
                 if (!$receiver) {
                     $error = '收件人不存在';
                 } else {
-                    PmModel::send(Session::getUid(), $toUid, $content);
-                    NotifyModel::addPMNotify($toUid, Session::getUid());
+                    $creditRule = CreditModel::getRule(CreditModel::ACTION_PM_SEND);
+                    $creditMessage = '发送私信给：' . ($receiver['username'] ?? $toUid);
+                    $creditDid = 0;
+                    $pmid = 0;
+                    $inTransaction = false;
+                    try {
+                        Database::beginTransaction();
+                        $inTransaction = true;
+
+                        if ((int)$creditRule['credit'] < 0) {
+                            $creditDid = CreditModel::applyWithId(
+                                CreditModel::ACTION_PM_SEND,
+                                Session::getUid(),
+                                $creditMessage
+                            );
+                            if ($creditDid === 0) {
+                                throw new \RuntimeException(CreditModel::getInsufficientMessage(CreditModel::ACTION_PM_SEND));
+                            }
+                        }
+
+                        $pmid = PmModel::send(Session::getUid(), $toUid, $content);
+                        CreditModel::updateCreditUrl($creditDid, "index.php?c=pm&a=view&pmid={$pmid}");
+                        if ((int)$creditRule['credit'] > 0) {
+                            CreditModel::apply(
+                                CreditModel::ACTION_PM_SEND,
+                                Session::getUid(),
+                                $creditMessage,
+                                "index.php?c=pm&a=view&pmid={$pmid}"
+                            );
+                        }
+
+                        NotifyModel::addPMNotify($toUid, Session::getUid());
+                        Database::commit();
+                        $inTransaction = false;
+                    } catch (\Throwable $e) {
+                        if ($inTransaction) {
+                            Database::rollBack();
+                        }
+                        $error = $e instanceof \RuntimeException ? $e->getMessage() : '私信发送失败，请稍后重试';
+                    }
+
+                    if ($error) {
+                        Template::set('title', '发送私信');
+                        Template::set('toUid', $toUid);
+                        Template::set('receiver', $receiver);
+                        Template::set('error', $error);
+                        Template::set('user', Session::getUser());
+                        Template::display('pm/send');
+                        return;
+                    }
+
                     Response::redirect('index.php?c=pm&a=outbox');
                 }
             }
