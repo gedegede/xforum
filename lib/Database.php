@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Lib;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use PDO;
 use PDOStatement;
 
@@ -10,6 +14,7 @@ class Database {
     private static ?Database $instance = null;
     private ?PDO $connection = null;
     private ?array $config = null;
+    private static array $queryLog = [];
 
     private function __construct() {
         $this->config = require ROOT_PATH . '/config/database.php';
@@ -45,19 +50,41 @@ class Database {
     }
 
     public static function query(string $sql, array $params = []): PDOStatement {
+        $startTime = microtime(true);
         $stmt = self::getConnection()->prepare($sql);
         $stmt->execute($params);
+        $endTime = microtime(true);
+        $duration = ($endTime - $startTime) * 1000;
+        
+        $queryInfo = [
+            'sql' => $sql,
+            'params' => $params,
+            'duration' => $duration,
+            'explain' => null
+        ];
+        
+        if (stripos(trim($sql), 'SELECT') === 0) {
+            $explainSql = 'EXPLAIN QUERY PLAN ' . $sql;
+            $explainStmt = self::getConnection()->prepare($explainSql);
+            $explainStmt->execute($params);
+            $queryInfo['explain'] = $explainStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        
+        self::$queryLog[] = $queryInfo;
+        
         return $stmt;
     }
 
     public static function fetch(string $sql, array $params = []): ?array {
         $stmt = self::query($sql, $params);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        $result = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        return $result;
     }
 
     public static function fetchAll(string $sql, array $params = []): array {
         $stmt = self::query($sql, $params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $result;
     }
 
     public static function insert(string $table, array $data): int {
@@ -89,6 +116,14 @@ class Database {
         $sql = "SELECT COUNT(*) as count FROM " . $table . ($where ? " WHERE {$where}" : '');
         $result = self::fetch($sql, $params);
         return (int)($result['count'] ?? 0);
+    }
+    
+    public static function getQueryLog(): array {
+        return self::$queryLog;
+    }
+
+    public static function clearQueryLog(): void {
+        self::$queryLog = [];
     }
 }
 ?>

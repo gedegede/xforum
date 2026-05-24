@@ -1,23 +1,35 @@
 <div class="card">
-    <div class="card-header">
-        <h2><?php echo $from === 'create' ? '发布新主题' : '论坛导航'; ?></h2>
+    <div class="forum-hero">
+        <h2><?php echo $template_from === 'create' ? '选择发布版块' : '论坛导航'; ?></h2>
+        <div class="flex flex-wrap gap-sm mt-lg">
+            <span class="badge badge-gray"><?php echo count($template_forums); ?> 个版块</span>
+            <span class="badge badge-gray"><?php echo $template_from === 'create' ? '优先选择最匹配的话题分区' : '支持层级版块浏览'; ?></span>
+        </div>
     </div>
     <div class="card-body padded">
-        <?php if ($from === 'create'): ?>
-            <div class="text-secondary mb-lg">请选择要发布主题的版块</div>
-        <?php endif; ?>
-        <?php if (!empty($forums)): ?>
+        <?php if (!empty($template_forums)): ?>
             <div class="forum-list">
-                <?php foreach ($forums as $forum): ?>
-                    <a href="<?php echo $from === 'create' ? 'index.php?c=thread&a=create&fid=' . $forum['fid'] : 'index.php?c=forum&a=index&fid=' . $forum['fid']; ?>" class="list-item forum-item">
+                <?php foreach ($template_forums as $forum): ?>
+                    <a href="<?php echo $template_from === 'create' ? 'index.php?c=thread&a=create&fid=' . $forum['fid'] : 'index.php?c=forum&a=index&fid=' . $forum['fid']; ?>" class="list-item forum-item">
                         <div class="item-info">
-                            <div class="item-title">
-                                <?php echo str_repeat('├─ ', $forum['depth']) . htmlspecialchars($forum['name']); ?>
+                            <div class="thread-title">
+                                <?php if ((int)$forum['depth'] > 0): ?>
+                                    <span class="badge badge-gray">Lv <?php echo (int)$forum['depth'] + 1; ?></span>
+                                <?php else: ?>
+                                    <span class="badge badge-green">主版块</span>
+                                <?php endif; ?>
+                                <span class="item-title" style="white-space:normal;"><?php echo htmlspecialchars($forum['name']); ?></span>
                             </div>
                             <div class="item-meta">
                                 <?php if (!empty($forum['description'])): ?>
                                     <?php echo htmlspecialchars($forum['description']); ?>
+                                <?php else: ?>
+                                    暂无版块简介
                                 <?php endif; ?>
+                                <span class="separator">•</span>
+                                <?php echo (int)($forum['thread_num'] ?? 0); ?> 主题
+                                <span class="separator">•</span>
+                                <?php echo (int)($forum['reply_num'] ?? 0); ?> 回复
                             </div>
                         </div>
                         <div class="item-arrow"></div>

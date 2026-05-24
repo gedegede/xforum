@@ -3,7 +3,13 @@ declare(strict_types=1);
 
 namespace Models;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use Lib\Database;
+use Models\MemberModel;
+use Models\ThreadModel;
 
 class FavModel {
     const TABLE = 'next_fav';
@@ -26,14 +32,16 @@ class FavModel {
             'dateline' => time(),
         ]);
         if ($result) {
-            Database::query("UPDATE next_thread SET fav_num = fav_num + 1 WHERE tid = :tid", ['tid' => $tid]);
+            ThreadModel::incrementFavNum($tid);
+            MemberModel::incrementFavNum($uid);
         }
         return $result;
     }
 
     public static function removeFavorite(int $uid, int $tid): void {
         Database::query("DELETE FROM " . self::TABLE . " WHERE uid = :uid AND tid = :tid", ['uid' => $uid, 'tid' => $tid]);
-        Database::query("UPDATE next_thread SET fav_num = fav_num - 1 WHERE tid = :tid", ['tid' => $tid]);
+        ThreadModel::decrementFavNum($tid);
+        MemberModel::decrementFavNum($uid);
     }
 
     public static function isFavorite(int $uid, int $tid): bool {

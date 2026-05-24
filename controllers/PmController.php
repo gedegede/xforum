@@ -3,21 +3,25 @@ declare(strict_types=1);
 
 namespace Controllers;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use Lib\Session;
 use Lib\Template;
+use Lib\Response;
+use Lib\Request;
 use Models\PmModel;
 use Models\MemberModel;
 use Models\NotifyModel;
+use Lib\Permission;
 
 class PmController {
     public static function inbox(): void {
         Template::clear();
-        if (!Session::isLoggedIn()) {
-            header('Location: index.php?c=auth&a=login');
-            exit;
-        }
+        Permission::requireLogin();
 
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $page = Request::getInt('page', 1);
         $messages = PmModel::getInbox(Session::getUid(), $page);
         $total = PmModel::getInboxCount(Session::getUid());
 
@@ -40,12 +44,9 @@ class PmController {
 
     public static function outbox(): void {
         Template::clear();
-        if (!Session::isLoggedIn()) {
-            header('Location: index.php?c=auth&a=login');
-            exit;
-        }
+        Permission::requireLogin();
 
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $page = Request::getInt('page', 1);
         $messages = PmModel::getOutbox(Session::getUid(), $page);
         $total = PmModel::getOutboxCount(Session::getUid());
 
@@ -66,10 +67,7 @@ class PmController {
 
     public static function send(int $toUid = 0): void {
         Template::clear();
-        if (!Session::isLoggedIn()) {
-            header('Location: index.php?c=auth&a=login');
-            exit;
-        }
+        Permission::requireLogin();
 
         $error = '';
         $receiver = null;
@@ -83,8 +81,8 @@ class PmController {
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $toUid = (int)($_POST['to_uid'] ?? 0);
-            $content = trim($_POST['content'] ?? '');
+            $toUid = Request::postInt('to_uid');
+            $content = Request::postString('content');
 
             if (!$toUid) {
                 $error = '请选择收件人';
@@ -99,8 +97,7 @@ class PmController {
                 } else {
                     PmModel::send(Session::getUid(), $toUid, $content);
                     NotifyModel::addPMNotify($toUid, Session::getUid());
-                    header('Location: index.php?c=pm&a=outbox');
-                    exit;
+                    Response::redirect('index.php?c=pm&a=outbox');
                 }
             }
         }
@@ -115,20 +112,15 @@ class PmController {
 
     public static function view(int $pmid): void {
         Template::clear();
-        if (!Session::isLoggedIn()) {
-            header('Location: index.php?c=auth&a=login');
-            exit;
-        }
+        Permission::requireLogin();
 
         $message = PmModel::get($pmid);
         if (!$message) {
-            header('Location: index.php?c=pm&a=inbox');
-            exit;
+            Response::redirect('index.php?c=pm&a=inbox');
         }
 
         if ($message['uid'] != Session::getUid() && $message['to_uid'] != Session::getUid()) {
-            header('Location: index.php?c=pm&a=inbox');
-            exit;
+            Response::redirect('index.php?c=pm&a=inbox');
         }
 
         PmModel::markSingleAsRead($pmid);

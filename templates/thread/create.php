@@ -1,28 +1,27 @@
 <div class="card">
-    <div class="card-header">
-        <h2>发布新主题</h2>
+    <div class="thread-header">
+        <div class="breadcrumb">
+            <a href="index.php">首页</a>
+            <span>/</span>
+            <a href="index.php?c=forum&a=index&fid=<?php echo $template_forum['fid']; ?>"><?php echo htmlspecialchars($template_forum['name']); ?></a>
+            <span>/</span>
+            <span>发布主题</span>
+        </div>
+        <div class="mt-sm">
+            <h1>在「<?php echo htmlspecialchars($template_forum['name']); ?>」发布内容</h1>
+        </div>
     </div>
 
     <div class="card-body padded">
 
-        <div class="bg-hover border rounded p-lg mb-lg">
-            <div class="font-lg font-bold">
-                <?php echo htmlspecialchars($forum['name']); ?>
-            </div>
-
-            <div class="text-secondary font-sm">
-                在此版块发布新主题
-            </div>
-        </div>
-
-        <?php if (!empty($error)): ?>
+        <?php if (!empty($template_error)): ?>
             <div class="error">
-                <?php echo htmlspecialchars($error); ?>
+                <?php echo htmlspecialchars($template_error); ?>
             </div>
         <?php endif; ?>
 
         <form method="post"
-            action="index.php?c=thread&a=create&fid=<?php echo $forum['fid']; ?>">
+            action="index.php?c=thread&a=create&fid=<?php echo $template_forum['fid']; ?>">
 
             <div class="form-group">
                 <label for="subject">标题</label>
@@ -30,7 +29,7 @@
                 <input type="text"
                     id="subject"
                     name="subject"
-                    placeholder="请输入主题标题"
+                    placeholder="用一句清晰的话概括你的问题或观点"
                     required>
             </div>
 
@@ -40,11 +39,11 @@
                 <textarea id="message"
                     name="message"
                     class="message-editor"
-                    placeholder="支持 Markdown 语法..."></textarea>
+                    placeholder="支持 Markdown。建议补充背景、现象、已尝试方案和预期结果。"></textarea>
             </div>
 
             <div class="flex justify-end gap-md mt-lg">
-                <a href="index.php?c=forum&a=index&fid=<?php echo $forum['fid']; ?>"
+                <a href="index.php?c=forum&a=index&fid=<?php echo $template_forum['fid']; ?>"
                     class="btn btn-secondary">
                     取消
                 </a>

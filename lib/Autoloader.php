@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Lib;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 class Autoloader {
     public static function register(): void {
         spl_autoload_register([__CLASS__, 'load']);

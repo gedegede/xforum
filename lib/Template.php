@@ -3,9 +3,14 @@ declare(strict_types=1);
 
 namespace Lib;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 class Template {
     private static array $vars = [];
     private static string $templatePath = '';
+    private const VAR_PREFIX = 'template_';
 
     public static function init(string $templatePath = ''): void {
         if (empty($templatePath)) {
@@ -16,7 +21,7 @@ class Template {
     }
 
     public static function set(string $key, mixed $value): void {
-        self::$vars[$key] = $value;
+        self::$vars[self::VAR_PREFIX . $key] = $value;
     }
 
     public static function render(string $template, string $layout = 'layout/base'): string {

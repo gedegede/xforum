@@ -5,22 +5,22 @@
         <h2>编辑版块</h2>
     </div>
     <div class="card-body padded">
-        <?php if ($error): ?>
-            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+        <?php if ($template_error): ?>
+            <div class="error"><?php echo htmlspecialchars($template_error); ?></div>
         <?php endif; ?>
 
-        <form method="post" action="index.php?c=admin&a=forumEdit&fid=<?php echo $forum['fid']; ?>">
+        <form method="post" action="index.php?c=admin&a=forumEdit&fid=<?php echo $template_forum['fid']; ?>">
             <div class="form-group">
                 <label>版块名称</label>
-                <input type="text" name="name" value="<?php echo htmlspecialchars($forum['name']); ?>" required>
+                <input type="text" name="name" value="<?php echo htmlspecialchars($template_forum['name']); ?>" required>
             </div>
             <div class="form-group">
                 <label>上级版块</label>
                 <select name="up_fid">
-                    <option value="0" <?php echo $forum['up_fid'] == 0 ? 'selected' : ''; ?>>无（顶级版块）</option>
-                    <?php foreach ($parentForums as $pf): ?>
-                        <?php if ($pf['fid'] != $forum['fid']): ?>
-                        <option value="<?php echo $pf['fid']; ?>" <?php echo $forum['up_fid'] == $pf['fid'] ? 'selected' : ''; ?>>
+                    <option value="0" <?php echo $template_forum['up_fid'] == 0 ? 'selected' : ''; ?>>无（顶级版块）</option>
+                    <?php foreach ($template_parentForums as $pf): ?>
+                        <?php if ($pf['fid'] != $template_forum['fid']): ?>
+                        <option value="<?php echo $pf['fid']; ?>" <?php echo $template_forum['up_fid'] == $pf['fid'] ? 'selected' : ''; ?>>
                             <?php echo str_repeat('├─ ', $pf['depth'] ?? 0) . htmlspecialchars($pf['name']); ?>
                         </option>
                         <?php endif; ?>
@@ -30,8 +30,8 @@
             <div class="form-group">
                 <label>状态</label>
                 <select name="status">
-                    <option value="1" <?php echo $forum['status'] == 1 ? 'selected' : ''; ?>>启用</option>
-                    <option value="0" <?php echo $forum['status'] == 0 ? 'selected' : ''; ?>>禁用</option>
+                    <option value="1" <?php echo $template_forum['status'] == 1 ? 'selected' : ''; ?>>启用</option>
+                    <option value="0" <?php echo $template_forum['status'] == 0 ? 'selected' : ''; ?>>禁用</option>
                 </select>
             </div>
             <div class="flex justify-end gap-md mt-lg">

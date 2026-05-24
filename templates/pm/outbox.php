@@ -1,21 +1,28 @@
 <div class="card">
-    <div class="card-header">
-        <h2>发件箱</h2>
-        <a href="index.php?c=pm&a=send" class="btn btn-primary">发送私信</a>
+    <div class="thread-hero">
+        <div class="flex items-center justify-between gap-md">
+            <div>
+                <h2>发件箱</h2>
+            </div>
+            <a href="index.php?c=pm&a=send" class="btn btn-primary">发送私信</a>
+        </div>
     </div>
     <div class="card-body">
-        <?php if (!empty($messages)): ?>
-            <?php foreach ($messages as $message): ?>
+        <?php if (!empty($template_messages)): ?>
+            <?php foreach ($template_messages as $message): ?>
                 <a href="index.php?c=pm&a=view&pmid=<?php echo $message['pmid']; ?>" class="list-item">
                     <div class="avatar avatar-sm">
-                        <?php echo strtoupper(substr($users[$message['to_uid']]['username'] ?? '?', 0, 1)); ?>
+                        <?php echo \Lib\Helper::getAvatarInitial($template_users[$message['to_uid']]['username'] ?? '?'); ?>
                     </div>
                     <div class="item-info flex-1">
-                        <div class="item-title">
-                            <span class="font-bold">发送给：<?php echo htmlspecialchars($users[$message['to_uid']]['username'] ?? '已删除用户'); ?></span>
-                            <span class="text-secondary font-xs ml-sm"><?php echo date('Y-m-d', $message['dateline']); ?></span>
+                        <div class="thread-title">
+                            <span class="item-title" style="white-space:normal;">发送给：<?php echo htmlspecialchars($template_users[$message['to_uid']]['username'] ?? '已删除用户'); ?></span>
+                            <span class="badge badge-gray">已发送</span>
                         </div>
-                        <div class="item-meta"><?php echo htmlspecialchars(mb_substr($message['content'], 0, 100)) . (mb_strlen($message['content']) > 100 ? '...' : ''); ?></div>
+                        <div class="item-meta">
+                            <?php echo date('Y-m-d H:i', $message['dateline']); ?> ·
+                            <?php echo htmlspecialchars(mb_substr($message['content'], 0, 100)) . (mb_strlen($message['content']) > 100 ? '...' : ''); ?>
+                        </div>
                     </div>
                 </a>
             <?php endforeach; ?>
@@ -25,16 +32,8 @@
             </div>
         <?php endif; ?>
 
-        <?php if (!empty($pages) && $pages > 1): ?>
-            <div class="pagination-container">
-                <div class="pagination">
-                    <?php for ($i = 1; $i <= $pages; $i++): ?>
-                        <a href="index.php?c=pm&a=outbox&page=<?php echo $i; ?>" <?php echo $page == $i ? 'class="active"' : ''; ?>>
-                            <?php echo $i; ?>
-                        </a>
-                    <?php endfor; ?>
-                </div>
-            </div>
+        <?php if ($template_pages > 1): ?>
+                <?php echo \Lib\Helper::renderPagination($template_page, $template_pages, 'index.php?c=pm&a=outbox'); ?>
         <?php endif; ?>
     </div>
 </div>

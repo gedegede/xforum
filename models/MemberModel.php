@@ -3,17 +3,32 @@ declare(strict_types=1);
 
 namespace Models;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use Lib\Database;
 
 class MemberModel {
     const TABLE = 'next_member';
     const PRIMARY_KEY = 'uid';
 
+    private static $memoryCache = [];
+
     public static function get(int $uid): ?array {
         if (!$uid) {
             return null;
         }
-        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = :uid", ['uid' => $uid]);
+
+        if (isset(self::$memoryCache[$uid])) {
+            return self::$memoryCache[$uid];
+        }
+
+        $result = Database::fetch("SELECT * FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = :uid", ['uid' => $uid]);
+        if ($result) {
+            self::$memoryCache[$uid] = $result;
+        }
+        return $result;
     }
 
     public static function getByUsername(string $username): ?array {
@@ -86,11 +101,19 @@ class MemberModel {
 
     public static function update(int $uid, array $data): int {
         $data['uid'] = $uid;
-        return Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = :uid");
+        $result = Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = :uid");
+        if ($result && isset(self::$memoryCache[$uid])) {
+            unset(self::$memoryCache[$uid]);
+        }
+        return $result;
     }
 
     public static function delete(int $uid): int {
-        return Database::delete(self::TABLE, self::PRIMARY_KEY . " = :uid", ['uid' => $uid]);
+        $result = Database::delete(self::TABLE, self::PRIMARY_KEY . " = :uid", ['uid' => $uid]);
+        if ($result && isset(self::$memoryCache[$uid])) {
+            unset(self::$memoryCache[$uid]);
+        }
+        return $result;
     }
 
     public static function getJsonData(int $uid): array {
@@ -124,16 +147,99 @@ class MemberModel {
             return [];
         }
 
-        $placeholders = implode(',', array_fill(0, count($uids), '?'));
-        $sql = "SELECT uid, username, avatar FROM " . self::TABLE . " WHERE uid IN ($placeholders)";
-        $members = Database::fetchAll($sql, $uids);
-
         $result = [];
-        foreach ($members as $member) {
-            $result[$member['uid']] = $member;
+        $missedUids = [];
+
+        foreach ($uids as $uid) {
+            if (isset(self::$memoryCache[$uid])) {
+                $result[$uid] = self::$memoryCache[$uid];
+            } else {
+                $missedUids[] = $uid;
+            }
+        }
+
+        if (!empty($missedUids)) {
+            $placeholders = implode(',', array_fill(0, count($missedUids), '?'));
+            $sql = "SELECT uid, username, avatar FROM " . self::TABLE . " WHERE uid IN ($placeholders)";
+            $members = Database::fetchAll($sql, $missedUids);
+
+            foreach ($members as $member) {
+                self::$memoryCache[$member['uid']] = $member;
+                $result[$member['uid']] = $member;
+            }
         }
 
         return $result;
+    }
+    
+    public static function incrementThreadNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET thread_num = thread_num + 1 WHERE uid = :uid", ['uid' => $uid]);
+    }
+    
+    public static function decrementThreadNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET thread_num = CASE WHEN thread_num > 0 THEN thread_num - 1 ELSE 0 END WHERE uid = :uid", ['uid' => $uid]);
+    }
+    
+    public static function incrementReplyNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET reply_num = reply_num + 1 WHERE uid = :uid", ['uid' => $uid]);
+    }
+    
+    public static function decrementReplyNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET reply_num = CASE WHEN reply_num > 0 THEN reply_num - 1 ELSE 0 END WHERE uid = :uid", ['uid' => $uid]);
+    }
+    
+    public static function incrementFavNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET fav_num = fav_num + 1 WHERE uid = :uid", ['uid' => $uid]);
+    }
+    
+    public static function decrementFavNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET fav_num = CASE WHEN fav_num > 0 THEN fav_num - 1 ELSE 0 END WHERE uid = :uid", ['uid' => $uid]);
+    }
+    
+    public static function incrementOutboxNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET outbox_num = outbox_num + 1 WHERE uid = :uid", ['uid' => $uid]);
+    }
+    
+    public static function decrementOutboxNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET outbox_num = CASE WHEN outbox_num > 0 THEN outbox_num - 1 ELSE 0 END WHERE uid = :uid", ['uid' => $uid]);
+    }
+    
+    public static function incrementInboxNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET inbox_num = inbox_num + 1 WHERE uid = :uid", ['uid' => $uid]);
+    }
+    
+    public static function decrementInboxNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET inbox_num = CASE WHEN inbox_num > 0 THEN inbox_num - 1 ELSE 0 END WHERE uid = :uid", ['uid' => $uid]);
+    }
+    
+    public static function incrementNotifyNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET notify_num = notify_num + 1 WHERE uid = :uid", ['uid' => $uid]);
+    }
+    
+    public static function decrementNotifyNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET notify_num = CASE WHEN notify_num > 0 THEN notify_num - 1 ELSE 0 END WHERE uid = :uid", ['uid' => $uid]);
+    }
+    
+    public static function resetNotifyNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET notify_num = 0 WHERE uid = :uid", ['uid' => $uid]);
+    }
+
+    public static function resetInboxNum(int $uid): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET inbox_num = 0 WHERE uid = :uid", ['uid' => $uid]);
     }
 }
 ?>

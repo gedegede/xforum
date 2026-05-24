@@ -3,10 +3,17 @@ declare(strict_types=1);
 
 namespace Controllers;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
+use Lib\Database;
 use Lib\Template;
 use Lib\Session;
-use Lib\MarkdownHelper;
+use Lib\Response;
+use Lib\Request;
 use Lib\PostHelper;
+use Lib\Permission;
 use Models\ThreadModel;
 use Models\PostModel;
 use Models\ForumModel;
@@ -14,28 +21,42 @@ use Models\MemberModel;
 use Models\NotifyModel;
 use Models\FavModel;
 use Models\PmModel;
+use Models\SettingModel;
+use Models\UsergroupModel;
+use Models\DataModel;
+use Models\SessionModel;
+use Models\ModeratorModel;
 
 class ThreadController {
     public static function index(int $tid): void {
         Template::clear();
         if (!$tid) {
-            header('Location: index.php');
-            exit;
+            Response::redirect('index.php');
         }
 
         $thread = ThreadModel::get($tid);
         if (!$thread) {
-            header('Location: index.php');
-            exit;
+            Response::redirect('index.php');
         }
 
         $forum = ForumModel::get($thread['fid']);
 
-        ThreadModel::incrementView($tid);
+        $user = Session::getUser();
+        SessionModel::updateOnline(
+            $user['uid'] ?? 0,
+            $user['gid'] ?? 0,
+            $user['invisible'] ?? 0,
+            $thread['fid'],
+            $tid
+        );
 
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $isModerator = Permission::isModerator($thread['fid']);
+
+        $page = Request::getInt('page', 1);
         $posts = PostModel::getPosts($tid, $page);
-        $total = PostModel::getPostCount($tid);
+        $total = (int)($thread['reply_num'] ?? 0) + 1;
+        
+        ThreadModel::incrementView($tid);
         $pages = (int)ceil($total / 20);
 
         $uids = array_unique(array_merge([$thread['uid']], array_column($posts, 'uid')));
@@ -58,53 +79,87 @@ class ThreadController {
         Template::set('pages', $pages);
         Template::set('user', Session::getUser());
         Template::set('isFavorited', $isFavorited);
+        Template::set('isModerator', $isModerator);
         Template::display('thread/index');
     }
 
     public static function create(?int $fid = null): void {
         Template::clear();
-        if (!Session::isLoggedIn()) {
-            header('Location: index.php?c=auth&a=login');
-            exit;
-        }
+        Permission::requireLogin();
 
         if (!$fid) {
-            header('Location: index.php?c=forum&a=index&from=create');
-            exit;
+            Response::redirect('index.php?c=forum&a=index&from=create');
         }
 
         $forum = ForumModel::get($fid);
         if (!$forum) {
-            header('Location: index.php');
-            exit;
+            Response::redirect('index.php');
         }
 
         $error = '';
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $subject = trim($_POST['subject'] ?? '');
-            $message = trim($_POST['message'] ?? '');
+            $subject = Request::postString('subject');
+            $message = Request::postString('message');
 
             if (empty($subject) || empty($message)) {
                 $error = '请填写标题和内容';
             } else {
-                $tid = ThreadModel::create([
-                    'fid' => $fid,
-                    'uid' => Session::getUid(),
-                    'subject' => $subject,
-                ]);
+                $blockKeywords = SettingModel::getBlockKeywords();
+                foreach ($blockKeywords as $keyword) {
+                    if (stripos($subject, $keyword) !== false || stripos($message, $keyword) !== false) {
+                        $error = '内容包含禁止发布的关键词';
+                        break;
+                    }
+                }
 
-                $messageHtml = MarkdownHelper::parse($message);
-                PostModel::create([
-                    'fid' => $fid,
-                    'tid' => $tid,
-                    'uid' => Session::getUid(),
-                    'message' => $message,
-                    'message_html' => $messageHtml,
-                    'is_thread' => 1,
-                ]);
+                if (!$error) {
+                    $needApprove = UsergroupModel::threadNeedApprove((int)Session::getUser()['gid']);
+                    $approveKeywords = SettingModel::getApproveKeywords();
+                    foreach ($approveKeywords as $keyword) {
+                        if (stripos($subject, $keyword) !== false || stripos($message, $keyword) !== false) {
+                            $needApprove = true;
+                            break;
+                        }
+                    }
 
-                header("Location: index.php?c=thread&a=index&tid={$tid}");
-                exit;
+                    $sortOrder = $needApprove ? -1 : 0;
+
+                    $tid = ThreadModel::create([
+                        'fid' => $fid,
+                        'uid' => Session::getUid(),
+                        'subject' => $subject,
+                        'sort_order' => $sortOrder,
+                    ]);
+
+                    PostModel::create([
+                        'fid' => $fid,
+                        'tid' => $tid,
+                        'uid' => Session::getUid(),
+                        'message' => $message,
+                        'is_thread' => 1,
+                        'sort_order' => $sortOrder,
+                    ]);
+
+                    ForumModel::incrementTodayNum($fid);
+
+                    if ($needApprove) {
+                        DataModel::updateCount('pending_threads', 1);
+                        Template::set('title', '发布成功');
+                        Template::set('message', '主题已提交，等待审核');
+                        Template::set('user', Session::getUser());
+                        Template::display('thread/pending');
+                        exit;
+                    }
+
+                    MemberModel::incrementThreadNum(Session::getUid());
+                    ForumModel::incrementThreadNum($fid, $tid);
+                    
+                    // 发帖成功后更新在线状态
+                    $user = Session::getUser();
+                    SessionModel::updateOnline($user['uid'], $user['gid'], $user['invisible'], $fid, $tid);
+
+                    Response::redirect("index.php?c=thread&a=index&tid={$tid}");
+                }
             }
         }
 
@@ -117,38 +172,25 @@ class ThreadController {
 
     public static function reply(int $tid): void {
         Template::clear();
-        if (!Session::isLoggedIn()) {
-            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => '请先登录']);
-                exit;
-            }
-            header('Location: index.php?c=auth&a=login');
-            exit;
-        }
+        Permission::requireLogin();
 
         $thread = ThreadModel::get($tid);
         if (!$thread) {
-            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => '主题不存在']);
-                exit;
+            if (Response::isAjaxRequest()) {
+                Response::error('主题不存在');
             }
-            header('Location: index.php');
-            exit;
+            Response::redirect('index.php');
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $message = trim($_POST['message'] ?? '');
-            $quotePid = isset($_POST['quote_pid']) ? (int)$_POST['quote_pid'] : 0;
-            $quoteUid = isset($_POST['quote_uid']) ? (int)$_POST['quote_uid'] : 0;
+            $message = Request::postString('message');
+            $quotePid = Request::postInt('quote_pid');
+            $quoteUid = Request::postInt('quote_uid');
 
             if (empty($message)) {
                 $errorMsg = '请填写回复内容';
-                if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'message' => $errorMsg]);
-                    exit;
+                if (Response::isAjaxRequest()) {
+                    Response::error($errorMsg);
                 }
                 Template::set('title', '回复帖子');
                 Template::set('thread', $thread);
@@ -157,6 +199,33 @@ class ThreadController {
                 Template::display('thread/reply');
                 exit;
             }
+
+            $blockKeywords = SettingModel::getBlockKeywords();
+            foreach ($blockKeywords as $keyword) {
+                if (stripos($message, $keyword) !== false) {
+                    $errorMsg = '内容包含禁止发布的关键词';
+                    if (Response::isAjaxRequest()) {
+                        Response::error($errorMsg);
+                    }
+                    Template::set('title', '回复帖子');
+                    Template::set('thread', $thread);
+                    Template::set('error', $errorMsg);
+                    Template::set('user', Session::getUser());
+                    Template::display('thread/reply');
+                    exit;
+                }
+            }
+
+            $needApprove = UsergroupModel::postNeedApprove((int)Session::getUser()['gid']);
+            $approveKeywords = SettingModel::getApproveKeywords();
+            foreach ($approveKeywords as $keyword) {
+                if (stripos($message, $keyword) !== false) {
+                    $needApprove = true;
+                    break;
+                }
+            }
+
+            $sortOrder = $needApprove ? -1 : 0;
 
             $quoteFloor = 0;
             if ($quotePid > 0 && $quoteUid > 0) {
@@ -169,20 +238,26 @@ class ThreadController {
                 }
             }
 
-            $messageHtml = MarkdownHelper::parse($message);
             $pid = PostModel::create([
                 'fid' => $thread['fid'],
                 'tid' => $tid,
                 'uid' => Session::getUid(),
                 'message' => $message,
-                'message_html' => $messageHtml,
                 'is_thread' => 0,
                 'quote_pid' => $quotePid,
                 'quote_uid' => $quoteUid,
                 'quote_floor' => $quoteFloor,
+                'sort_order' => $sortOrder,
             ]);
 
-            ThreadModel::updateReply($tid, Session::getUid());
+            if (!$needApprove) {
+                ForumModel::incrementTodayNum($thread['fid']);
+                ThreadModel::updateReply($tid, Session::getUid());
+                MemberModel::incrementReplyNum(Session::getUid());
+                ForumModel::incrementReplyNum($thread['fid'], $tid);
+            } else {
+                DataModel::updateCount('pending_posts', 1);
+            }
 
             if ($thread['uid'] != Session::getUid()) {
                 NotifyModel::addNotify($thread['uid'], Session::getUid(), $tid, $pid, '回复了你的主题');
@@ -195,20 +270,27 @@ class ThreadController {
             self::handleAtMentions($message, $tid, $pid);
 
             PmModel::markAsRead($thread['uid']);
+            
+            // 回复成功后更新在线状态
+            $user = Session::getUser();
+            SessionModel::updateOnline($user['uid'], $user['gid'], $user['invisible'], $thread['fid'], $tid);
 
-            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+            if (Response::isAjaxRequest()) {
                 $currentUser = Session::getUser();
-                $postIndex = PostModel::getPostCount($tid);
+                $postIndex = (int)($thread['reply_num'] ?? 0) + 2;
                 
                 $newPost = [
                     'pid' => $pid,
+                    'fid' => $thread['fid'],
+                    'tid' => $tid,
                     'uid' => Session::getUid(),
                     'message' => $message,
-                    'message_html' => $messageHtml,
                     'dateline' => time(),
+                    'is_thread' => 0,
                     'quote_pid' => $quotePid,
                     'quote_uid' => $quoteUid,
                     'quote_floor' => $quoteFloor,
+                    'sort_order' => $sortOrder,
                 ];
                 
                 $users = [
@@ -222,20 +304,18 @@ class ThreadController {
                     }
                 }
                 
-                $html = PostHelper::renderPost($newPost, $users, $postIndex, false, $currentUser);
+                $isMod = Permission::isModerator($thread['fid']);
+                $html = PostHelper::renderPost($newPost, $users, $postIndex, false, $currentUser, $isMod);
                 
-                header('Content-Type: application/json');
-                echo json_encode([
+                Response::json([
                     'success' => true,
                     'message' => '回复成功',
                     'html' => $html,
                     'postIndex' => $postIndex,
                 ]);
-                exit;
             }
 
-            header("Location: index.php?c=thread&a=index&tid={$tid}");
-            exit;
+            Response::redirect("index.php?c=thread&a=index&tid={$tid}");
         }
 
         Template::set('title', '回复帖子');
@@ -259,15 +339,7 @@ class ThreadController {
     }
 
     public static function favorite(int $tid): void {
-        if (!Session::isLoggedIn()) {
-            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => '请先登录']);
-                exit;
-            }
-            header('Location: index.php?c=auth&a=login');
-            exit;
-        }
+        Permission::requireLogin();
 
         $isFavorited = FavModel::isFavorite(Session::getUid(), $tid);
         if ($isFavorited) {
@@ -276,49 +348,42 @@ class ThreadController {
             FavModel::addFavorite(Session::getUid(), $tid);
         }
 
-        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-            header('Content-Type: application/json');
-            echo json_encode(['success' => true, 'favorited' => !$isFavorited]);
-            exit;
+        if (Response::isAjaxRequest()) {
+            Response::json([
+                'success' => true,
+                'favorited' => !$isFavorited,
+            ]);
         }
 
-        header("Location: index.php?c=thread&a=index&tid={$tid}");
-        exit;
+        Response::redirect("index.php?c=thread&a=index&tid={$tid}");
     }
 
     public static function edit(int $pid): void {
         Template::clear();
-        if (!Session::isLoggedIn()) {
-            header('Location: index.php?c=auth&a=login');
-            exit;
-        }
+        Permission::requireLogin();
 
         $post = PostModel::get($pid);
         if (!$post) {
-            header('Location: index.php');
-            exit;
+            Response::redirect('index.php');
         }
 
-        $user = Session::getUser();
-        if ($post['uid'] != $user['uid'] && $user['gid'] != 1) {
-            header('Location: index.php?c=thread&a=index&tid=' . $post['tid']);
-            exit;
+        if (!Permission::canEditPost($post)) {
+            Response::redirect('index.php?c=thread&a=index&tid=' . $post['tid']);
         }
 
         $thread = ThreadModel::get($post['tid']);
         $forum = ForumModel::get($post['fid']);
+        $user = Session::getUser();
 
         $error = '';
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $message = trim($_POST['message'] ?? '');
+            $message = Request::postString('message');
 
             if (empty($message)) {
                 $error = '请填写内容';
             } else {
-                $messageHtml = MarkdownHelper::parse($message);
-                PostModel::update($pid, ['message' => $message, 'message_html' => $messageHtml]);
-                header("Location: index.php?c=thread&a=index&tid={$post['tid']}");
-                exit;
+                PostModel::update($pid, ['message' => $message]);
+                Response::redirect("index.php?c=thread&a=index&tid={$post['tid']}");
             }
         }
 
@@ -332,36 +397,21 @@ class ThreadController {
     }
 
     public static function deletePost(int $pid): void {
-        if (!Session::isLoggedIn()) {
-            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => '请先登录']);
-                exit;
-            }
-            header('Location: index.php?c=auth&a=login');
-            exit;
-        }
+        Permission::requireLogin();
 
         $post = PostModel::get($pid);
         if (!$post) {
-            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => '帖子不存在']);
-                exit;
+            if (Response::isAjaxRequest()) {
+                Response::error('帖子不存在');
             }
-            header('Location: index.php');
-            exit;
+            Response::redirect('index.php');
         }
 
-        $user = Session::getUser();
-        if ($post['uid'] != $user['uid'] && $user['gid'] != 1) {
-            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => '没有权限删除']);
-                exit;
+        if (!Permission::canDeletePost($post)) {
+            if (Response::isAjaxRequest()) {
+                Response::error('没有权限删除');
             }
-            header('Location: index.php?c=thread&a=index&tid=' . $post['tid']);
-            exit;
+            Response::redirect('index.php?c=thread&a=index&tid=' . $post['tid']);
         }
 
         $tid = $post['tid'];
@@ -370,23 +420,105 @@ class ThreadController {
         if ($post['is_thread'] == 1) {
             PostModel::deleteByTid($tid);
             ThreadModel::delete($tid);
-            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => true, 'message' => '主题已删除', 'redirect' => 'index.php?c=forum&a=index&fid=' . $post['fid']]);
-                exit;
+            MemberModel::decrementThreadNum($post['uid']);
+            ForumModel::decrementThreadNum($post['fid']);
+            if (Response::isAjaxRequest()) {
+                Response::json(['success' => true, 'message' => '主题已删除', 'redirect' => 'index.php?c=forum&a=index&fid=' . $post['fid']]);
             }
-            header('Location: index.php?c=forum&a=index&fid=' . $post['fid']);
-            exit;
+            Response::redirect('index.php?c=forum&a=index&fid=' . $post['fid']);
         }
 
-        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-            header('Content-Type: application/json');
-            echo json_encode(['success' => true, 'message' => '删除成功']);
-            exit;
+        MemberModel::decrementReplyNum($post['uid']);
+        ForumModel::decrementReplyNum($post['fid']);
+
+        if (Response::isAjaxRequest()) {
+            Response::json(['success' => true, 'message' => '删除成功']);
         }
 
-        header("Location: index.php?c=thread&a=index&tid={$tid}");
-        exit;
+        Response::redirect("index.php?c=thread&a=index&tid={$tid}");
+    }
+
+    public static function report(int $pid): void {
+        Permission::requireLogin();
+
+        $post = PostModel::get($pid);
+        if (!$post) {
+            Response::error('帖子不存在');
+        }
+
+        $reason = Request::postString('reason');
+        if (empty($reason)) {
+            Response::error('请填写举报理由');
+        }
+
+        $reportFid = SettingModel::getReportForumFid();
+        if ($reportFid <= 0) {
+            Response::error('未设置举报版块');
+        }
+
+        $thread = ThreadModel::get($post['tid']);
+        $reportSubject = "[举报] " . ($thread['subject'] ?? '未知主题');
+        $reportMessage = "举报链接: index.php?c=thread&a=index&tid={$post['tid']}#pid{$pid}\n\n举报理由: {$reason}\n\n帖子作者ID: {$post['uid']}\n帖子ID: {$pid}";
+
+        $tid = ThreadModel::create([
+            'fid' => $reportFid,
+            'uid' => Session::getUid(),
+            'subject' => $reportSubject,
+        ]);
+
+        PostModel::create([
+            'fid' => $reportFid,
+            'tid' => $tid,
+            'uid' => Session::getUid(),
+            'message' => $reportMessage,
+            'is_thread' => 1,
+        ]);
+
+        DataModel::updateCount('pending_reports', 1);
+
+        Response::json(['success' => true, 'message' => '举报已提交']);
+    }
+
+    public static function approve(int $tid): void {
+        $thread = ThreadModel::get($tid);
+        if (!$thread || !Permission::canManageForum($thread['fid'])) {
+            Response::redirect('index.php');
+        }
+
+        ThreadModel::update($tid, ['sort_order' => 0]);
+        PostModel::approveByTid($tid);
+
+        DataModel::updateCount('pending_threads', -1);
+
+        if ($thread) {
+            MemberModel::incrementThreadNum($thread['uid']);
+            ForumModel::incrementThreadNum($thread['fid'], $tid);
+            ForumModel::incrementTodayNum($thread['fid']);
+        }
+
+        Response::redirect("index.php?c=thread&a=index&tid={$tid}");
+    }
+
+    public static function approvePost(int $pid): void {
+        $post = PostModel::get($pid);
+        if (!$post || !Permission::canManageForum($post['fid'])) {
+            Response::redirect('index.php');
+        }
+
+        if ($post) {
+            PostModel::update($pid, ['sort_order' => 0]);
+            if ($post['is_thread'] == 0) {
+                DataModel::updateCount('pending_posts', -1);
+                $thread = ThreadModel::get($post['tid']);
+                if ($thread) {
+                    MemberModel::incrementReplyNum($post['uid']);
+                    ForumModel::incrementReplyNum($thread['fid'], $post['tid']);
+                    ForumModel::incrementTodayNum($thread['fid']);
+                }
+            }
+        }
+
+        Response::redirect("index.php?c=thread&a=index&tid={$post['tid']}");
     }
 }
 ?>

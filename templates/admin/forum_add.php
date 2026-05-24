@@ -5,8 +5,8 @@
         <h2>添加版块</h2>
     </div>
     <div class="card-body padded">
-        <?php if ($error): ?>
-            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+        <?php if ($template_error): ?>
+            <div class="error"><?php echo htmlspecialchars($template_error); ?></div>
         <?php endif; ?>
 
         <form method="post">
@@ -18,7 +18,7 @@
                 <label>上级版块</label>
                 <select name="up_fid">
                     <option value="0">无（顶级版块）</option>
-                    <?php foreach ($parentForums as $forum): ?>
+                    <?php foreach ($template_parentForums as $forum): ?>
                         <option value="<?php echo $forum['fid']; ?>">
                             <?php echo str_repeat('├─ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?>
                         </option>

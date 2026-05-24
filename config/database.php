@@ -1,4 +1,8 @@
 <?php
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 return [
     'default' => 'sqlite',
     'connections' => [

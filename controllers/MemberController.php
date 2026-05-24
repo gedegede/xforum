@@ -3,39 +3,47 @@ declare(strict_types=1);
 
 namespace Controllers;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use Lib\Session;
 use Lib\Template;
+use Lib\Response;
+use Lib\Request;
 use Models\MemberModel;
 use Models\ThreadModel;
 use Models\PostModel;
 use Models\FavModel;
+use Models\SessionModel;
+use Models\UsergroupModel;
+use Lib\Permission;
 
 class MemberController {
     public static function profile(): void {
         Template::clear();
-        $uid = isset($_GET['uid']) ? (int)$_GET['uid'] : 0;
+        $uid = Request::getInt('uid');
         if (!$uid) {
-            header('Location: index.php');
-            exit;
+            Response::redirect('index.php');
         }
         $member = MemberModel::get($uid);
 
         if (!$member) {
-            header('Location: index.php');
-            exit;
+            Response::redirect('index.php');
         }
 
-        $type = isset($_GET['type']) ? $_GET['type'] : 'threads';
+        $type = Request::getString('type', 'threads');
 
         $threads = [];
         $posts = [];
         $favorites = [];
         $total = 0;
 
+        $page = Request::getInt('page', 1);
         switch ($type) {
             case 'replies':
-                $posts = PostModel::getUserPosts($uid, isset($_GET['page']) ? (int)$_GET['page'] : 1);
-                $total = PostModel::getUserPostCount($uid);
+                $posts = PostModel::getUserPosts($uid, $page);
+                $total = (int)($member['reply_num'] ?? 0);
                 if (!empty($posts)) {
                     $tids = array_unique(array_column($posts, 'tid'));
                     $threads = ThreadModel::getThreadsByTids($tids);
@@ -43,19 +51,18 @@ class MemberController {
                 break;
             case 'favorites':
                 if ($uid != Session::getUid()) {
-                    header("Location: index.php?c=member&a=profile&uid={$uid}");
-                    exit;
+                    Response::redirect("index.php?c=member&a=profile&uid={$uid}");
                 }
-                $favorites = FavModel::getUserFavorites($uid, isset($_GET['page']) ? (int)$_GET['page'] : 1);
-                $total = FavModel::getUserFavoriteCount($uid);
+                $favorites = FavModel::getUserFavorites($uid, $page);
+                $total = (int)($member['fav_num'] ?? 0);
                 if (!empty($favorites)) {
                     $tids = array_column($favorites, 'tid');
                     $threads = ThreadModel::getThreadsByTids($tids);
                 }
                 break;
             default:
-                $threads = ThreadModel::getUserThreads($uid, isset($_GET['page']) ? (int)$_GET['page'] : 1);
-                $total = ThreadModel::getUserThreadCount($uid);
+                $threads = ThreadModel::getUserThreads($uid, $page);
+                $total = (int)($member['thread_num'] ?? 0);
                 break;
         }
 
@@ -68,7 +75,7 @@ class MemberController {
         Template::set('threads', $threads);
         Template::set('posts', $posts);
         Template::set('favorites', $favorites);
-        Template::set('page', isset($_GET['page']) ? (int)$_GET['page'] : 1);
+        Template::set('page', $page);
         Template::set('pages', (int)ceil($total / 20));
         Template::set('user', Session::getUser());
         Template::display('member/profile');
@@ -76,10 +83,7 @@ class MemberController {
 
     public static function settings(): void {
         Template::clear();
-        if (!Session::isLoggedIn()) {
-            header('Location: index.php?c=auth&a=login');
-            exit;
-        }
+        Permission::requireLogin();
 
         $member = MemberModel::get(Session::getUid());
 
@@ -87,11 +91,11 @@ class MemberController {
         $success = '';
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $action = $_POST['action'] ?? '';
+            $action = Request::postRaw('action');
 
             if ($action == 'profile') {
-                $username = trim($_POST['username'] ?? '');
-                $email = trim($_POST['email'] ?? '');
+                $username = Request::postString('username');
+                $email = Request::postString('email');
 
                 if (empty($username)) {
                     $error = '用户名不能为空';
@@ -109,9 +113,9 @@ class MemberController {
                     $member = MemberModel::get(Session::getUid());
                 }
             } elseif ($action == 'password') {
-                $oldPassword = $_POST['old_password'] ?? '';
-                $newPassword = $_POST['new_password'] ?? '';
-                $confirmPassword = $_POST['confirm_password'] ?? '';
+                $oldPassword = Request::postRaw('old_password');
+                $newPassword = Request::postRaw('new_password');
+                $confirmPassword = Request::postRaw('confirm_password');
 
                 if (!MemberModel::checkPassword($member['username'], $oldPassword)) {
                     $error = '原密码不正确';
@@ -126,7 +130,7 @@ class MemberController {
                     $success = '密码修改成功';
                 }
             } elseif ($action == 'theme') {
-                $theme = $_POST['theme'] ?? 'light';
+                $theme = Request::postRaw('theme', 'light');
                 if (!in_array($theme, ['light', 'dark'])) {
                     $theme = 'light';
                 }
@@ -142,6 +146,47 @@ class MemberController {
         Template::set('success', $success);
         Template::set('user', Session::getUser());
         Template::display('member/settings');
+    }
+
+    public static function online(): void {
+        Template::clear();
+        
+        $onlineUsers = SessionModel::getOnlineUsers();
+        
+        $uids = array_column($onlineUsers, 'uid');
+        $uids = array_filter($uids, function($uid) { return $uid > 0; });
+        $members = MemberModel::getMembersByUids($uids);
+        
+        $groups = UsergroupModel::getAll();
+        $groupMap = [];
+        foreach ($groups as $group) {
+            $groupMap[$group['gid']] = $group['title'];
+        }
+        
+        $threads = [];
+        $tids = array_unique(array_column($onlineUsers, 'tid'));
+        $tids = array_filter($tids, function($tid) { return $tid > 0; });
+        if (!empty($tids)) {
+            $threads = ThreadModel::getThreadsByTids($tids);
+        }
+        
+        foreach ($onlineUsers as &$online) {
+            if ($online['uid'] > 0 && isset($members[$online['uid']])) {
+                $online['username'] = $members[$online['uid']]['username'];
+                $online['group_name'] = $groupMap[$online['gid']] ?? '未知';
+            } else {
+                $online['username'] = '游客';
+                $online['group_name'] = '游客';
+            }
+            if ($online['tid'] > 0 && isset($threads[$online['tid']])) {
+                $online['thread_subject'] = $threads[$online['tid']]['subject'];
+            }
+        }
+        
+        Template::set('title', '在线用户');
+        Template::set('onlineUsers', $onlineUsers);
+        Template::set('user', Session::getUser());
+        Template::display('member/online');
     }
 }
 ?>

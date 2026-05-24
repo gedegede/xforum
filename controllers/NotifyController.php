@@ -3,21 +3,25 @@ declare(strict_types=1);
 
 namespace Controllers;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use Lib\Session;
 use Lib\Template;
+use Lib\Response;
+use Lib\Request;
 use Models\NotifyModel;
 use Models\MemberModel;
 use Models\ThreadModel;
+use Lib\Permission;
 
 class NotifyController {
     public static function index(): void {
         Template::clear();
-        if (!Session::isLoggedIn()) {
-            header('Location: index.php?c=auth&a=login');
-            exit;
-        }
+        Permission::requireLogin();
 
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $page = Request::getInt('page', 1);
         $notifies = NotifyModel::getNotifies(Session::getUid(), $page);
         $total = NotifyModel::getNotifyCount(Session::getUid());
 

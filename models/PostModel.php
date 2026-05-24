@@ -3,7 +3,12 @@ declare(strict_types=1);
 
 namespace Models;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use Lib\Database;
+use Models\ThreadModel;
 
 class PostModel {
     const TABLE = 'next_post';
@@ -14,13 +19,21 @@ class PostModel {
         return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid ASC LIMIT 20 OFFSET :offset", ['tid' => $tid, 'offset' => $offset]);
     }
 
+    public static function getPendingApproveCount(): int {
+        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE sort_order = -1 AND is_thread = 0");
+        return (int)($result['count'] ?? 0);
+    }
+
     public static function get(int $pid): ?array {
         return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = :pid", ['pid' => $pid]);
     }
 
     public static function getPostCount(int $tid): int {
-        $result = Database::fetch("SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE tid = :tid", ['tid' => $tid]);
-        return (int)($result['count'] ?? 0);
+        $thread = ThreadModel::get($tid);
+        if (!$thread) {
+            return 0;
+        }
+        return (int)($thread['reply_num'] ?? 0) + 1;
     }
 
     public static function getUserPosts(int $uid, int $page = 1): array {
@@ -41,6 +54,10 @@ class PostModel {
 
     public static function deleteByTid(int $tid): void {
         Database::query("DELETE FROM " . self::TABLE . " WHERE tid = :tid", ['tid' => $tid]);
+    }
+
+    public static function approveByTid(int $tid): void {
+        Database::update(self::TABLE, ['sort_order' => 0], 'tid = :tid', ['tid' => $tid]);
     }
 
     public static function getLastPostByTid(int $tid): ?array {

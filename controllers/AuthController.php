@@ -3,30 +3,41 @@ declare(strict_types=1);
 
 namespace Controllers;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use Lib\Session;
 use Lib\Template;
+use Lib\Response;
+use Lib\Request;
 use Models\MemberModel;
 use Models\UsergroupModel;
+use Models\SessionModel;
+use Lib\Permission;
 
 class AuthController {
     public static function login(): void {
         Template::clear();
-        if (Session::isLoggedIn()) {
-            header('Location: index.php');
-            exit;
+        if (Permission::isLoggedIn()) {
+            Response::redirect('index.php');
         }
 
         $error = '';
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $username = $_POST['username'] ?? '';
-            $password = $_POST['password'] ?? '';
+            $username = Request::postRaw('username');
+            $password = Request::postRaw('password');
 
             if (MemberModel::checkPassword($username, $password)) {
                 $member = MemberModel::getByUsername($username);
+                Session::regenerateId();
                 Session::set('uid', $member['uid']);
                 Session::set('username', $member['username']);
-                header('Location: index.php');
-                exit;
+                
+                // 登录成功后更新在线状态
+                SessionModel::updateOnline($member['uid'], $member['gid'], 0);
+                
+                Response::redirect('index.php');
             } else {
                 $error = '用户名或密码错误';
             }
@@ -39,17 +50,16 @@ class AuthController {
 
     public static function register(): void {
         Template::clear();
-        if (Session::isLoggedIn()) {
-            header('Location: index.php');
-            exit;
+        if (Permission::isLoggedIn()) {
+            Response::redirect('index.php');
         }
 
         $error = '';
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $username = trim($_POST['username'] ?? '');
-            $email = trim($_POST['email'] ?? '');
-            $password = $_POST['password'] ?? '';
-            $confirmPassword = $_POST['confirm_password'] ?? '';
+            $username = Request::postString('username');
+            $email = Request::postString('email');
+            $password = Request::postRaw('password');
+            $confirmPassword = Request::postRaw('confirm_password');
 
             if (empty($username) || empty($email) || empty($password)) {
                 $error = '请填写所有必填项';
@@ -73,8 +83,7 @@ class AuthController {
                         'gid' => $gid,
                     ]);
 
-                    header('Location: index.php?c=auth&a=login');
-                    exit;
+                    Response::redirect('index.php?c=auth&a=login');
                 }
             }
         }
@@ -86,8 +95,7 @@ class AuthController {
 
     public static function logout(): void {
         Session::clear();
-        header('Location: index.php');
-        exit;
+        Response::redirect('index.php');
     }
 }
 ?>

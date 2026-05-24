@@ -3,14 +3,20 @@ declare(strict_types=1);
 
 namespace Models;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use Lib\Database;
+use Models\MemberModel;
 
 class PmModel {
     const TABLE = 'next_pm';
     const PRIMARY_KEY = 'pmid';
 
     public static function send(int $uid, int $toUid, string $content): int {
-        Database::query("UPDATE next_member SET inbox_num = inbox_num + 1 WHERE uid = :uid", ['uid' => $toUid]);
+        MemberModel::incrementInboxNum($toUid);
+        MemberModel::incrementOutboxNum($uid);
         return Database::insert(self::TABLE, [
             'uid' => $uid,
             'to_uid' => $toUid,
@@ -47,7 +53,7 @@ class PmModel {
 
     public static function markAsRead(int $uid): void {
         Database::query("UPDATE " . self::TABLE . " SET is_read = 1 WHERE to_uid = :uid AND is_read = 0", ['uid' => $uid]);
-        Database::query("UPDATE next_member SET inbox_num = 0 WHERE uid = :uid", ['uid' => $uid]);
+        MemberModel::resetInboxNum($uid);
     }
 
     public static function markSingleAsRead(int $pmid): void {

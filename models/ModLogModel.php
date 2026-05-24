@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Models;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use Lib\Database;
 
 class ModLogModel {
@@ -13,6 +17,7 @@ class ModLogModel {
         Database::insert(self::TABLE, [
             'uid' => $uid,
             'message' => $message,
+            'post_message' => '',
             'dateline' => time(),
         ]);
     }

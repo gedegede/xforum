@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace Lib;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use Models\MemberModel;
 
 class Session {
@@ -15,7 +19,16 @@ class Session {
         
         $config = require ROOT_PATH . '/config/app.php';
         session_name($config['cookie_prefix'] . 'sid');
-        session_set_cookie_params($config['cookie_expire'], '/');
+        
+        $isHttps = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        session_set_cookie_params([
+            'lifetime' => $config['cookie_expire'],
+            'path' => '/',
+            'domain' => '',
+            'secure' => $isHttps,
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
         
         $sessionCookieName = $config['cookie_prefix'] . 'sid';
         
@@ -63,6 +76,13 @@ class Session {
 
     public static function getUid(): int {
         return (int)self::get('uid', 0);
+    }
+
+    public static function regenerateId(): void {
+        self::init(true);
+        if (self::$initialized) {
+            session_regenerate_id(true);
+        }
     }
 
     public static function getUser(): ?array {

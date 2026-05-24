@@ -3,7 +3,12 @@ declare(strict_types=1);
 
 namespace Models;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use Lib\Database;
+use Models\MemberModel;
 
 class NotifyModel {
     const TABLE = 'next_notify';
@@ -26,7 +31,7 @@ class NotifyModel {
 
     public static function markAsRead(int $uid): void {
         Database::query("UPDATE " . self::TABLE . " SET status = 1 WHERE uid = :uid AND status = 0", ['uid' => $uid]);
-        Database::query("UPDATE next_member SET notify_num = 0 WHERE uid = :uid", ['uid' => $uid]);
+        MemberModel::resetNotifyNum($uid);
     }
 
     public static function addNotify(int $uid, int $fromUid, int $tid, int $pid, string $message): int {
@@ -38,7 +43,7 @@ class NotifyModel {
             return $existing['did'];
         }
 
-        Database::query("UPDATE next_member SET notify_num = notify_num + 1 WHERE uid = :uid", ['uid' => $uid]);
+        MemberModel::incrementNotifyNum($uid);
         return Database::insert(self::TABLE, [
             'uid' => $uid,
             'from_uid' => $fromUid,
@@ -51,7 +56,7 @@ class NotifyModel {
     }
 
     public static function addPMNotify(int $uid, int $fromUid): int {
-        Database::query("UPDATE next_member SET notify_num = notify_num + 1 WHERE uid = :uid", ['uid' => $uid]);
+        MemberModel::incrementNotifyNum($uid);
         return Database::insert(self::TABLE, [
             'uid' => $uid,
             'from_uid' => $fromUid,

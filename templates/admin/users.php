@@ -9,11 +9,11 @@
             <input type="hidden" name="c" value="admin">
             <input type="hidden" name="a" value="users">
             <div class="flex gap-sm flex-wrap">
-                <input type="text" name="keyword" placeholder="搜索用户名或邮箱..." value="<?php echo htmlspecialchars($keyword); ?>">
+                <input type="text" name="keyword" placeholder="搜索用户名或邮箱..." value="<?php echo htmlspecialchars($template_keyword); ?>">
                 <select name="gid">
                     <option value="0">全部用户组</option>
-                    <?php foreach ($groups as $group): ?>
-                        <option value="<?php echo $group['gid']; ?>" <?php echo $gid == $group['gid'] ? 'selected' : ''; ?>>
+                    <?php foreach ($template_groups as $group): ?>
+                        <option value="<?php echo $group['gid']; ?>" <?php echo $template_gid == $group['gid'] ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($group['title']); ?>
                         </option>
                     <?php endforeach; ?>
@@ -38,13 +38,13 @@
                 </tr>
             </thead>
             <tbody>
-                <?php if (!empty($users)): ?>
-                <?php foreach ($users as $user): ?>
+                <?php if (!empty($template_users)): ?>
+                <?php foreach ($template_users as $user): ?>
                     <tr>
                         <td><?php echo $user['uid']; ?></td>
                         <td><?php echo htmlspecialchars($user['username']); ?></td>
                         <td><?php echo htmlspecialchars($user['email']); ?></td>
-                        <td><?php echo htmlspecialchars($groups[$user['gid']]['title'] ?? $user['gid']); ?></td>
+                        <td><?php echo htmlspecialchars($template_groups[$user['gid']]['title'] ?? $user['gid']); ?></td>
                         <td><span class="badge <?php echo $user['status'] ? 'badge-green' : 'badge-red'; ?>"><?php echo $user['status'] ? '正常' : '禁用'; ?></span></td>
                         <td><?php echo date('Y-m-d', $user['reg_date']); ?></td>
                         <td class="nowrap"><?php echo $user['thread_num'] ?? 0; ?></td>
@@ -64,14 +64,8 @@
         </table>
         </div>
 
-        <?php if ($pages > 1): ?>
-            <div class="pagination mt-lg">
-                <?php for ($i = 1; $i <= $pages; $i++): ?>
-                    <a href="index.php?c=admin&a=users&keyword=<?php echo urlencode($keyword); ?>&gid=<?php echo $gid; ?>&page=<?php echo $i; ?>" class="<?php echo $page == $i ? 'active' : ''; ?>">
-                        <?php echo $i; ?>
-                    </a>
-                <?php endfor; ?>
-            </div>
+        <?php if ($template_pages > 1): ?>
+                <?php echo \Lib\Helper::renderPagination($template_page, $template_pages, 'index.php?c=admin&a=users&keyword=' . urlencode($template_keyword) . '&gid=' . $template_gid); ?>
         <?php endif; ?>
     </div>
 </div>
@@ -100,7 +94,7 @@
                 <div class="form-group">
                     <label>用户组</label>
                     <select name="gid" id="edit-gid">
-                        <?php foreach ($groups as $group): ?>
+                        <?php foreach ($template_groups as $group): ?>
                             <option value="<?php echo $group['gid']; ?>"><?php echo htmlspecialchars($group['title']); ?></option>
                         <?php endforeach; ?>
                     </select>

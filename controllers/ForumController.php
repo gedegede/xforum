@@ -3,18 +3,25 @@ declare(strict_types=1);
 
 namespace Controllers;
 
+if (!defined('ROOT_PATH')) {
+    exit('Access denied');
+}
+
 use Lib\Session;
 use Lib\Template;
+use Lib\Response;
+use Lib\Request;
 use Models\ForumModel;
 use Models\ThreadModel;
 use Models\MemberModel;
+use Models\ModeratorModel;
 
 class ForumController {
     public static function index(int $fid = 0): void {
         Template::clear();
         if (!$fid) {
             $forums = ForumModel::getForumsFlat();
-            $from = isset($_GET['from']) ? $_GET['from'] : '';
+            $from = Request::getString('from');
 
             Template::set('title', $from === 'create' ? '选择版块' : '论坛导航');
             Template::set('forums', $forums);
@@ -26,8 +33,7 @@ class ForumController {
 
         $forum = ForumModel::get($fid);
         if (!$forum) {
-            header('Location: index.php?c=forum&a=index');
-            exit;
+            Response::redirect('index.php?c=forum&a=index');
         }
 
         $parentForum = null;
@@ -35,16 +41,16 @@ class ForumController {
             $parentForum = ForumModel::get($forum['up_fid']);
         }
 
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        $order = isset($_GET['order']) ? $_GET['order'] : 'reply_time';
+        $page = Request::getInt('page', 1);
+        $order = Request::getString('order', 'reply_time');
         $allowedOrders = ['reply_time', 'dateline', 'reply_num', 'view_num'];
         if (!in_array($order, $allowedOrders)) {
             $order = 'reply_time';
         }
-        $keyword = isset($_GET['keyword']) ? trim($_GET['keyword']) : '';
+        $keyword = Request::getString('keyword');
         
         $threads = ThreadModel::getThreads($fid, $page, $order, $keyword);
-        $total = ThreadModel::getThreadCount($fid, $keyword);
+        $total = empty($keyword) ? (int)($forum['thread_num'] ?? 0) : ThreadModel::getThreadCount($fid, $keyword);
         $pages = (int)ceil($total / 20);
 
         $users = [];
@@ -60,11 +66,23 @@ class ForumController {
             ['value' => 'view_num', 'label' => '查看数']
         ];
 
+        $moderators = ModeratorModel::getByFid($fid);
+        usort($moderators, function($a, $b) {
+            return $a['sort_order'] - $b['sort_order'];
+        });
+        $modUsers = [];
+        if (!empty($moderators)) {
+            $modUids = array_unique(array_column($moderators, 'uid'));
+            $modUsers = MemberModel::getMembersByUids($modUids);
+        }
+
         Template::set('title', $forum['name']);
         Template::set('forum', $forum);
         Template::set('parentForum', $parentForum);
         Template::set('threads', $threads);
         Template::set('users', $users);
+        Template::set('moderators', $moderators);
+        Template::set('modUsers', $modUsers);
         Template::set('page', $page);
         Template::set('pages', $pages);
         Template::set('order', $order);

@@ -11,17 +11,17 @@
             <div class="flex gap-sm flex-wrap">
                 <select name="fid">
                     <option value="0">全部版块</option>
-                    <?php foreach ($forums as $forum): ?>
-                        <option value="<?php echo $forum['fid']; ?>" <?php echo $fid == $forum['fid'] ? 'selected' : ''; ?>>
+                    <?php foreach ($template_forums as $forum): ?>
+                        <option value="<?php echo $forum['fid']; ?>" <?php echo $template_fid == $forum['fid'] ? 'selected' : ''; ?>>
                             <?php echo str_repeat('├─ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
                 <select name="search_type">
-                    <option value="title" <?php echo (!isset($searchType) || $searchType == 'title') ? 'selected' : ''; ?>>标题</option>
-                    <option value="username" <?php echo isset($searchType) && $searchType == 'username' ? 'selected' : ''; ?>>用户名</option>
+                    <option value="title" <?php echo (!isset($template_searchType) || $template_searchType == 'title') ? 'selected' : ''; ?>>标题</option>
+                    <option value="username" <?php echo isset($template_searchType) && $template_searchType == 'username' ? 'selected' : ''; ?>>用户名</option>
                 </select>
-                <input type="text" name="keyword" placeholder="输入关键词" value="<?php echo htmlspecialchars($keyword); ?>">
+                <input type="text" name="keyword" placeholder="输入关键词" value="<?php echo htmlspecialchars($template_keyword); ?>">
                 <button type="submit" class="btn btn-primary">搜索</button>
             </div>
         </form>
@@ -37,7 +37,7 @@
                         <option value="move">批量移动</option>
                     </select>
                     <select name="fid" id="move-fid" class="hide">
-                        <?php foreach ($forums as $forum): ?>
+                        <?php foreach ($template_forums as $forum): ?>
                             <option value="<?php echo $forum['fid']; ?>"><?php echo str_repeat('├─ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -47,7 +47,7 @@
 
             <?php 
 $forumNames = [];
-foreach ($forums as $forum) {
+foreach ($template_forums as $forum) {
     $forumNames[$forum['fid']] = $forum['name'];
 }
 ?>
@@ -67,14 +67,14 @@ foreach ($forums as $forum) {
                     </tr>
                 </thead>
                 <tbody>
-                <?php if (!empty($threads)): ?>
-                <?php foreach ($threads as $thread): ?>
+                <?php if (!empty($template_threads)): ?>
+                <?php foreach ($template_threads as $thread): ?>
                     <tr>
                             <td><input type="checkbox" name="tids[]" value="<?php echo $thread['tid']; ?>"></td>
                             <td><?php echo $thread['tid']; ?></td>
                             <td><a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" target="_blank"><?php echo htmlspecialchars($thread['subject']); ?></a></td>
                             <td class="nowrap"><?php echo htmlspecialchars($forumNames[$thread['fid']] ?? $thread['fid']); ?></td>
-                            <td class="nowrap"><?php echo htmlspecialchars($users[$thread['uid']]['username'] ?? '已删除用户'); ?></td>
+                            <td class="nowrap"><?php echo htmlspecialchars($template_users[$thread['uid']]['username'] ?? '已删除用户'); ?></td>
                             <td class="nowrap"><?php echo $thread['reply_num']; ?>/<?php echo $thread['view_num']; ?></td>
                             <td class="nowrap"><?php echo date('Y-m-d H:i', $thread['dateline']); ?></td>
                             <td class="nowrap">
@@ -91,14 +91,8 @@ foreach ($forums as $forum) {
             </table>
             </div>
 
-            <?php if ($pages > 1): ?>
-                <div class="pagination mt-lg">
-                    <?php for ($i = 1; $i <= $pages; $i++): ?>
-                        <a href="index.php?c=admin&a=threads&fid=<?php echo $fid; ?>&keyword=<?php echo urlencode($keyword); ?>&page=<?php echo $i; ?>" class="<?php echo $page == $i ? 'active' : ''; ?>">
-                            <?php echo $i; ?>
-                        </a>
-                    <?php endfor; ?>
-                </div>
+            <?php if ($template_pages > 1): ?>
+                <?php echo \Lib\Helper::renderPagination($template_page, $template_pages, 'index.php?c=admin&a=threads&fid=' . $template_fid . '&keyword=' . urlencode($template_keyword)); ?>
             <?php endif; ?>
         </form>
     </div>

@@ -1,55 +1,96 @@
 <div class="grid grid-cols-3">
     <div class="main-content">
+        <?php if ($template_canManage && !empty($template_modStats)): ?>
+            <div class="card mod-card">
+                <div class="mod-card-header">
+                    <h3>管理提示</h3>
+                </div>
+                <div class="mod-card-body">
+                    <div class="mod-stats">
+                        <a href="index.php?c=admin&a=threads&status=pending" class="mod-stat-item">
+                            <span class="mod-stat-value"><?php echo $template_modStats['pending_threads'] ?? 0; ?></span>
+                            <span class="mod-stat-label">待审核主题</span>
+                        </a>
+                        <a href="index.php?c=admin&a=threads&status=pending_posts" class="mod-stat-item">
+                            <span class="mod-stat-value"><?php echo $template_modStats['pending_posts'] ?? 0; ?></span>
+                            <span class="mod-stat-label">待审核回帖</span>
+                        </a>
+                        <a href="index.php?c=admin&a=threads&fid=<?php echo (int)($template_settings['report_forum_fid'] ?? 0); ?>" class="mod-stat-item">
+                            <span class="mod-stat-value"><?php echo $template_modStats['pending_reports'] ?? 0; ?></span>
+                            <span class="mod-stat-label">待处理举报</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
         <div class="card">
-            <div class="thread-header">
-                <div class="thread-title-row">
-                    <div class="flex items-center justify-between gap-md">
+            <div class="hero-head">
+                <div class="flex items-center justify-between gap-md" style="align-items:flex-start;">
+                    <div class="min-width-0">
                         <h1>XForum</h1>
-                        <?php if (isset($user)): ?>
+                        <div class="flex flex-wrap gap-sm mt-lg">
+                            <span class="badge badge-gray"><?php echo count($template_threads); ?> 条当前列表</span>
+                            <span class="badge badge-gray"><?php echo (int)$template_onlineCount; ?> 人在线</span>
+                            <?php if (!empty($template_keyword)): ?>
+                                <span class="badge badge-green">搜索：<?php echo htmlspecialchars($template_keyword); ?></span>
+                            <?php else: ?>
+                                <span class="badge badge-gray">排序：<?php echo htmlspecialchars($template_orderOptions[array_search($template_order, array_column($template_orderOptions, 'value'))]['label'] ?? '最后回复'); ?></span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div class="hero-actions" style="flex-direction:column;align-items:stretch;min-width:168px;">
+                        <?php if (isset($template_user) && is_array($template_user) && !empty($template_user)): ?>
                             <a href="index.php?c=forum&a=index&from=create" class="btn btn-primary">发布主题</a>
+                            <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid']; ?>&type=threads" class="btn btn-secondary">我的主题</a>
+                        <?php else: ?>
+                            <a href="index.php?c=auth&a=register" class="btn btn-primary">创建账号</a>
+                            <a href="index.php?c=auth&a=login" class="btn btn-secondary">登录参与讨论</a>
                         <?php endif; ?>
                     </div>
                 </div>
             </div>
 
             <div class="toolbar">
-                <div class="tabs hide-mobile">
-                    <?php foreach ($orderOptions as $option): ?>
-                        <a href="index.php?order=<?php echo $option['value']; ?><?php echo !empty($keyword) ? '&keyword=' . urlencode($keyword) : ''; ?>"
-                           class="tab <?php echo $order == $option['value'] ? 'active' : ''; ?>">
+                <div class="min-width-0" style="display:flex;flex-direction:column;gap:8px;flex:1;">
+                    <div class="text-secondary font-sm hide-mobile">按不同维度切换首页信息流</div>
+                    <div class="tabs hide-mobile">
+                    <?php foreach ($template_orderOptions as $option): ?>
+                        <a href="index.php?order=<?php echo $option['value']; ?><?php echo !empty($template_keyword) ? '&keyword=' . urlencode($template_keyword) : ''; ?>"
+                           class="tab <?php echo $template_order == $option['value'] ? 'active' : ''; ?>">
                             <?php echo $option['label']; ?>
                         </a>
                     <?php endforeach; ?>
+                    </div>
                 </div>
                 <form action="index.php" method="get" class="search-box hide-mobile">
-                    <input type="hidden" name="order" value="<?php echo $order; ?>">
-                    <input type="text" name="keyword" placeholder="搜索标题..." value="<?php echo htmlspecialchars($keyword ?? ''); ?>">
+                    <input type="hidden" name="order" value="<?php echo $template_order; ?>">
+                    <input type="text" name="keyword" placeholder="搜索标题、关键讨论..." value="<?php echo htmlspecialchars($template_keyword ?? ''); ?>">
                     <button type="submit" class="btn btn-search">搜索</button>
                 </form>
                 <form action="index.php" method="get" class="mobile-toolbar">
                     <select name="order" class="order-select" onchange="this.form.submit()">
-                        <?php foreach ($orderOptions as $option): ?>
-                            <option value="<?php echo $option['value']; ?>" <?php echo $order == $option['value'] ? 'selected' : ''; ?>>
+                        <?php foreach ($template_orderOptions as $option): ?>
+                            <option value="<?php echo $option['value']; ?>" <?php echo $template_order == $option['value'] ? 'selected' : ''; ?>>
                                 <?php echo $option['label']; ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <input type="text" name="keyword" placeholder="搜索..." value="<?php echo htmlspecialchars($keyword ?? ''); ?>">
+                    <input type="text" name="keyword" placeholder="搜索..." value="<?php echo htmlspecialchars($template_keyword ?? ''); ?>">
                     <button type="submit" class="btn btn-search">搜索</button>
                 </form>
             </div>
 
             <div class="post-list">
-                <?php foreach ($threads as $thread): ?>
-                    <?php $user = $users[$thread['uid']] ?? null; ?>
-                    <?php $forum = $forums[$thread['fid']] ?? null; ?>
+                <?php foreach ($template_threads as $thread): ?>
+                    <?php $author = $template_users[$thread['uid']] ?? null; ?>
+                    <?php $forum = $template_forums[$thread['fid']] ?? null; ?>
                     <div class="thread-item">
                         <div class="thread-avatar">
                             <div class="avatar">
-                                <?php if ($user && !empty($user['avatar'])): ?>
-                                    <img src="<?php echo htmlspecialchars($user['avatar']); ?>" alt="">
+                                <?php if ($author && !empty($author['avatar'])): ?>
+                                    <img src="<?php echo htmlspecialchars($author['avatar']); ?>" alt="">
                                 <?php else: ?>
-                                    <?php echo strtoupper(substr($user['username'] ?? '?', 0, 1)); ?>
+                                    <?php echo \Lib\Helper::getAvatarInitial($author['username'] ?? '?'); ?>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -61,7 +102,80 @@
                                 <?php endif; ?>
                             </div>
                             <div class="thread-meta">
-                                <span><?php echo htmlspecialchars($user['username'] ?? '匿名'); ?></span>
+                                <span><?php echo htmlspecialchars($author['username'] ?? '匿名'); ?></span>
+                                <span class="separator">•</span>
+                                <span>发布于 <?php echo date('Y-m-d H:i', $thread['dateline']); ?></span>
+                                <?php if (!empty($thread['reply_time']) && (int)$thread['reply_time'] !== (int)$thread['dateline']): ?>
+                                    <span class="separator">•</span>
+                                    <span>最后活跃 <?php echo date('Y-m-d H:i', (int)$thread['reply_time']); ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="thread-stats">
+                            <div class="thread-stat">
+                                <span class="thread-stat-value"><?php echo $thread['view_num']; ?></span>
+                                <span class="thread-stat-label">浏览</span>
+                            </div>
+                            <div class="thread-stat">
+                                <span class="thread-stat-value"><?php echo $thread['reply_num']; ?></span>
+                                <span class="thread-stat-label">回复</span>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+                <?php if (empty($template_threads)): ?>
+                    <div class="empty-state">
+                        <p>暂无话题</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <?php if ($template_pages > 1): ?>
+                <?php
+                $baseUrl = 'index.php?order=' . $template_order;
+                if (!empty($template_keyword)) {
+                    $baseUrl .= '&keyword=' . urlencode($template_keyword);
+                }
+                echo \Lib\Helper::renderPagination($template_page, $template_pages, $baseUrl);
+                ?>
+            <?php endif; ?>
+        </div>
+
+        <?php if ($template_collapsedTotal > 0): ?>
+        <div class="collapse-section">
+            <div id="collapse-header" class="collapse-header collapsed" onclick="toggleCollapsed()">
+                <div class="collapse-title">
+                    <svg class="collapse-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                    <span class="collapse-label">折叠版块主题</span>
+                    <span class="collapse-count"><?php echo $template_collapsedTotal; ?></span>
+                </div>
+                <span class="collapse-hint">点击展开</span>
+            </div>
+            <div id="collapsed-content" class="collapse-content" style="display: none;">
+                <?php foreach ($template_collapsedThreads as $thread): ?>
+                    <?php $author = $template_users[$thread['uid']] ?? null; ?>
+                    <?php $forum = $template_forums[$thread['fid']] ?? null; ?>
+                    <div class="thread-item">
+                        <div class="thread-avatar">
+                            <div class="avatar">
+                                <?php if ($author && !empty($author['avatar'])): ?>
+                                    <img src="<?php echo htmlspecialchars($author['avatar']); ?>" alt="">
+                                <?php else: ?>
+                                    <?php echo \Lib\Helper::getAvatarInitial($author['username'] ?? '?'); ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="thread-content">
+                            <div class="thread-title">
+                                <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>"><?php echo htmlspecialchars($thread['subject']); ?></a>
+                                <?php if ($forum): ?>
+                                    <span class="badge badge-gray"><?php echo htmlspecialchars($forum['name']); ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="thread-meta">
+                                <span><?php echo htmlspecialchars($author['username'] ?? '匿名'); ?></span>
                                 <span class="separator">•</span>
                                 <span><?php echo date('Y-m-d H:i', $thread['dateline']); ?></span>
                             </div>
@@ -78,84 +192,86 @@
                         </div>
                     </div>
                 <?php endforeach; ?>
-                <?php if (empty($threads)): ?>
-                    <div class="empty-state">
-                        <p>暂无话题</p>
-                    </div>
-                <?php endif; ?>
             </div>
-
-            <?php if ($pages > 1): ?>
-                <div class="pagination-container">
-                    <div class="pagination">
-                        <?php for ($i = 1; $i <= $pages; $i++): ?>
-                            <a href="index.php?order=<?php echo $order; ?><?php echo !empty($keyword) ? '&keyword=' . urlencode($keyword) : ''; ?>&page=<?php echo $i; ?>" <?php echo $i == $page ? 'class="active"' : ''; ?>><?php echo $i; ?></a>
-                        <?php endfor; ?>
-                    </div>
-                </div>
-            <?php endif; ?>
+            <div class="collapse-footer">
+                以上主题来自折叠版块：<?php echo implode(', ', array_column($template_collapsedForums, 'name')); ?>
+            </div>
         </div>
+        <?php endif; ?>
     </div>
 
     <div class="sidebar">
         <div class="card">
             <div class="user-card">
-                <div class="user-avatar">
-                    <div class="avatar brand-avatar">N</div>
-                </div>
-                <div class="user-info">
-                    <div class="user-name">NodeSeek</div>
-                    <div class="user-level">Lv.5 探索者</div>
-                </div>
-            </div>
-            <div class="user-stats">
-                <div class="user-stat">
-                    <div class="user-stat-value">1</div>
-                    <div class="user-stat-label">主题</div>
-                </div>
-                <div class="user-stat">
-                    <div class="user-stat-value">15</div>
-                    <div class="user-stat-label">帖子</div>
-                </div>
-                <div class="user-stat">
-                    <div class="user-stat-value">12</div>
-                    <div class="user-stat-label">金币</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="sidebar-header">
-                <h3>当前在线</h3>
-            </div>
-            <div class="sidebar-body online-list">
-                <span class="online-user">NodeSeek</span>
-                <span class="online-user">访客206818</span>
-                <span class="online-user">访客205497</span>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="sidebar-header">
-                <h3>热门标签</h3>
-            </div>
-            <div class="sidebar-body">
-                <div class="tag-box">
-                    <div class="tags">
-                        <span class="tag">服务器</span>
-                        <span class="tag">VPS</span>
-                        <span class="tag">小鸡</span>
-                        <span class="tag">NAT</span>
-                        <span class="tag">主机</span>
-                        <span class="tag">优惠</span>
-                        <span class="tag">优惠码</span>
-                        <span class="tag">促销</span>
-                        <span class="tag">建站</span>
-                        <span class="tag">小鸡测评</span>
-                        <span class="tag">Hostodo</span>
-                        <span class="tag">Racknerd</span>
+                <?php if (isset($template_user) && is_array($template_user) && !empty($template_user)): ?>
+                    <div class="user-header">
+                        <div class="user-avatar">
+                            <div class="avatar">
+                                <?php if (!empty($template_user['avatar'])): ?>
+                                    <img src="<?php echo htmlspecialchars($template_user['avatar']); ?>" alt="">
+                                <?php else: ?>
+                                    <?php echo \Lib\Helper::getAvatarInitial($template_user['username']); ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="user-info">
+                            <div class="user-name"><?php echo htmlspecialchars($template_user['username']); ?></div>
+                            <div class="user-level">已登录，可参与发帖、回复、收藏与站内消息同步</div>
+                        </div>
                     </div>
-                </div>
+                    <div class="user-stats">
+                        <div class="user-stat">
+                            <div class="user-stat-value"><?php echo (int)($template_userStats['thread_count'] ?? 0); ?></div>
+                            <div class="user-stat-label">主题</div>
+                        </div>
+                        <div class="user-stat">
+                            <div class="user-stat-value"><?php echo (int)($template_userStats['post_count'] ?? 0); ?></div>
+                            <div class="user-stat-label">回复</div>
+                        </div>
+                        <div class="user-stat">
+                            <div class="user-stat-value"><?php echo (int)($template_userStats['notify_num'] ?? 0); ?></div>
+                            <div class="user-stat-label">通知</div>
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                        <div class="grid grid-cols-2 gap-sm">
+                            <a href="index.php?c=member&a=settings" class="btn btn-secondary btn-sm">个人设置</a>
+                            <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid']; ?>&type=favorites" class="btn btn-secondary btn-sm">我的收藏</a>
+                            <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid']; ?>&type=threads" class="btn btn-secondary btn-sm">我的话题</a>
+                            <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid']; ?>&type=replies" class="btn btn-secondary btn-sm">我的回复</a>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="user-header">
+                        <div class="user-avatar">
+                            <div class="avatar brand-avatar">G</div>
+                        </div>
+                        <div class="user-info">
+                            <div class="user-name">访客</div>
+                            <div class="user-level">登录后可同步主题、收藏、通知与私信记录</div>
+                        </div>
+                    </div>
+                    <div class="user-stats">
+                        <div class="user-stat">
+                            <div class="user-stat-value"><?php echo count($template_noticeThreads); ?></div>
+                            <div class="user-stat-label">公告</div>
+                        </div>
+                        <div class="user-stat">
+                            <div class="user-stat-value"><?php echo count($template_hotForums); ?></div>
+                            <div class="user-stat-label">版块</div>
+                        </div>
+                        <div class="user-stat">
+                            <div class="user-stat-value"><?php echo (int)$template_onlineCount; ?></div>
+                            <div class="user-stat-label">在线</div>
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                        <div class="grid grid-cols-2 gap-sm">
+                            <a href="index.php?c=auth&a=login" class="btn btn-primary btn-sm">登录</a>
+                            <a href="index.php?c=auth&a=register" class="btn btn-secondary btn-sm">注册</a>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -164,12 +280,81 @@
                 <h3>社区公告</h3>
             </div>
             <div class="sidebar-body">
-                <div class="announcement">
-                    <p>社区规则与发帖规范</p>
-                    <p>违规处理与封号名单公示</p>
-                    <p>请遵守社区规则，共同维护良好的交流环境。</p>
-                </div>
+                <?php if (!empty($template_noticeThreads)): ?>
+                    <div class="related-topics">
+                        <?php foreach ($template_noticeThreads as $thread): ?>
+                            <div class="related-item">
+                                <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" class="related-title text-primary">
+                                    <?php echo htmlspecialchars($thread['subject']); ?>
+                                </a>
+                                <div class="related-meta"><?php echo date('Y-m-d', $thread['dateline']); ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-state">
+                        <p>暂无公告</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="sidebar-header">
+                <h3>热门版块</h3>
+            </div>
+            <div class="sidebar-body">
+                <?php if (!empty($template_hotForums)): ?>
+                    <div class="related-topics">
+                        <?php foreach ($template_hotForums as $index => $forum): ?>
+                            <a href="index.php?c=forum&a=index&fid=<?php echo $forum['fid']; ?>" class="related-item">
+                                <div class="flex items-center justify-between gap-md">
+                                    <span class="badge <?php echo $index < 3 ? 'badge-green' : 'badge-gray'; ?>">TOP <?php echo $index + 1; ?></span>
+                                    <span class="text-muted font-sm">今日 <?php echo (int)$forum['today_num']; ?></span>
+                                </div>
+                                <div class="related-title"><?php echo htmlspecialchars($forum['name']); ?></div>
+                                <div class="related-meta">
+                                    <?php echo (int)$forum['thread_num']; ?> 主题 · <?php echo (int)$forum['reply_num']; ?> 回复
+                                </div>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-state">
+                        <p>暂无数据</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="sidebar-header">
+                <h3>当前在线</h3>
+            </div>
+            <div class="sidebar-body">
+                <a href="index.php?c=member&a=online" class="online-count-link">
+                    <span class="online-count-value"><?php echo $template_onlineCount; ?></span>
+                    <span class="online-count-label">人在线</span>
+                </a>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function toggleCollapsed() {
+    var content = document.getElementById('collapsed-content');
+    var header = document.getElementById('collapse-header');
+    var icon = document.querySelector('.collapse-icon');
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        header.classList.remove('collapsed');
+        icon.style.transform = 'rotate(90deg)';
+    } else {
+        content.style.display = 'none';
+        header.classList.add('collapsed');
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+</script>

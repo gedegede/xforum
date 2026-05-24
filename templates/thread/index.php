@@ -1,59 +1,67 @@
 <div class="grid grid-cols-3">
     <div class="main-content">
         <div class="card">
-            <div class="thread-header">
+            <div class="thread-hero">
                 <div class="breadcrumb">
                     <a href="index.php">首页</a>
-                    /
-                    <a href="index.php?c=forum&a=index&fid=<?php echo $thread['fid']; ?>"><?php echo htmlspecialchars($forum['name'] ?? '未命名版块'); ?></a>
-                    /
-                    <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>">主题</a>
+                    <span>/</span>
+                    <a href="index.php?c=forum&a=index&fid=<?php echo $template_thread['fid']; ?>"><?php echo htmlspecialchars($template_forum['name'] ?? '未命名版块'); ?></a>
+                    <span>/</span>
+                    <a href="index.php?c=thread&a=index&tid=<?php echo $template_thread['tid']; ?>">主题</a>
                 </div>
                 <div class="thread-title-row">
-                    <div class="flex items-center gap-md">
-                        <h1><?php echo htmlspecialchars($thread['subject']); ?></h1>
+                    <div class="min-width-0">
+                        <div class="flex flex-wrap gap-sm mb-sm">
+                            <span class="badge badge-green"><?php echo htmlspecialchars($template_forum['name'] ?? '未命名版块'); ?></span>
+                            <span class="badge badge-gray"><?php echo (int)$template_thread['reply_num']; ?> 条回复</span>
+                            <span class="badge badge-gray"><?php echo (int)$template_thread['view_num']; ?> 次浏览</span>
+                        </div>
+                        <h1><?php echo htmlspecialchars($template_thread['subject']); ?></h1>
+                        <div class="thread-meta mt-sm">
+                            <span>发布于 <?php echo date('Y-m-d H:i', $template_thread['dateline']); ?></span>
+                            <?php if (!empty($template_thread['reply_time']) && (int)$template_thread['reply_time'] !== (int)$template_thread['dateline']): ?>
+                                <span class="separator">•</span>
+                                <span>最后活跃 <?php echo date('Y-m-d H:i', (int)$template_thread['reply_time']); ?></span>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                    <?php if (isset($user)): ?>
-                        <button type="button" id="fav-btn-mobile" class="btn fav-btn-mobile <?php echo $isFavorited ? 'btn-secondary' : 'btn-primary'; ?>" data-tid="<?php echo $thread['tid']; ?>" data-favorited="<?php echo $isFavorited ? '1' : '0'; ?>">
-                            <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="<?php echo $isFavorited ? 'currentColor' : 'none'; ?>" stroke="currentColor" stroke-width="2">
+                    <?php if (isset($template_user)): ?>
+                        <button type="button" id="fav-btn-mobile" class="btn fav-btn-mobile <?php echo $template_isFavorited ? 'btn-secondary' : 'btn-primary'; ?>" data-tid="<?php echo $template_thread['tid']; ?>" data-favorited="<?php echo $template_isFavorited ? '1' : '0'; ?>">
+                            <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="<?php echo $template_isFavorited ? 'currentColor' : 'none'; ?>" stroke="currentColor" stroke-width="2">
                                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                             </svg>
-                            <span id="fav-text-mobile"><?php echo $isFavorited ? '已收藏' : '收藏'; ?></span>
+                            <span id="fav-text-mobile"><?php echo $template_isFavorited ? '已收藏' : '收藏'; ?></span>
                         </button>
                     <?php endif; ?>
                 </div>
             </div>
-            
+
             <div class="post-list">
-                <?php foreach ($posts as $index => $post): ?>
-                    <?php echo Lib\PostHelper::renderPost($post, $users, $index + 1, $index === 0, $user ?? null); ?>
+                <?php foreach ($template_posts as $index => $post): ?>
+                    <?php $floor = ($template_page - 1) * 20 + $index + 1; ?>
+                    <?php $isAuthor = $post['uid'] == $template_thread['uid']; ?>
+                    <?php echo Lib\PostHelper::renderPost($post, $template_users, $floor, $isAuthor, $template_user ?? null, $template_isModerator ?? false); ?>
                 <?php endforeach; ?>
             </div>
 
             <div class="reply-section"></div>
-            
-            <?php if ($pages > 1): ?>
-                <div class="pagination-container">
-                    <div class="pagination">
-                        <?php for ($i = 1; $i <= $pages; $i++): ?>
-                            <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>&page=<?php echo $i; ?>" <?php echo $i == $page ? 'class="active"' : ''; ?>><?php echo $i; ?></a>
-                        <?php endfor; ?>
-                    </div>
-                </div>
+
+            <?php if ($template_pages > 1): ?>
+                <?php echo \Lib\Helper::renderPagination($template_page, $template_pages, 'index.php?c=thread&a=index&tid=' . $template_thread['tid']); ?>
             <?php endif; ?>
-            
+
             <div class="reply-box">
                 <div class="reply-header">
                     <h3 id="reply-title">回复</h3>
                 </div>
                 <div class="reply-body">
-                <?php if (isset($user)): ?>
-                    <form id="reply-form" action="index.php?c=thread&a=reply&tid=<?php echo $thread['tid']; ?>" method="post">
+                <?php if (isset($template_user)): ?>
+                    <form id="reply-form" action="index.php?c=thread&a=reply&tid=<?php echo $template_thread['tid']; ?>" method="post">
                         <input type="hidden" name="quote_pid" id="quote-pid" value="">
                         <input type="hidden" name="quote_uid" id="quote-uid" value="">
-                        
-                        <textarea name="message" id="reply-message" class="reply-textarea" placeholder="支持 Markdown 语法..."></textarea>
-                        
+
+                        <textarea name="message" id="reply-message" class="reply-textarea" placeholder="支持 Markdown 语法，欢迎补充细节、经验与上下文..."></textarea>
+
                         <div class="flex justify-end gap-md mt-sm">
                             <button type="button" id="cancel-quote" class="btn btn-secondary hide">取消引用</button>
                             <button type="submit" id="reply-submit" class="btn btn-primary">发表回复</button>
@@ -76,12 +84,12 @@
                 <h3>主题信息</h3>
             </div>
             <div class="sidebar-body">
-                <?php if (isset($user)): ?>
-                    <button type="button" id="fav-btn" class="btn <?php echo $isFavorited ? 'btn-secondary' : 'btn-primary'; ?> w-full mb-md" data-tid="<?php echo $thread['tid']; ?>" data-favorited="<?php echo $isFavorited ? '1' : '0'; ?>">
-                        <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="<?php echo $isFavorited ? 'currentColor' : 'none'; ?>" stroke="currentColor" stroke-width="2">
+                <?php if (isset($template_user)): ?>
+                    <button type="button" id="fav-btn" class="btn <?php echo $template_isFavorited ? 'btn-secondary' : 'btn-primary'; ?> w-full mb-md" data-tid="<?php echo $template_thread['tid']; ?>" data-favorited="<?php echo $template_isFavorited ? '1' : '0'; ?>">
+                        <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="<?php echo $template_isFavorited ? 'currentColor' : 'none'; ?>" stroke="currentColor" stroke-width="2">
                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                         </svg>
-                        <span id="fav-text"><?php echo $isFavorited ? '已收藏' : '收藏主题'; ?></span>
+                        <span id="fav-text"><?php echo $template_isFavorited ? '已收藏' : '收藏主题'; ?></span>
                     </button>
                 <?php else: ?>
                     <a href="index.php?c=auth&a=login" class="btn btn-primary w-full mb-md">
@@ -93,21 +101,26 @@
                 <?php endif; ?>
                 <div class="user-stats">
                     <div class="user-stat">
-                        <div class="user-stat-value"><?php echo $thread['view_num']; ?></div>
+                        <div class="user-stat-value"><?php echo $template_thread['view_num']; ?></div>
                         <div class="user-stat-label">浏览</div>
                     </div>
                     <div class="user-stat">
-                        <div class="user-stat-value" id="reply-count"><?php echo $thread['reply_num']; ?></div>
+                        <div class="user-stat-value" id="reply-count"><?php echo $template_thread['reply_num']; ?></div>
                         <div class="user-stat-label">回复</div>
                     </div>
                     <div class="user-stat">
-                        <div class="user-stat-value" id="fav-count"><?php echo $thread['fav_num'] ?? 0; ?></div>
+                        <div class="user-stat-value" id="fav-count"><?php echo $template_thread['fav_num'] ?? 0; ?></div>
                         <div class="user-stat-label">收藏</div>
                     </div>
                 </div>
+                <div class="mt-lg text-secondary font-sm">
+                    当前主题位于
+                    <a href="index.php?c=forum&a=index&fid=<?php echo $template_thread['fid']; ?>"><?php echo htmlspecialchars($template_forum['name'] ?? '未命名版块'); ?></a>
+                    ，适合继续补充经验、追问与后续结果。
+                </div>
             </div>
         </div>
-        
+
         <div class="card">
             <div class="sidebar-header">
                 <h3>相关主题</h3>
@@ -115,16 +128,19 @@
             <div class="sidebar-body">
                 <div class="related-topics">
                     <a href="index.php?keyword=<?php echo urlencode('服务器性能'); ?>" class="related-item">
+                        <span class="badge badge-gray">搜索建议</span>
                         <span class="related-title">如何优化服务器性能</span>
-                        <span class="related-meta">5 回复</span>
+                        <span class="related-meta">查看同类经验与调优思路</span>
                     </a>
                     <a href="index.php?keyword=<?php echo urlencode('VPS'); ?>" class="related-item">
+                        <span class="badge badge-gray">搜索建议</span>
                         <span class="related-title">VPS选择指南</span>
-                        <span class="related-meta">12 回复</span>
+                        <span class="related-meta">查看配置对比与购买建议</span>
                     </a>
                     <a href="index.php?keyword=<?php echo urlencode('网站加速'); ?>" class="related-item">
+                        <span class="badge badge-gray">搜索建议</span>
                         <span class="related-title">网站加速技巧分享</span>
-                        <span class="related-meta">8 回复</span>
+                        <span class="related-meta">继续浏览网络优化相关主题</span>
                     </a>
                 </div>
             </div>
@@ -132,7 +148,7 @@
     </div>
 </div>
 
-<?php if (isset($user)): ?>
+<?php if (isset($template_user)): ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', function(e) {
@@ -178,9 +194,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const quoteUidInput = document.getElementById('quote-uid');
     const replyTitle = document.getElementById('reply-title');
     const originalPlaceholder = messageInput.placeholder;
-    
+
     if (!form) return;
-    
+
     document.addEventListener('click', function(e) {
         const quoteBtn = e.target.closest('.quote-btn');
         if (quoteBtn) {
@@ -188,17 +204,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const uid = quoteBtn.dataset.uid;
             const floor = quoteBtn.dataset.floor;
             const username = quoteBtn.dataset.username;
-            
+
             setQuoteReply(pid, uid, floor, username);
         }
     });
-    
+
     if (cancelQuoteBtn) {
         cancelQuoteBtn.addEventListener('click', function() {
             clearQuoteReply();
         });
     }
-    
+
     function setQuoteReply(pid, uid, floor, username) {
         quotePidInput.value = pid;
         quoteUidInput.value = uid;
@@ -208,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
         messageInput.focus();
         messageInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-    
+
     function clearQuoteReply() {
         quotePidInput.value = '';
         quoteUidInput.value = '';
@@ -216,21 +232,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (cancelQuoteBtn) cancelQuoteBtn.classList.add('hide');
         messageInput.placeholder = originalPlaceholder;
     }
-    
+
     form.addEventListener('submit', function(e) {
         e.preventDefault();
-        
+
         const message = messageInput.value.trim();
         if (!message) {
             alert('请填写回复内容');
             return;
         }
-        
+
         submitBtn.disabled = true;
         submitBtn.textContent = '提交中...';
-        
+
         const formData = new FormData(form);
-        
+
         fetch(form.action, {
             method: 'POST',
             body: formData,
@@ -258,11 +274,11 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.textContent = '发表回复';
         });
     });
-    
+
     function addReplyToPage(html, postIndex) {
         const replySection = document.querySelector('.reply-section');
         replySection.insertAdjacentHTML('beforebegin', html);
-        
+
         const existingPosts = document.querySelectorAll('.post-item');
         const newPost = existingPosts[existingPosts.length - 1];
         if (newPost) {
@@ -274,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 2000);
         }
     }
-    
+
     function updateReplyCount(delta) {
         const replyNumElement = document.getElementById('reply-count');
         if (replyNumElement) {
@@ -282,13 +298,13 @@ document.addEventListener('DOMContentLoaded', function() {
             replyNumElement.textContent = Math.max(0, currentCount + (delta || 1));
         }
     }
-    
+
     function handleFavoriteClick(favBtn, favTextId) {
         const tid = favBtn.dataset.tid;
         const isFavorited = favBtn.dataset.favorited === '1';
         const favText = document.getElementById(favTextId);
         const favCount = document.getElementById('fav-count');
-        
+
         fetch('index.php?c=thread&a=favorite&tid=' + tid, {
             method: 'POST',
             headers: {
@@ -302,7 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const desktopBtn = document.getElementById('fav-btn');
                 const mobileText = document.getElementById('fav-text-mobile');
                 const desktopText = document.getElementById('fav-text');
-                
+
                 if (isFavorited) {
                     if (favBtn === mobileBtn) {
                         favBtn.classList.remove('btn-secondary');
@@ -316,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (favText) favText.textContent = '收藏主题';
                     }
                     favBtn.dataset.favorited = '0';
-                    
+
                     if (mobileBtn && mobileBtn !== favBtn) {
                         mobileBtn.classList.remove('btn-secondary');
                         mobileBtn.classList.add('btn-primary');
@@ -331,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (desktopText) desktopText.textContent = '收藏主题';
                         desktopBtn.dataset.favorited = '0';
                     }
-                    
+
                     if (favCount) {
                         favCount.textContent = Math.max(0, parseInt(favCount.textContent) - 1);
                     }
@@ -348,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (favText) favText.textContent = '已收藏';
                     }
                     favBtn.dataset.favorited = '1';
-                    
+
                     if (mobileBtn && mobileBtn !== favBtn) {
                         mobileBtn.classList.remove('btn-primary');
                         mobileBtn.classList.add('btn-secondary');
@@ -363,7 +379,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (desktopText) desktopText.textContent = '已收藏';
                         desktopBtn.dataset.favorited = '1';
                     }
-                    
+
                     if (favCount) {
                         favCount.textContent = parseInt(favCount.textContent) + 1;
                     }
@@ -377,14 +393,14 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = 'index.php?c=auth&a=login';
         });
     }
-    
+
     const favBtn = document.getElementById('fav-btn');
     if (favBtn) {
         favBtn.addEventListener('click', function() {
             handleFavoriteClick(this, 'fav-text');
         });
     }
-    
+
     const favBtnMobile = document.getElementById('fav-btn-mobile');
     if (favBtnMobile) {
         favBtnMobile.addEventListener('click', function() {

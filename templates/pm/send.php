@@ -1,26 +1,26 @@
 <div class="card center-card">
-    <div class="card-header">
+    <div class="thread-hero">
         <h2>发送私信</h2>
     </div>
     <div class="card-body padded">
-        <?php if (!empty($error)): ?>
-            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+        <?php if (!empty($template_error)): ?>
+            <div class="error"><?php echo htmlspecialchars($template_error); ?></div>
         <?php endif; ?>
 
         <form method="post">
-            <input type="hidden" name="to_uid" value="<?php echo intval($toUid); ?>">
+            <input type="hidden" name="to_uid" value="<?php echo intval($template_toUid); ?>">
             
             <div class="form-group">
                 <label>收件人</label>
-                <?php if (!empty($receiver)): ?>
+                <?php if (!empty($template_receiver)): ?>
                     <div class="flex items-center gap-md">
-                        <div class="avatar avatar-sm"><?php echo strtoupper(substr($receiver['username'], 0, 1)); ?></div>
-                        <span class="font-bold"><?php echo htmlspecialchars($receiver['username']); ?></span>
+                        <div class="avatar avatar-sm"><?php echo \Lib\Helper::getAvatarInitial($template_receiver['username']); ?></div>
+                        <span class="font-bold"><?php echo htmlspecialchars($template_receiver['username']); ?></span>
                     </div>
                 <?php else: ?>
                     <select name="to_uid" required>
                         <option value="">请选择收件人</option>
-                        <?php foreach ($members as $m): ?>
+                        <?php foreach ($template_members as $m): ?>
                             <option value="<?php echo $m['uid']; ?>"><?php echo htmlspecialchars($m['username']); ?></option>
                         <?php endforeach; ?>
                     </select>

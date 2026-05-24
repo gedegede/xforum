@@ -5,8 +5,8 @@
         <h2>添加用户组</h2>
     </div>
     <div class="card-body padded">
-        <?php if ($error): ?>
-            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+        <?php if ($template_error): ?>
+            <div class="error"><?php echo htmlspecialchars($template_error); ?></div>
         <?php endif; ?>
 
         <form method="post">
@@ -25,6 +25,23 @@
             <div class="form-group">
                 <label>积分下限</label>
                 <input type="number" name="credit_lower" value="0">
+            </div>
+            <div class="form-group">
+                <label>权限设置</label>
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="can_manage" value="1">
+                        <span>允许管理主题</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="thread_need_approve" value="1">
+                        <span>发主题需要审核</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="post_need_approve" value="1">
+                        <span>发回帖需要审核</span>
+                    </label>
+                </div>
             </div>
             <div class="flex justify-end gap-md mt-lg">
                 <button type="submit" class="btn btn-primary">添加用户组</button>

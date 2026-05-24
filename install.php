@@ -65,7 +65,8 @@ $tables = [
         last_tid INTEGER NOT NULL DEFAULT 0,
         json_data TEXT NOT NULL
     )",
-    'next_forum_idx_up_fid' => "CREATE INDEX idx_next_forum_up_fid ON next_forum(up_fid, sort_order)",
+    'next_forum_idx_today_num' => "CREATE INDEX idx_next_forum_today_num ON next_forum(today_num DESC)",
+    
     'next_guest' => "CREATE TABLE next_guest (
         ip CHAR(50) NOT NULL DEFAULT '',
         fid INTEGER NOT NULL DEFAULT 0,
@@ -177,7 +178,6 @@ $tables = [
         edited INTEGER NOT NULL DEFAULT 0,
         report_time INTEGER NOT NULL DEFAULT 0,
         message TEXT NOT NULL,
-        message_html TEXT NOT NULL DEFAULT '',
         ip VARCHAR(50) NOT NULL DEFAULT '',
         rate_num INTEGER NOT NULL DEFAULT 0,
         sort_order INTEGER NOT NULL DEFAULT 0,
@@ -195,13 +195,16 @@ $tables = [
         PRIMARY KEY (uid, pid)
     )",
     'next_session' => "CREATE TABLE next_session (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_key VARCHAR(64) NOT NULL DEFAULT '',
         uid INTEGER NOT NULL DEFAULT 0,
         gid INTEGER NOT NULL DEFAULT 0,
         invisible INTEGER NOT NULL DEFAULT 0,
         fid INTEGER NOT NULL DEFAULT 0,
         tid INTEGER NOT NULL DEFAULT 0,
         dateline INTEGER NOT NULL DEFAULT 0,
-        PRIMARY KEY (uid)
+        ip VARCHAR(50) NOT NULL DEFAULT '',
+        UNIQUE(session_key)
     )",
     'next_setting' => "CREATE TABLE next_setting (
         skey VARCHAR(32) NOT NULL DEFAULT '',
@@ -230,9 +233,9 @@ $tables = [
         fav_num INTEGER NOT NULL DEFAULT 0,
         log_num INTEGER NOT NULL DEFAULT 0
     )",
-    'next_thread_idx_fid_reply' => "CREATE INDEX idx_next_thread_fid_reply ON next_thread(fid, reply_time DESC)",
+    'next_thread_idx_fid_reply' => "CREATE INDEX idx_next_thread_fid_reply ON next_thread(fid, tid DESC)",
     'next_thread_idx_uid_tid' => "CREATE INDEX idx_next_thread_uid_tid ON next_thread(uid, tid DESC)",
-    'next_thread_idx_tid' => "CREATE INDEX idx_next_thread_tid ON next_thread(tid DESC)",
+
     'next_thread_tag' => "CREATE TABLE next_thread_tag (
         tid INTEGER NOT NULL DEFAULT 0,
         up_tid INTEGER NOT NULL DEFAULT 0,
@@ -264,14 +267,20 @@ foreach ($tables as $name => $sql) {
     $db->exec($sql);
 }
 
-$db->exec("INSERT INTO next_usergroup (gid, group_type, title, credit_lower, json_data) VALUES (1, 'system', '管理员', 0, '{}')");
-$db->exec("INSERT INTO next_usergroup (gid, group_type, title, credit_lower, json_data) VALUES (2, 'system', '普通会员', 0, '{}')");
+$db->exec("INSERT INTO next_usergroup (gid, group_type, title, credit_lower, json_data) VALUES (1, 'system', '管理员', 0, '{\"can_manage\":1,\"thread_need_approve\":0,\"post_need_approve\":0}')");
+$db->exec("INSERT INTO next_usergroup (gid, group_type, title, credit_lower, json_data) VALUES (2, 'system', '普通会员', 0, '{\"can_manage\":0,\"thread_need_approve\":0,\"post_need_approve\":0}')");
 
 $db->exec("INSERT INTO next_member (uid, username, gid, password, auth_secret, reg_ip, reg_date, status) VALUES (1, 'admin', 1, '" . password_hash('admin123', PASSWORD_DEFAULT) . "', '".md5(uniqid())."', '127.0.0.1', ".time().", 1)");
 
 $db->exec("INSERT INTO next_forum (fid, name, status, sort_order, json_data) VALUES (1, '综合讨论区', 1, 1, '{}')");
 $db->exec("INSERT INTO next_forum (fid, name, status, sort_order, json_data) VALUES (2, '技术交流', 1, 2, '{}')");
 $db->exec("INSERT INTO next_forum (fid, name, status, sort_order, json_data) VALUES (3, '休闲娱乐', 1, 3, '{}')");
+$db->exec("INSERT INTO next_forum (fid, name, status, sort_order, json_data) VALUES (4, '举报中心', 1, 4, '{}')");
+
+$db->exec("INSERT INTO next_setting (skey, val) VALUES ('report_forum_fid', '4')");
+$db->exec("INSERT INTO next_setting (skey, val) VALUES ('collapsed_fids', '')");
+$db->exec("INSERT INTO next_setting (skey, val) VALUES ('approve_keywords', '')");
+$db->exec("INSERT INTO next_setting (skey, val) VALUES ('block_keywords', '')");
 
 echo "安装成功！管理员账号: admin，密码: admin123";
 ?>

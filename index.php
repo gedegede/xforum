@@ -1,14 +1,36 @@
 <?php
 define('ROOT_PATH', dirname(__FILE__));
 
-require ROOT_PATH . '/vendor/autoload.php';
 require ROOT_PATH . '/lib/Autoloader.php';
-Lib\Autoloader::register();
+use Lib\Autoloader;
+use Lib\Template;
+use Lib\Session;
+use Lib\Request;
+use Lib\Permission;
+use Models\SessionModel;
 
-Lib\Template::init();
+Autoloader::register();
+Template::init();
 
-$controller = isset($_GET['c']) ? $_GET['c'] : 'home';
-$action = isset($_GET['a']) ? $_GET['a'] : 'index';
+$uid = 0;
+$gid = 0;
+$invisible = 0;
+if (Permission::isLoggedIn()) {
+    $user = Session::getUser();
+    if ($user) {
+        $uid = $user['uid'];
+        $gid = $user['gid'];
+        $invisible = $user['invisible'];
+    }
+}
+
+// 只在 POST 提交操作时更新在线状态，减少数据库写入
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    SessionModel::updateOnline($uid, $gid, $invisible);
+}
+
+$controller = Request::getString('c', 'home');
+$action = Request::getString('a', 'index');
 
 $controllerClass = 'Controllers\\' . ucfirst($controller) . 'Controller';
 
@@ -22,11 +44,11 @@ if (!method_exists($controllerClass, $action)) {
 }
 
 $params = [];
-if (isset($_GET['fid'])) $params[] = (int)$_GET['fid'];
-if (isset($_GET['tid'])) $params[] = (int)$_GET['tid'];
-if (isset($_GET['pid'])) $params[] = (int)$_GET['pid'];
-if (isset($_GET['gid'])) $params[] = (int)$_GET['gid'];
-if (isset($_GET['uid'])) $params[] = (int)$_GET['uid'];
+if (Request::has('fid')) $params[] = Request::getInt('fid');
+if (Request::has('tid')) $params[] = Request::getInt('tid');
+if (Request::has('pid')) $params[] = Request::getInt('pid');
+if (Request::has('gid')) $params[] = Request::getInt('gid');
+if (Request::has('uid')) $params[] = Request::getInt('uid');
 
 call_user_func_array([$controllerClass, $action], $params);
 ?>

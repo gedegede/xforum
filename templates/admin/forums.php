@@ -19,8 +19,8 @@
                 </tr>
             </thead>
             <tbody>
-                <?php if (!empty($forums)): ?>
-                <?php foreach ($forums as $forum): ?>
+                <?php if (!empty($template_forums)): ?>
+                <?php foreach ($template_forums as $forum): ?>
                     <tr>
                         <td><?php echo $forum['fid']; ?></td>
                         <td><?php echo str_repeat('→ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?></td>
@@ -29,6 +29,7 @@
                         <td><span class="badge <?php echo $forum['status'] ? 'badge-green' : 'badge-red'; ?>"><?php echo $forum['status'] ? '启用' : '禁用'; ?></span></td>
                         <td>
                             <button class="btn btn-secondary edit-forum-btn" data-fid="<?php echo $forum['fid']; ?>">编辑</button>
+                            <a href="index.php?c=admin&a=moderators&fid=<?php echo $forum['fid']; ?>" class="btn btn-secondary">版主</a>
                             <button class="btn btn-secondary delete-forum-btn" data-fid="<?php echo $forum['fid']; ?>" data-name="<?php echo htmlspecialchars($forum['name']); ?>">删除</button>
                         </td>
                     </tr>

@@ -18,8 +18,8 @@
                 </tr>
             </thead>
             <tbody>
-                <?php if (!empty($groups)): ?>
-                <?php foreach ($groups as $group): ?>
+                <?php if (!empty($template_groups)): ?>
+                <?php foreach ($template_groups as $group): ?>
                     <tr>
                         <td><?php echo $group['gid']; ?></td>
                         <td><?php echo htmlspecialchars($group['title']); ?></td>
