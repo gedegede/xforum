@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             var fid = this.getAttribute('data-fid');
             var name = this.getAttribute('data-name');
-            document.getElementById('forum-delete-confirm-text').textContent = '确定要删除版块 "' + name + '" 吗？此操作无法撤销，该版块下的所有主题和回复也将被删除。';
+            document.getElementById('forum-delete-confirm-text').textContent = '确定要删除版块"' + name + '" 吗？此操作无法撤销，该版块下的所有主题和回复也将被删除。';
             document.getElementById('forum-delete-confirm-btn').href = 'index.php?c=admin&a=forumDelete&fid=' + fid;
             openModal('forum-delete-modal');
         });

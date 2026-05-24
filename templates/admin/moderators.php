@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var uid = this.getAttribute('data-uid');
             var fid = this.getAttribute('data-fid');
             var username = this.getAttribute('data-username');
-            document.getElementById('delete-confirm-text').textContent = '确定要删除版主 "' + username + '" 吗？';
+            document.getElementById('delete-confirm-text').textContent = '确定要删除版主"' + username + '" 吗？';
             document.getElementById('delete-confirm-btn').href = 'index.php?c=admin&a=moderatorDelete&fid=' + fid + '&uid=' + uid;
             openModal('delete-moderator-modal');
         });

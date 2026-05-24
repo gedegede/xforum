@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             var gid = this.getAttribute('data-gid');
             var title = this.getAttribute('data-title');
-            document.getElementById('group-delete-confirm-text').textContent = '确定要删除用户组 "' + title + '" 吗？此操作无法撤销。';
+            document.getElementById('group-delete-confirm-text').textContent = '确定要删除用户组"' + title + '" 吗？此操作无法撤销。';
             document.getElementById('group-delete-confirm-btn').href = 'index.php?c=admin&a=usergroupDelete&gid=' + gid;
             openModal('group-delete-modal');
         });

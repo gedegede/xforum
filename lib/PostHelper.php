@@ -38,10 +38,10 @@ class PostHelper {
         $canViewContent = !$isPending || $isModerator;
         ob_start();
         ?>
-<div class="post-item" id="post-<?php echo $postPid; ?>" data-pid="<?php echo $postPid; ?>">
-    <div class="post-header justify-between">
+<div class="entry" id="post-<?php echo $postPid; ?>" data-pid="<?php echo $postPid; ?>">
+    <div class="entry-head justify-between">
         <div class="flex items-center gap-md">
-            <a href="index.php?c=member&a=profile&uid=<?php echo $postUid; ?>" class="avatar avatar-post">
+            <a href="index.php?c=member&a=profile&uid=<?php echo $postUid; ?>" class="avatar">
                 <?php if (!empty($users[$postUid]['avatar'])): ?>
                     <img src="<?php echo htmlspecialchars($users[$postUid]['avatar']); ?>" alt="">
                 <?php else: ?>
@@ -63,7 +63,7 @@ class PostHelper {
                 </div>
             </div>
         </div>
-        <div class="flex items-center gap-sm post-actions">
+        <div class="flex items-center gap-sm">
             <button type="button" class="btn btn-ghost text-muted p-xs" aria-label="点赞">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
@@ -86,15 +86,15 @@ class PostHelper {
             <?php endif; ?>
         </div>
     </div>
-    <div class="post-body">
-        <div class="post-content">
+    <div class="entry-body">
+        <div class="content">
             <?php if ($canViewContent): ?>
                 <?php if ($quotePid > 0 && $quoteUid > 0): ?>
                     <span class="text-secondary">@<?php echo htmlspecialchars($users[$quoteUid]['username'] ?? '已删除用户'); ?> #<?php echo $quoteFloor; ?>：</span>
                 <?php endif; ?>
                 <?php echo MarkdownHelper::parse((string)$post['message']); ?>
             <?php else: ?>
-                <div class="text-center py-md bg-muted-light rounded">
+                <div class="text-center py-md bg-soft rounded">
                     <p class="text-secondary">该内容正在审核中，仅管理员和版主可见</p>
                 </div>
             <?php endif; ?>

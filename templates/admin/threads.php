@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
             var tid = this.getAttribute('data-tid');
             var title = this.getAttribute('data-title');
-            document.getElementById('thread-delete-confirm-text').textContent = '确定要删除主题 "' + title + '" 吗？此操作无法撤销，该主题下的所有回复也将被删除。';
+            document.getElementById('thread-delete-confirm-text').textContent = '确定要删除主题"' + title + '" 吗？此操作无法撤销，该主题下的所有回复也将被删除。';
             document.getElementById('thread-delete-confirm-btn').href = 'index.php?c=admin&a=threadDelete&tid=' + tid;
             openModal('thread-delete-modal');
         });

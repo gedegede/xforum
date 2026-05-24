@@ -25,8 +25,8 @@
     ?>
     <header>
         <div class="container">
-            <a href="index.php" class="site-logo">
-                <span class="site-logo-icon">X</span>
+            <a href="index.php" class="row text-primary font-bold">
+                <span class="badge badge-blue">X</span>
                 <span>XForum</span>
             </a>
             <nav>
@@ -52,14 +52,14 @@
     </main>
     <footer>
         <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
+            <div class="grid grid-auto gap-lg">
+                <div>
                     <h4>XForum</h4>
                     <p style="color:var(--footer-text);font-size:12px;line-height:1.8;">
                         以主题、回复和持续讨论为核心的社区界面，强调清晰的信息流与稳定的内容沉淀。
                     </p>
                 </div>
-                <div class="footer-section">
+                <div>
                     <h4>社区入口</h4>
                     <ul>
                         <li><a href="index.php">社区首页</a></li>
@@ -68,7 +68,7 @@
                         <li><a href="index.php?order=view_num">热门浏览</a></li>
                     </ul>
                 </div>
-                <div class="footer-section">
+                <div>
                     <h4>账号与消息</h4>
                     <ul>
                         <li><a href="index.php?c=auth&a=login">用户登录</a></li>
@@ -77,7 +77,7 @@
                         <li><a href="index.php?c=pm&a=inbox">站内私信</a></li>
                     </ul>
                 </div>
-                <div class="footer-section">
+                <div>
                     <h4>创作与管理</h4>
                     <ul>
                         <li><a href="index.php?c=forum&a=index">版块列表</a></li>
@@ -88,7 +88,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <div class="footer-links">
+                <div class="row flex-wrap">
                     <a href="index.php">首页</a>
                     <a href="index.php?c=forum&a=index">论坛</a>
                     <a href="index.php?order=view_num">热门</a>

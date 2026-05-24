@@ -3,8 +3,8 @@
         <h2>发布成功</h2>
     </div>
     <div class="card-body padded">
-        <div class="success-state">
-            <div class="success-icon">✓</div>
+        <div class="text-center py-lg">
+            <div class="badge badge-green mb-md">✓</div>
             <h3><?php echo htmlspecialchars($template_message); ?></h3>
             <p>您的主题已提交，等待管理员审核后会显示在论坛中。</p>
             <div class="mt-md">

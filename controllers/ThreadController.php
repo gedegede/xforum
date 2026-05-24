@@ -25,7 +25,6 @@ use Models\SettingModel;
 use Models\UsergroupModel;
 use Models\DataModel;
 use Models\SessionModel;
-use Models\ModeratorModel;
 use Models\CreditModel;
 
 class ThreadController {
@@ -82,7 +81,6 @@ class ThreadController {
         $users = MemberModel::getMembersByUids($uids);
 
         $isFavorited = Session::isLoggedIn() && FavModel::isFavorite(Session::getUid(), $tid);
-        $hotThreads = ThreadModel::getHotThreadsByFid((int)$thread['fid'], 5, $tid);
 
         Template::set('title', $thread['subject']);
         Template::set('thread', $thread);
@@ -95,7 +93,6 @@ class ThreadController {
         Template::set('user', Session::getUser());
         Template::set('isFavorited', $isFavorited);
         Template::set('isModerator', $isModerator);
-        Template::set('hotThreads', $hotThreads);
         Template::display('thread/index');
     }
 

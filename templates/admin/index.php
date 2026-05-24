@@ -6,17 +6,17 @@
     </div>
     <div class="card-body padded">
         <div class="grid grid-auto gap-lg">
-            <div class="stat-box">
-                <div class="stat-value"><?php echo $template_stats['users']; ?></div>
-                <div class="stat-label">用户数</div>
+            <div class="box">
+                <div class="font-bold"><?php echo $template_stats['users']; ?></div>
+                <div class="muted">用户数</div>
             </div>
-            <div class="stat-box">
-                <div class="stat-value"><?php echo $template_stats['threads']; ?></div>
-                <div class="stat-label">主题数</div>
+            <div class="box">
+                <div class="font-bold"><?php echo $template_stats['threads']; ?></div>
+                <div class="muted">主题数</div>
             </div>
-            <div class="stat-box">
-                <div class="stat-value"><?php echo $template_stats['forums']; ?></div>
-                <div class="stat-label">版块数</div>
+            <div class="box">
+                <div class="font-bold"><?php echo $template_stats['forums']; ?></div>
+                <div class="muted">版块数</div>
             </div>
         </div>
     </div>

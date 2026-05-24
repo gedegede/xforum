@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             var uid = this.getAttribute('data-uid');
             var username = this.getAttribute('data-username');
-            document.getElementById('delete-confirm-text').textContent = '确定要删除用户 "' + username + '" 吗？此操作无法撤销。';
+            document.getElementById('delete-confirm-text').textContent = '确定要删除用户"' + username + '" 吗？此操作无法撤销。';
             document.getElementById('delete-confirm-btn').href = 'index.php?c=admin&a=userDelete&uid=' + uid;
             openModal('delete-modal');
         });
