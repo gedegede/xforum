@@ -52,7 +52,7 @@
 </div>
 
 <div id="add-moderator-modal" data-modal-overlay class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div class="bg-panel rounded-lg shadow-xl w-full max-w-md mx-4">
         <div class="flex items-center justify-between px-4 py-3 border-b border-border">
             <h3 class="font-semibold">添加版主</h3>
             <button class="text-muted hover:text-text text-xl font-bold leading-none" onclick="closeModal('add-moderator-modal')">×</button>
@@ -82,7 +82,7 @@
 </div>
 
 <div id="edit-moderator-modal" data-modal-overlay class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div class="bg-panel rounded-lg shadow-xl w-full max-w-md mx-4">
         <div class="flex items-center justify-between px-4 py-3 border-b border-border">
             <h3 class="font-semibold">编辑版主</h3>
             <button class="text-muted hover:text-text text-xl font-bold leading-none" onclick="closeModal('edit-moderator-modal')">×</button>
@@ -109,7 +109,7 @@
 </div>
 
 <div id="delete-moderator-modal" data-modal-overlay class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div class="bg-panel rounded-lg shadow-xl w-full max-w-md mx-4">
         <div class="flex items-center justify-between px-4 py-3 border-b border-border">
             <h3 class="font-semibold">确认删除</h3>
             <button class="text-muted hover:text-text text-xl font-bold leading-none" onclick="closeModal('delete-moderator-modal')">×</button>

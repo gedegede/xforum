@@ -50,7 +50,7 @@
 </div>
 
 <div id="forum-edit-modal" data-modal-overlay class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div class="bg-panel rounded-lg shadow-xl w-full max-w-md mx-4">
         <div class="flex items-center justify-between px-4 py-3 border-b border-border">
             <h3 class="font-semibold">编辑版块</h3>
             <button class="text-muted hover:text-text text-xl font-bold leading-none" onclick="closeModal('forum-edit-modal')">×</button>
@@ -85,7 +85,7 @@
 </div>
 
 <div id="forum-delete-modal" data-modal-overlay class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div class="bg-panel rounded-lg shadow-xl w-full max-w-md mx-4">
         <div class="flex items-center justify-between px-4 py-3 border-b border-border">
             <h3 class="font-semibold">确认删除</h3>
             <button class="text-muted hover:text-text text-xl font-bold leading-none" onclick="closeModal('forum-delete-modal')">×</button>

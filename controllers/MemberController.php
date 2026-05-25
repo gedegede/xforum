@@ -120,6 +120,23 @@ class MemberController {
         Response::redirect('index.php?c=member&a=profile&uid=' . Session::getUid() . '&type=credits');
     }
 
+    public static function theme(): void {
+        Permission::requireLogin();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            Response::redirect('index.php');
+        }
+
+        $theme = Request::postRaw('theme', 'light');
+        if (!in_array($theme, ['light', 'dark'], true)) {
+            $theme = 'light';
+        }
+
+        MemberModel::setJsonData(Session::getUid(), 'theme', $theme);
+
+        Response::redirect(self::safeRedirectUrl((string)Request::postRaw('redirect', 'index.php')));
+    }
+
     public static function settings(): void {
         Template::clear();
         Permission::requireLogin();
@@ -196,6 +213,19 @@ class MemberController {
         Template::set('user', Session::getUser());
         Template::set('usernameChangeCredit', CreditModel::getRule(CreditModel::ACTION_USERNAME_CHANGE)['credit'] ?? 0);
         Template::display('member/settings');
+    }
+
+    private static function safeRedirectUrl(string $url): string {
+        $url = trim($url);
+        if ($url === '' || str_contains($url, "\r") || str_contains($url, "\n")) {
+            return 'index.php';
+        }
+
+        if (preg_match('/^[a-z][a-z0-9+.-]*:/i', $url) || str_starts_with($url, '//')) {
+            return 'index.php';
+        }
+
+        return $url;
     }
 
     public static function online(): void {

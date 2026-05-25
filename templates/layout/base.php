@@ -32,6 +32,10 @@
     $isProfile = isset($_GET['c']) && $_GET['c'] == 'member';
     $notifyCount = (int)($template_user['notify_num'] ?? 0);
     $inboxCount = (int)($template_user['inbox_num'] ?? 0);
+    $themeToggleUrl = $_SERVER['REQUEST_URI'] ?? 'index.php';
+    $themeToggleUrl = str_replace(["\r", "\n"], '', $themeToggleUrl);
+    $nextTheme = $theme === 'dark' ? 'light' : 'dark';
+    $nextThemeText = $theme === 'dark' ? '日间模式' : '夜间模式';
     ?>
 
     <!-- Header -->
@@ -56,6 +60,29 @@
                     </a>
                     <?php endif; ?>
                     <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid'] ?? 0; ?>" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors <?php echo $isProfile ? 'bg-primary-light text-primary' : ''; ?>">我的</a>
+                    <form method="post" action="index.php?c=member&a=theme" class="flex">
+                        <input type="hidden" name="theme" value="<?php echo $nextTheme; ?>">
+                        <input type="hidden" name="redirect" value="<?php echo htmlspecialchars($themeToggleUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                        <button type="submit" class="inline-flex items-center justify-center w-control h-control border-0 rounded bg-transparent text-sub hover:bg-hover hover:text-text cursor-pointer transition-colors" title="切换<?php echo $nextThemeText; ?>" aria-label="切换<?php echo $nextThemeText; ?>">
+                            <?php if ($theme === 'dark'): ?>
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="4"></circle>
+                                <path d="M12 2v2"></path>
+                                <path d="M12 20v2"></path>
+                                <path d="m4.93 4.93 1.41 1.41"></path>
+                                <path d="m17.66 17.66 1.41 1.41"></path>
+                                <path d="M2 12h2"></path>
+                                <path d="M20 12h2"></path>
+                                <path d="m6.34 17.66-1.41 1.41"></path>
+                                <path d="m19.07 4.93-1.41 1.41"></path>
+                            </svg>
+                            <?php else: ?>
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 3a6 6 0 0 0 9 7.5 9 9 0 1 1-9-7.5z"></path>
+                            </svg>
+                            <?php endif; ?>
+                        </button>
+                    </form>
                 <?php else: ?>
                     <a href="index.php?c=auth&a=login" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors">登录</a>
                     <a href="index.php?c=auth&a=register" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors">注册</a>

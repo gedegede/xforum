@@ -15,6 +15,7 @@
     --border:#dbe2ea;
 
     --text:#0f172a;
+    --text-bg:#0f172a;
     --sub:#475569;
     --muted:#94a3b8;
     --muted-light:#e2e8f0;
@@ -64,6 +65,39 @@
     --control-height:36px;
     --header-height:56px;
     --container:1100px;
+}
+
+.dark{
+    color-scheme:dark;
+
+    --bg:#111315;
+    --panel:#181b20;
+    --soft:#20242b;
+    --hover:#2a2f38;
+    --border:#343a45;
+
+    --text:#f4f4f5;
+    --text-bg:#0b0d10;
+    --sub:#c2c8d0;
+    --muted:#8b95a3;
+    --muted-light:#3f4652;
+
+    --primary:#60a5fa;
+    --primary-dark:#3b82f6;
+    --primary-light:#1e3a5f;
+    --danger:#f87171;
+    --danger-dark:#ef4444;
+    --danger-light:#4a1f26;
+    --success:#4ade80;
+    --success-dark:#22c55e;
+    --success-light:#183b25;
+    --warning:#facc15;
+    --warning-light:#423913;
+
+    --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+    --shadow:0 2px 8px rgba(0,0,0,.4);
+    --shadow-md:0 4px 12px rgba(0,0,0,.45);
+    --shadow-lg:0 8px 24px rgba(0,0,0,.5);
 }
 
 /* =========================
@@ -427,7 +461,7 @@ h1,h2,h3,h4,h5,h6,p,ul,ol{margin:0}
 .bg-transparent{background-color:transparent}
 .bg-black{background-color:#000}
 .bg-white{background-color:#fff}
-.bg-text{background-color:var(--text)}
+.bg-text{background-color:var(--text-bg)}
 
 /* =========================
    BORDER
