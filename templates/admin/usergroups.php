@@ -1,115 +1,115 @@
 <?php include '_menu.php'; ?>
 
-<div class="card">
-    <div class="card-header">
-        <h2>用户组管理</h2>
-        <a href="index.php?c=admin&a=usergroupAdd" class="btn btn-primary">添加用户组</a>
+<div class="bg-panel border border-border rounded shadow-sm">
+    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border">
+        <h2 class="font-semibold">用户组管理</h2>
+        <a href="index.php?c=admin&a=usergroupAdd" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark">添加用户组</a>
     </div>
-    <div class="card-body padded">
-        <div class="table-container">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>用户组名称</th>
-                    <th>类型</th>
-                    <th>积分下限</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (!empty($template_groups)): ?>
-                <?php foreach ($template_groups as $group): ?>
-                    <tr>
-                        <td><?php echo $group['gid']; ?></td>
-                        <td><?php echo htmlspecialchars($group['title']); ?></td>
-                        <td>
-                            <?php 
-                            $types = ['system' => '系统', 'special' => '特殊', 'member' => '会员'];
-                            echo $types[$group['group_type']] ?? '未知';
-                            ?>
-                        </td>
-                        <td><?php echo $group['credit_lower']; ?></td>
-                        <td>
-                            <button class="btn btn-secondary edit-group-btn" data-gid="<?php echo $group['gid']; ?>">编辑</button>
-                            <button class="btn btn-secondary delete-group-btn" data-gid="<?php echo $group['gid']; ?>" data-title="<?php echo htmlspecialchars($group['title']); ?>">删除</button>
-                        </td>
+    <div class="p-4">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+                <thead>
+                    <tr class="bg-soft">
+                        <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border">ID</th>
+                        <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border">用户组名称</th>
+                        <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border">类型</th>
+                        <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border">积分下限</th>
+                        <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border">操作</th>
                     </tr>
-                <?php endforeach; ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="5" class="text-center text-secondary">暂无用户组</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <?php if (!empty($template_groups)): ?>
+                    <?php foreach ($template_groups as $group): ?>
+                        <tr class="hover:bg-hover transition-colors">
+                            <td class="px-4 py-3 border-b border-border"><?php echo $group['gid']; ?></td>
+                            <td class="px-4 py-3 border-b border-border"><?php echo htmlspecialchars($group['title']); ?></td>
+                            <td class="px-4 py-3 border-b border-border">
+                                <?php
+                                $types = ['system' => '系统', 'special' => '特殊', 'member' => '会员'];
+                                echo $types[$group['group_type']] ?? '未知';
+                                ?>
+                            </td>
+                            <td class="px-4 py-3 border-b border-border"><?php echo $group['credit_lower']; ?></td>
+                            <td class="px-4 py-3 border-b border-border">
+                                <button class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover h-control-sm px-3 text-sm" data-action="edit-group" data-gid="<?php echo $group['gid']; ?>">编辑</button>
+                                <button class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover h-control-sm px-3 text-sm" data-action="delete-group" data-gid="<?php echo $group['gid']; ?>" data-title="<?php echo htmlspecialchars($group['title']); ?>">删除</button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="5" class="px-4 py-8 text-center text-muted">暂无用户组</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<div id="group-edit-modal" class="modal-overlay">
-    <div class="modal">
-        <div class="modal-header">
-            <h3>编辑用户组</h3>
-            <button class="modal-close" onclick="closeModal('group-edit-modal')">×</button>
+<div id="group-edit-modal" data-modal-overlay class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-panel rounded-lg max-w-md w-full mx-4 shadow-lg">
+        <div class="flex items-center justify-between p-4 border-b border-border">
+            <h3 class="font-semibold">编辑用户组</h3>
+            <button onclick="closeModal('group-edit-modal')" class="text-muted hover:text-text text-xl">&times;</button>
         </div>
-        <div class="modal-body">
-            <form id="group-edit-form" method="post" class="modal-form">
+        <div class="p-4">
+            <form id="group-edit-form" method="post">
                 <input type="hidden" name="gid" id="edit-group-gid">
-                <div class="form-group">
-                    <label>用户组名称</label>
-                    <input type="text" name="title" id="edit-group-title" required>
+                <div class="mb-4 flex flex-col gap-1.5">
+                    <label class="text-sm font-medium text-text">用户组名称</label>
+                    <input type="text" name="title" id="edit-group-title" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" required>
                 </div>
-                <div class="form-group">
-                    <label>用户组类型</label>
-                    <select name="group_type" id="edit-group-type">
+                <div class="mb-4 flex flex-col gap-1.5">
+                    <label class="text-sm font-medium text-text">用户组类型</label>
+                    <select name="group_type" id="edit-group-type" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary">
                         <option value="system">系统组</option>
                         <option value="special">特殊组</option>
                         <option value="member">会员组</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>积分下限</label>
-                    <input type="number" name="credit_lower" id="edit-group-credit">
+                <div class="mb-4 flex flex-col gap-1.5">
+                    <label class="text-sm font-medium text-text">积分下限</label>
+                    <input type="number" name="credit_lower" id="edit-group-credit" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary">
                 </div>
             </form>
         </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('group-edit-modal')">取消</button>
-            <button class="btn btn-primary" onclick="document.getElementById('group-edit-form').submit()">保存修改</button>
+        <div class="flex justify-end gap-3 p-4 border-t border-border">
+            <button class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover" onclick="closeModal('group-edit-modal')">取消</button>
+            <button class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark" onclick="document.getElementById('group-edit-form').submit()">保存修改</button>
         </div>
     </div>
 </div>
 
-<div id="group-delete-modal" class="modal-overlay">
-    <div class="modal">
-        <div class="modal-header">
-            <h3>确认删除</h3>
-            <button class="modal-close" onclick="closeModal('group-delete-modal')">×</button>
+<div id="group-delete-modal" data-modal-overlay class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-panel rounded-lg max-w-md w-full mx-4 shadow-lg">
+        <div class="flex items-center justify-between p-4 border-b border-border">
+            <h3 class="font-semibold">确认删除</h3>
+            <button onclick="closeModal('group-delete-modal')" class="text-muted hover:text-text text-xl">&times;</button>
         </div>
-        <div class="modal-body">
-            <p class="modal-confirm-text" id="group-delete-confirm-text">确定要删除该用户组吗？此操作无法撤销。</p>
+        <div class="p-4">
+            <p class="text-muted" id="group-delete-confirm-text">确定要删除该用户组吗？此操作无法撤销。</p>
         </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('group-delete-modal')">取消</button>
-            <a href="#" id="group-delete-confirm-btn" class="btn btn-primary">确认删除</a>
+        <div class="flex justify-end gap-3 p-4 border-t border-border">
+            <button class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover" onclick="closeModal('group-delete-modal')">取消</button>
+            <a href="#" id="group-delete-confirm-btn" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark">确认删除</a>
         </div>
     </div>
 </div>
 
 <script>
 function openModal(modalId) {
-    document.getElementById(modalId).classList.add('active');
-    document.body.style.overflow = 'hidden';
+    document.getElementById(modalId).classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('active');
-    document.body.style.overflow = '';
+    document.getElementById(modalId).classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.edit-group-btn').forEach(function(btn) {
+    document.querySelectorAll('[data-action="edit-group"]').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var gid = this.getAttribute('data-gid');
             fetch('index.php?c=admin&a=usergroupEdit&gid=' + gid + '&ajax=1')
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    document.querySelectorAll('.delete-group-btn').forEach(function(btn) {
+    document.querySelectorAll('[data-action="delete-group"]').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var gid = this.getAttribute('data-gid');
             var title = this.getAttribute('data-title');
@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+    document.querySelectorAll('[data-modal-overlay]').forEach(function(overlay) {
         overlay.addEventListener('click', function(e) {
             if (e.target === this) {
                 closeModal(this.id);

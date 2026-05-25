@@ -93,6 +93,7 @@ class ThreadController {
         Template::set('user', Session::getUser());
         Template::set('isFavorited', $isFavorited);
         Template::set('isModerator', $isModerator);
+        Template::set('hotThreads', ThreadModel::getHotThreadsByFid($thread['fid'], 5, $tid));
         Template::display('thread/index');
     }
 

@@ -13,7 +13,7 @@
     <title><?php echo htmlspecialchars(isset($template_title) ? $template_title : 'XForum'); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body>
+<body class="flex flex-col min-h-screen">
     <?php
     $isIndex = !isset($_GET['c']) || (isset($_GET['c']) && $_GET['c'] == 'home' && (!isset($_GET['a']) || $_GET['a'] == 'index'));
     $isForum = isset($_GET['c']) && $_GET['c'] == 'forum' && (!isset($_GET['a']) || $_GET['a'] == 'index');
@@ -23,118 +23,130 @@
     $notifyCount = (int)($template_user['notify_num'] ?? 0);
     $inboxCount = (int)($template_user['inbox_num'] ?? 0);
     ?>
-    <header>
-        <div class="container">
-            <a href="index.php" class="row text-primary font-bold">
-                <span class="badge badge-blue">X</span>
+
+    <!-- Header -->
+    <header class="h-header bg-panel border-b border-border">
+        <div class="container h-full flex items-center justify-between gap-4">
+            <a href="index.php" class="flex items-center gap-2 font-bold text-lg text-primary">
+                <span class="inline-flex items-center justify-center w-7 h-7 rounded bg-primary text-white text-sm">X</span>
                 <span>XForum</span>
             </a>
-            <nav>
-                <a href="index.php" class="<?php echo $isIndex ? 'active' : ''; ?>">首页</a>
-                <a href="index.php?c=forum&a=index" class="<?php echo $isForum ? 'active' : ''; ?>">论坛</a>
+            <nav class="flex items-center gap-1">
+                <a href="index.php" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors <?php echo $isIndex ? 'bg-primary-light text-primary' : ''; ?>">首页</a>
+                <a href="index.php?c=forum&a=index" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors <?php echo $isForum ? 'bg-primary-light text-primary' : ''; ?>">论坛</a>
                 <?php if (isset($template_user) && is_array($template_user) && !empty($template_user)): ?>
-                    <a href="index.php?c=notify&a=index" class="<?php echo $isNotify ? 'active' : ''; ?>">
-                        通知<?php if ($notifyCount > 0): ?><span class="badge badge-blue ml-sm"><?php echo min(99, $notifyCount); ?></span><?php endif; ?>
+                    <a href="index.php?c=notify&a=index" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors <?php echo $isNotify ? 'bg-primary-light text-primary' : ''; ?>">
+                        通知<?php if ($notifyCount > 0): ?><span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-xs ml-1.5"><?php echo min(99, $notifyCount); ?></span><?php endif; ?>
                     </a>
-                    <a href="index.php?c=pm&a=inbox" class="<?php echo $isPm ? 'active' : ''; ?>">
-                        私信<?php if ($inboxCount > 0): ?><span class="badge badge-blue ml-sm"><?php echo min(99, $inboxCount); ?></span><?php endif; ?>
+                    <a href="index.php?c=pm&a=inbox" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors <?php echo $isPm ? 'bg-primary-light text-primary' : ''; ?>">
+                        私信<?php if ($inboxCount > 0): ?><span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-xs ml-1.5"><?php echo min(99, $inboxCount); ?></span><?php endif; ?>
                     </a>
-                    <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid'] ?? 0; ?>" class="<?php echo $isProfile ? 'active' : ''; ?>">我的</a>
+                    <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid'] ?? 0; ?>" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors <?php echo $isProfile ? 'bg-primary-light text-primary' : ''; ?>">我的</a>
                 <?php else: ?>
-                    <a href="index.php?c=auth&a=login">登录</a>
-                    <a href="index.php?c=auth&a=register">注册</a>
+                    <a href="index.php?c=auth&a=login" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors">登录</a>
+                    <a href="index.php?c=auth&a=register" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors">注册</a>
                 <?php endif; ?>
             </nav>
         </div>
     </header>
-    <main class="container">
+
+    <!-- Main Content -->
+    <main class="flex-1 container py-6">
         <?php echo $content; ?>
     </main>
-    <footer>
+
+    <!-- Footer -->
+    <footer class="mt-10 py-8 pb-6 bg-text text-white/70">
         <div class="container">
-            <div class="grid grid-auto gap-lg">
+            <div class="grid grid-cols-auto-fit-40 gap-8 mb-8">
                 <div>
-                    <h4>XForum</h4>
-                    <p style="color:var(--footer-text);font-size:12px;line-height:1.8;">
-                        以主题、回复和持续讨论为核心的社区界面，强调清晰的信息流与稳定的内容沉淀。
-                    </p>
+                    <h4 class="mb-3 text-base font-semibold text-white">XForum</h4>
+                    <p class="text-sm leading-relaxed">以主题、回复和持续讨论为核心的社区界面，强调清晰的信息流与稳定的内容沉淀。</p>
                 </div>
                 <div>
-                    <h4>社区入口</h4>
-                    <ul>
-                        <li><a href="index.php">社区首页</a></li>
-                        <li><a href="index.php?c=forum&a=index">论坛导航</a></li>
-                        <li><a href="index.php?order=reply_time">最新讨论</a></li>
-                        <li><a href="index.php?order=view_num">热门浏览</a></li>
+                    <h4 class="mb-3 text-base font-semibold text-white">社区入口</h4>
+                    <ul class="list-none m-0 p-0">
+                        <li class="mb-2"><a href="index.php" class="hover:text-white transition-colors">社区首页</a></li>
+                        <li class="mb-2"><a href="index.php?c=forum&a=index" class="hover:text-white transition-colors">论坛导航</a></li>
+                        <li class="mb-2"><a href="index.php?order=reply_time" class="hover:text-white transition-colors">最新讨论</a></li>
+                        <li class="mb-2"><a href="index.php?order=view_num" class="hover:text-white transition-colors">热门浏览</a></li>
                     </ul>
                 </div>
                 <div>
-                    <h4>账号与消息</h4>
-                    <ul>
-                        <li><a href="index.php?c=auth&a=login">用户登录</a></li>
-                        <li><a href="index.php?c=auth&a=register">注册账号</a></li>
-                        <li><a href="index.php?c=notify&a=index">通知中心</a></li>
-                        <li><a href="index.php?c=pm&a=inbox">站内私信</a></li>
+                    <h4 class="mb-3 text-base font-semibold text-white">账号与消息</h4>
+                    <ul class="list-none m-0 p-0">
+                        <li class="mb-2"><a href="index.php?c=auth&a=login" class="hover:text-white transition-colors">用户登录</a></li>
+                        <li class="mb-2"><a href="index.php?c=auth&a=register" class="hover:text-white transition-colors">注册账号</a></li>
+                        <li class="mb-2"><a href="index.php?c=notify&a=index" class="hover:text-white transition-colors">通知中心</a></li>
+                        <li class="mb-2"><a href="index.php?c=pm&a=inbox" class="hover:text-white transition-colors">站内私信</a></li>
                     </ul>
                 </div>
                 <div>
-                    <h4>创作与管理</h4>
-                    <ul>
-                        <li><a href="index.php?c=forum&a=index">版块列表</a></li>
-                        <li><a href="index.php?c=forum&a=index&from=create">发布主题</a></li>
-                        <li><a href="index.php?c=member&a=settings">个人设置</a></li>
-                        <li><a href="index.php?c=admin&a=index">管理后台</a></li>
+                    <h4 class="mb-3 text-base font-semibold text-white">创作与管理</h4>
+                    <ul class="list-none m-0 p-0">
+                        <li class="mb-2"><a href="index.php?c=forum&a=index" class="hover:text-white transition-colors">版块列表</a></li>
+                        <li class="mb-2"><a href="index.php?c=forum&a=index&from=create" class="hover:text-white transition-colors">发布主题</a></li>
+                        <li class="mb-2"><a href="index.php?c=member&a=settings" class="hover:text-white transition-colors">个人设置</a></li>
+                        <li class="mb-2"><a href="index.php?c=admin&a=index" class="hover:text-white transition-colors">管理后台</a></li>
                     </ul>
                 </div>
             </div>
-            <div class="footer-bottom">
-                <div class="row flex-wrap">
-                    <a href="index.php">首页</a>
-                    <a href="index.php?c=forum&a=index">论坛</a>
-                    <a href="index.php?order=view_num">热门</a>
-                    <a href="index.php?order=reply_time">最新</a>
+            <div class="flex flex-wrap justify-between items-center gap-4 pt-6 border-t border-white/10 text-xs">
+                <div class="flex flex-wrap gap-4">
+                    <a href="index.php" class="hover:text-white transition-colors">首页</a>
+                    <a href="index.php?c=forum&a=index" class="hover:text-white transition-colors">论坛</a>
+                    <a href="index.php?order=view_num" class="hover:text-white transition-colors">热门</a>
+                    <a href="index.php?order=reply_time" class="hover:text-white transition-colors">最新</a>
                 </div>
                 <div>Copyright © 2024-<?php echo date('Y'); ?> XForum All Rights Reserved</div>
             </div>
+
+            <!-- SQL Query Log -->
             <?php
             $queryLog = \Lib\Database::getQueryLog();
             if (!empty($queryLog)):
             ?>
-            <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.1);font-size:12px;">
-                <h4 style="margin-bottom:12px;color:#9ca3af;font-size:13px;">SQL查询日志 (共 <?php echo count($queryLog); ?> 条)</h4>
+            <div class="mt-6 pt-5 border-t border-white/10">
+                <h4 class="mb-3 text-sm font-semibold text-gray-400">SQL查询日志 (共 <?php echo count($queryLog); ?> 条)</h4>
                 <?php foreach ($queryLog as $index => $query): ?>
-                <div style="margin-bottom:16px;padding:12px;background:rgba(0,0,0,0.2);border-radius:4px;">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                        <span class="badge" style="font-size:10px;padding:2px 6px;">#<?php echo $index + 1; ?></span>
-                        <span style="color:#9ca3af;font-size:11px;"><?php echo number_format($query['duration'], 2); ?>ms</span>
+                <div class="mb-4 p-3 rounded bg-black/20">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center justify-center px-2 py-1 rounded text-[10px] font-medium bg-text text-white">#<?php echo $index + 1; ?></span>
+                        <span class="text-sm text-gray-400"><?php echo number_format($query['duration'], 2); ?>ms</span>
                     </div>
-                    <div><code style="display:block;padding:8px;background:rgba(0,0,0,0.3);border-radius:4px;color:#e5e7eb;font-family:'Consolas','Monaco',monospace;font-size:11px;line-height:1.5;overflow-x:auto;"><?php echo htmlspecialchars($query['sql']); ?></code></div>
+                    <div>
+                        <code class="block mb-2 p-3 bg-text text-gray-400 font-mono text-sm leading-normal rounded overflow-x-auto"><?php echo htmlspecialchars($query['sql']); ?></code>
+                    </div>
                     <?php if (!empty($query['params'])): ?>
-                    <div style="margin-top:6px;padding:6px 8px;background:rgba(0,0,0,0.2);border-radius:4px;color:#9ca3af;font-size:11px;">参数: <?php echo htmlspecialchars(json_encode($query['params'])); ?></div>
+                    <div class="mt-2 p-2 rounded text-sm bg-black/20 text-gray-400">
+                        参数: <?php echo htmlspecialchars(json_encode($query['params'])); ?>
+                    </div>
                     <?php endif; ?>
                     <?php if ($query['explain']): ?>
-                    <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
-                        <div style="margin-bottom:8px;color:#fbbf24;font-size:11px;font-weight:600;">EXPLAIN QUERY PLAN:</div>
-                        <table style="width:100%;border-collapse:collapse;font-size:11px;">
-                            <thead>
-                                <tr>
-                                    <th style="padding:6px 8px;border:1px solid rgba(255,255,255,0.1);text-align:left;background:rgba(0,0,0,0.2);color:#9ca3af;font-weight:600;">id</th>
-                                    <th style="padding:6px 8px;border:1px solid rgba(255,255,255,0.1);text-align:left;background:rgba(0,0,0,0.2);color:#9ca3af;font-weight:600;">parent</th>
-                                    <th style="padding:6px 8px;border:1px solid rgba(255,255,255,0.1);text-align:left;background:rgba(0,0,0,0.2);color:#9ca3af;font-weight:600;">notused</th>
-                                    <th style="padding:6px 8px;border:1px solid rgba(255,255,255,0.1);text-align:left;background:rgba(0,0,0,0.2);color:#9ca3af;font-weight:600;">detail</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($query['explain'] as $row): ?>
-                                <tr>
-                                    <td style="padding:6px 8px;border:1px solid rgba(255,255,255,0.1);text-align:left;color:#d1d5db;font-family:'Consolas','Monaco',monospace;"><?php echo $row['id'] ?? '-'; ?></td>
-                                    <td style="padding:6px 8px;border:1px solid rgba(255,255,255,0.1);text-align:left;color:#d1d5db;font-family:'Consolas','Monaco',monospace;"><?php echo $row['parent'] ?? '-'; ?></td>
-                                    <td style="padding:6px 8px;border:1px solid rgba(255,255,255,0.1);text-align:left;color:#d1d5db;font-family:'Consolas','Monaco',monospace;"><?php echo $row['notused'] ?? '-'; ?></td>
-                                    <td style="padding:6px 8px;border:1px solid rgba(255,255,255,0.1);text-align:left;color:#d1d5db;font-family:'Consolas','Monaco',monospace;"><?php echo htmlspecialchars($row['detail'] ?? '-'); ?></td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                    <div class="mt-3 pt-3 border-t border-white/8">
+                        <div class="mb-2 text-sm font-semibold text-amber-300">EXPLAIN QUERY PLAN:</div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm border-collapse">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left px-2 py-1.5 bg-black/20 text-muted font-semibold border border-white/10">id</th>
+                                        <th class="text-left px-2 py-1.5 bg-black/20 text-muted font-semibold border border-white/10">parent</th>
+                                        <th class="text-left px-2 py-1.5 bg-black/20 text-muted font-semibold border border-white/10">notused</th>
+                                        <th class="text-left px-2 py-1.5 bg-black/20 text-muted font-semibold border border-white/10">detail</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($query['explain'] as $row): ?>
+                                    <tr>
+                                        <td class="px-2 py-1.5 text-muted border border-white/10 font-mono"><?php echo $row['id'] ?? '-'; ?></td>
+                                        <td class="px-2 py-1.5 text-muted border border-white/10 font-mono"><?php echo $row['parent'] ?? '-'; ?></td>
+                                        <td class="px-2 py-1.5 text-muted border border-white/10 font-mono"><?php echo $row['notused'] ?? '-'; ?></td>
+                                        <td class="px-2 py-1.5 text-muted border border-white/10 font-mono"><?php echo htmlspecialchars($row['detail'] ?? '-'); ?></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -143,34 +155,35 @@
             <?php endif; ?>
         </div>
     </footer>
-    
-    <nav class="mobile-nav">
-        <div class="mobile-nav-items">
-            <a href="index.php" class="mobile-nav-item <?php echo $isIndex ? 'active' : ''; ?>">
-                <svg viewBox="0 0 24 24" fill="currentColor">
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="fixed left-0 right-0 bottom-0 bg-panel border-t border-border z-50">
+        <div class="flex justify-around h-14">
+            <a href="index.php" class="flex flex-1 flex-col items-center justify-center gap-0.5 <?php echo $isIndex ? 'text-primary' : 'text-muted hover:text-primary'; ?> transition-colors">
+                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                 </svg>
-                <span>首页</span>
+                <span class="text-[10px]">首页</span>
             </a>
-            <a href="index.php?c=forum&a=index" class="mobile-nav-item <?php echo $isForum ? 'active' : ''; ?>">
-                <svg viewBox="0 0 24 24" fill="currentColor">
+            <a href="index.php?c=forum&a=index" class="flex flex-1 flex-col items-center justify-center gap-0.5 <?php echo $isForum ? 'text-primary' : 'text-muted hover:text-primary'; ?> transition-colors">
+                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
                 </svg>
-                <span>论坛</span>
+                <span class="text-[10px]">论坛</span>
             </a>
             <?php if (isset($template_user) && is_array($template_user) && !empty($template_user)): ?>
-            <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid'] ?? 0; ?>" class="mobile-nav-item <?php echo $isProfile ? 'active' : ''; ?>">
-                <svg viewBox="0 0 24 24" fill="currentColor">
+            <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid'] ?? 0; ?>" class="flex flex-1 flex-col items-center justify-center gap-0.5 <?php echo $isProfile ? 'text-primary' : 'text-muted hover:text-primary'; ?> transition-colors">
+                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                 </svg>
-                <span>我的</span>
+                <span class="text-[10px]">我的</span>
             </a>
             <?php else: ?>
-            <a href="index.php?c=auth&a=login" class="mobile-nav-item">
-                <svg viewBox="0 0 24 24" fill="currentColor">
+            <a href="index.php?c=auth&a=login" class="flex flex-1 flex-col items-center justify-center gap-0.5 text-muted hover:text-primary transition-colors">
+                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                 </svg>
-                <span>登录</span>
+                <span class="text-[10px]">登录</span>
             </a>
             <?php endif; ?>
         </div>

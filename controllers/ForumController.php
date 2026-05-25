@@ -14,6 +14,7 @@ use Lib\Request;
 use Models\ForumModel;
 use Models\ThreadModel;
 use Models\MemberModel;
+use Models\ModeratorModel;
 
 class ForumController {
     public static function index(int $fid = 0): void {
@@ -65,6 +66,17 @@ class ForumController {
             ['value' => 'view_num', 'label' => '查看数']
         ];
 
+        $moderators = ModeratorModel::getByFid($fid);
+        usort($moderators, function($a, $b) {
+            return $a['sort_order'] - $b['sort_order'];
+        });
+
+        $moderatorUsers = [];
+        if (!empty($moderators)) {
+            $modUids = array_unique(array_column($moderators, 'uid'));
+            $moderatorUsers = MemberModel::getMembersByUids($modUids);
+        }
+
         Template::set('title', $forum['name']);
         Template::set('forum', $forum);
         Template::set('parentForum', $parentForum);
@@ -75,6 +87,9 @@ class ForumController {
         Template::set('order', $order);
         Template::set('keyword', $keyword);
         Template::set('orderOptions', $orderOptions);
+        Template::set('hotThreads', ThreadModel::getHotThreadsByFid($fid, 5));
+        Template::set('moderators', $moderators);
+        Template::set('moderatorUsers', $moderatorUsers);
         Template::set('user', Session::getUser());
         Template::display('forum/index');
     }

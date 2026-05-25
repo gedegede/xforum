@@ -30,7 +30,7 @@ final class MarkdownHelper {
             }
 
             $text = implode("\n", $paragraph);
-            $html[] = '<p>' . self::parseInline($text) . '</p>';
+            $html[] = '<p class="mb-3 last:mb-0">' . self::parseInline($text) . '</p>';
             $paragraph = [];
         };
 
@@ -40,11 +40,12 @@ final class MarkdownHelper {
             }
 
             $items = array_map(
-                static fn(string $item): string => '<li>' . self::parseInline($item) . '</li>',
+                static fn(string $item): string => '<li class="mb-1 last:mb-0">' . self::parseInline($item) . '</li>',
                 $listItems
             );
 
-            $html[] = '<' . $listType . '>' . implode('', $items) . '</' . $listType . '>';
+            $listClass = $listType === 'ol' ? 'list-decimal pl-5 mb-3' : 'list-disc pl-5 mb-3';
+            $html[] = '<' . $listType . ' class="' . $listClass . '">' . implode('', $items) . '</' . $listType . '>';
             $listType = null;
             $listItems = [];
         };
@@ -54,7 +55,7 @@ final class MarkdownHelper {
                 return;
             }
 
-            $html[] = '<blockquote>' . self::parse(implode("\n", $blockquote)) . '</blockquote>';
+            $html[] = '<blockquote class="mb-3 pl-4 border-l-3 border-primary text-sub">' . self::parse(implode("\n", $blockquote)) . '</blockquote>';
             $blockquote = [];
         };
 
@@ -67,8 +68,8 @@ final class MarkdownHelper {
         foreach ($lines as $line) {
             if ($inCodeBlock) {
                 if (preg_match('/^\s*```\s*$/', $line)) {
-                    $class = $codeLanguage !== '' ? ' class="language-' . self::escapeAttribute($codeLanguage) . '"' : '';
-                    $html[] = '<pre><code' . $class . '>' . htmlspecialchars(implode("\n", $codeLines), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</code></pre>';
+                    $languageClass = $codeLanguage !== '' ? ' language-' . self::escapeAttribute($codeLanguage) : '';
+                    $html[] = '<pre class="mb-3 p-3 bg-text text-gray-400 font-mono text-sm leading-normal rounded overflow-x-auto"><code class="font-mono' . $languageClass . '">' . htmlspecialchars(implode("\n", $codeLines), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</code></pre>';
                     $codeLines = [];
                     $codeLanguage = '';
                     $inCodeBlock = false;
@@ -95,13 +96,14 @@ final class MarkdownHelper {
                 $flushBlocks();
                 preg_match('/^(#{1,6})\s+(.+)$/', $trimmed, $matches);
                 $level = strlen($matches[1]);
-                $html[] = '<h' . $level . '>' . self::parseInline($matches[2]) . '</h' . $level . '>';
+                $headingClass = $level <= 2 ? 'mt-4 mb-2 text-xl font-bold' : 'mt-4 mb-2 text-lg font-semibold';
+                $html[] = '<h' . $level . ' class="' . $headingClass . '">' . self::parseInline($matches[2]) . '</h' . $level . '>';
                 continue;
             }
 
             if (preg_match('/^(-{3,}|\*{3,}|_{3,})$/', $trimmed)) {
                 $flushBlocks();
-                $html[] = '<hr>';
+                $html[] = '<hr class="my-4 border-0 border-t border-border">';
                 continue;
             }
 
@@ -140,8 +142,8 @@ final class MarkdownHelper {
         }
 
         if ($inCodeBlock) {
-            $class = $codeLanguage !== '' ? ' class="language-' . self::escapeAttribute($codeLanguage) . '"' : '';
-            $html[] = '<pre><code' . $class . '>' . htmlspecialchars(implode("\n", $codeLines), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</code></pre>';
+            $languageClass = $codeLanguage !== '' ? ' language-' . self::escapeAttribute($codeLanguage) : '';
+            $html[] = '<pre class="mb-3 p-3 bg-text text-gray-400 font-mono text-sm leading-normal rounded overflow-x-auto"><code class="font-mono' . $languageClass . '">' . htmlspecialchars(implode("\n", $codeLines), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</code></pre>';
         }
 
         $flushBlocks();
@@ -164,7 +166,7 @@ final class MarkdownHelper {
 
         $text = preg_replace_callback('/`([^`\n]+)`/', static function (array $matches) use (&$placeholders): string {
             $key = "\x1A" . count($placeholders) . "\x1A";
-            $placeholders[$key] = '<code>' . htmlspecialchars($matches[1], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</code>';
+            $placeholders[$key] = '<code class="px-1.5 py-0.5 bg-soft rounded-sm font-mono text-danger">' . htmlspecialchars($matches[1], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</code>';
             return $key;
         }, $text) ?? $text;
 
@@ -177,7 +179,7 @@ final class MarkdownHelper {
             }
 
             $key = "\x1A" . count($placeholders) . "\x1A";
-            $placeholders[$key] = '<img src="' . self::escapeAttribute($url) . '" alt="' . self::escapeAttribute($matches[1]) . '">';
+            $placeholders[$key] = '<img class="max-w-full rounded border border-border" src="' . self::escapeAttribute($url) . '" alt="' . self::escapeAttribute($matches[1]) . '">';
             return $key;
         }, $text) ?? $text;
 
@@ -188,7 +190,7 @@ final class MarkdownHelper {
             }
 
             $key = "\x1A" . count($placeholders) . "\x1A";
-            $placeholders[$key] = '<a href="' . self::escapeAttribute($url) . '" target="_blank" rel="noopener noreferrer">' . $matches[1] . '</a>';
+            $placeholders[$key] = '<a class="text-primary hover:underline" href="' . self::escapeAttribute($url) . '" target="_blank" rel="noopener noreferrer">' . $matches[1] . '</a>';
             return $key;
         }, $text) ?? $text;
 

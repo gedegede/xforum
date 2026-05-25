@@ -70,6 +70,7 @@ class HomeController {
         ];
 
         $userStats = [];
+        $userGroup = null;
         $currentUser = Session::getUser();
         if ($currentUser) {
             $userStats = [
@@ -82,6 +83,7 @@ class HomeController {
                 'notify_num' => (int)($currentUser['notify_num'] ?? 0),
                 'signed_today' => CreditModel::hasSignedToday((int)$currentUser['uid']),
             ];
+            $userGroup = UsergroupModel::get((int)($currentUser['gid'] ?? 0));
         }
 
         $noticeThreads = [];
@@ -121,6 +123,7 @@ class HomeController {
         Template::set('collapsedForums', $collapsedForums);
         Template::set('users', $users);
         Template::set('user', $currentUser);
+        Template::set('userGroup', $userGroup);
         Template::set('userStats', $userStats);
         Template::set('noticeThreads', $noticeThreads);
         Template::set('onlineCount', $onlineCount);

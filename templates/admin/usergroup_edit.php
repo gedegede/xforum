@@ -1,51 +1,55 @@
 <?php include '_menu.php'; ?>
 
-<div class="card">
-    <div class="card-header">
-        <h2>编辑用户组</h2>
+<div class="bg-panel border border-border rounded shadow-sm">
+    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border">
+        <h2 class="font-semibold">编辑用户组</h2>
     </div>
-    <div class="card-body padded">
+    <div class="p-4">
         <?php if ($template_error): ?>
-            <div class="error"><?php echo htmlspecialchars($template_error); ?></div>
+            <div class="p-3 rounded bg-danger-light text-danger mb-4 text-sm"><?php echo htmlspecialchars($template_error); ?></div>
         <?php endif; ?>
 
         <form method="post">
-            <div class="form-group">
-                <label>用户组名称</label>
-                <input type="text" name="title" value="<?php echo htmlspecialchars($template_group['title']); ?>" required>
+            <div class="mb-4 flex flex-col gap-1.5">
+                <label class="text-sm font-medium text-text">用户组名称</label>
+                <input type="text" name="title" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" value="<?php echo htmlspecialchars($template_group['title']); ?>" required>
             </div>
-            <div class="form-group">
-                <label>用户组类型</label>
-                <select name="group_type">
+
+            <div class="mb-4 flex flex-col gap-1.5">
+                <label class="text-sm font-medium text-text">用户组类型</label>
+                <select name="group_type" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary">
                     <option value="system" <?php echo $template_group['group_type'] == 'system' ? 'selected' : ''; ?>>系统组</option>
                     <option value="special" <?php echo $template_group['group_type'] == 'special' ? 'selected' : ''; ?>>特殊组</option>
                     <option value="member" <?php echo $template_group['group_type'] == 'member' ? 'selected' : ''; ?>>会员组</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label>积分下限</label>
-                <input type="number" name="credit_lower" value="<?php echo $template_group['credit_lower']; ?>">
+
+            <div class="mb-4 flex flex-col gap-1.5">
+                <label class="text-sm font-medium text-text">积分下限</label>
+                <input type="number" name="credit_lower" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" value="<?php echo $template_group['credit_lower']; ?>">
             </div>
-            <div class="form-group">
-                <label>权限设置</label>
-                <div class="checkbox-group">
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="can_manage" value="1" <?php echo !empty($template_group['can_manage']) ? 'checked' : ''; ?>>
+
+            <div class="mb-6">
+                <label class="text-sm font-medium text-text mb-2 block">权限设置</label>
+                <div class="flex flex-wrap gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="can_manage" value="1" class="rounded" <?php echo !empty($template_group['can_manage']) ? 'checked' : ''; ?>>
                         <span>允许管理主题</span>
                     </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="thread_need_approve" value="1" <?php echo !empty($template_group['thread_need_approve']) ? 'checked' : ''; ?>>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="thread_need_approve" value="1" class="rounded" <?php echo !empty($template_group['thread_need_approve']) ? 'checked' : ''; ?>>
                         <span>发主题需要审核</span>
                     </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="post_need_approve" value="1" <?php echo !empty($template_group['post_need_approve']) ? 'checked' : ''; ?>>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="post_need_approve" value="1" class="rounded" <?php echo !empty($template_group['post_need_approve']) ? 'checked' : ''; ?>>
                         <span>发回帖需要审核</span>
                     </label>
                 </div>
             </div>
-            <div class="flex justify-end gap-md mt-lg">
-                <button type="submit" class="btn btn-primary">保存修改</button>
-                <a href="index.php?c=admin&a=usergroups" class="btn btn-secondary">取消</a>
+
+            <div class="flex justify-end gap-3">
+                <button type="submit" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark">保存修改</button>
+                <a href="index.php?c=admin&a=usergroups" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover">取消</a>
             </div>
         </form>
     </div>
