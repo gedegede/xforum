@@ -18,6 +18,7 @@ class CreditModel {
     public const ACTION_THREAD_REPLY = 'ThreadReply';
     public const ACTION_PM_SEND = 'PmSend';
     public const ACTION_THREAD_REPORT = 'ThreadReport';
+    public const ACTION_USERNAME_CHANGE = 'UsernameChange';
 
     private const PAGE_SIZE = 20;
     private const DAY_SECONDS = 86400;
@@ -28,6 +29,7 @@ class CreditModel {
         self::ACTION_THREAD_REPLY => ['credit' => 1, 'daily_max' => 10],
         self::ACTION_PM_SEND => ['credit' => 0, 'daily_max' => 0],
         self::ACTION_THREAD_REPORT => ['credit' => 0, 'daily_max' => 0],
+        self::ACTION_USERNAME_CHANGE => ['credit' => 0, 'daily_max' => 0],
     ];
 
     public static function getDefaultRuleText(): string {
@@ -41,6 +43,7 @@ class CreditModel {
             self::ACTION_THREAD_REPLY => '回复主题',
             self::ACTION_PM_SEND => '发送私信',
             self::ACTION_THREAD_REPORT => '举报主题',
+            self::ACTION_USERNAME_CHANGE => '修改用户名',
         ];
     }
 

@@ -91,6 +91,11 @@
                         <div class="flex-1 min-w-0">
                             <label class="text-sm text-muted" for="member_username">用户名</label>
                             <p class="text-xs text-muted mt-0.5">用于发帖、回复和个人主页展示。</p>
+                            <?php if ((int)$template_usernameChangeCredit < 0): ?>
+                            <p class="text-xs text-warning mt-0.5">修改用户名将消耗 <?php echo abs((int)$template_usernameChangeCredit); ?> 金币</p>
+                            <?php elseif ((int)$template_usernameChangeCredit > 0): ?>
+                            <p class="text-xs text-success mt-0.5">修改用户名可获得 <?php echo (int)$template_usernameChangeCredit; ?> 金币</p>
+                            <?php endif; ?>
                         </div>
                         <input type="text" id="member_username" name="username" value="<?php echo htmlspecialchars($template_member['username']); ?>" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" required>
                     </div>

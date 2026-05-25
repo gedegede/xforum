@@ -654,6 +654,7 @@ h1,h2,h3,h4,h5,h6,p,ul,ol{margin:0}
 .w-24{width:96px}
 .w-32{width:128px}
 .w-80{width:320px}
+.w-96{width:384px}
 .w-control{width:var(--control-height)}
 .w-control-sm{width:30px}
 .w-fit{width:fit-content}
@@ -812,4 +813,5 @@ h1,h2,h3,h4,h5,h6,p,ul,ol{margin:0}
     .show-mobile-only{display:none!important}
     .lg\:flex-row{flex-direction:row}
     .lg\:w-80{width:320px}
+    .lg\:w-96{width:384px}
 }

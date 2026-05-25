@@ -130,11 +130,17 @@ class MemberController {
                 } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                     $error = '邮箱格式不正确';
                 } else {
+                    $isUsernameChanged = $username != $member['username'];
                     MemberModel::update(Session::getUid(), [
                         'username' => $username,
                         'email' => $email,
                     ]);
                     Session::set('username', $username);
+                    
+                    if ($isUsernameChanged) {
+                        CreditModel::apply(CreditModel::ACTION_USERNAME_CHANGE, Session::getUid(), '修改用户名', 'index.php?c=member&a=profile&uid=' . Session::getUid() . '&type=credits');
+                    }
+                    
                     $success = '个人信息修改成功';
                     $member = MemberModel::get(Session::getUid());
                 }
@@ -171,6 +177,7 @@ class MemberController {
         Template::set('error', $error);
         Template::set('success', $success);
         Template::set('user', Session::getUser());
+        Template::set('usernameChangeCredit', CreditModel::getRule(CreditModel::ACTION_USERNAME_CHANGE)['credit'] ?? 0);
         Template::display('member/settings');
     }
 
