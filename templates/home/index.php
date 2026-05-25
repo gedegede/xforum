@@ -3,7 +3,7 @@
     <div class="min-w-0 flex flex-col gap-4">
         <?php if ($template_canManage && !empty($template_modStats)): ?>
         <div class="bg-panel border border-border rounded shadow-sm">
-            <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border">
+            <div class="flex items-center justify-between gap-3 p-3 border-b border-border">
                 <h3>管理提示</h3>
             </div>
             <div class="p-4">
@@ -28,27 +28,16 @@
         <!-- Thread List Card -->
         <div class="bg-panel border border-border rounded shadow-sm">
             <!-- Card Header -->
-            <div class="flex flex-col items-start gap-3 px-4 py-3.5 border-b border-border">
-                <div class="flex items-start justify-between gap-4 w-full">
+            <div class="flex flex-col items-start gap-3 p-3 border-b border-border">
+                <div class="flex items-center justify-between gap-4 w-full">
                     <div class="flex-1 min-w-0">
-                        <h1 class="text-xl font-bold mb-2">XForum</h1>
-                        <div class="flex flex-wrap gap-2">
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-soft text-sub"><?php echo count($template_threads); ?> 条当前列表</span>
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-soft text-sub"><?php echo (int)$template_onlineCount; ?> 人在线</span>
-                            <?php if (!empty($template_keyword)): ?>
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-success-light text-success">搜索：<?php echo htmlspecialchars($template_keyword); ?></span>
-                            <?php else: ?>
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-soft text-sub">排序：<?php echo htmlspecialchars($template_orderOptions[array_search($template_order, array_column($template_orderOptions, 'value'))]['label'] ?? '最后回复'); ?></span>
-                            <?php endif; ?>
-                        </div>
+                        <h1 class="text-xl font-bold">XForum</h1>
                     </div>
-                    <div class="flex flex-col gap-2 min-w-42">
+                    <div class="flex flex-col gap-2">
                         <?php if (isset($template_user) && is_array($template_user) && !empty($template_user)): ?>
                             <a href="index.php?c=forum&a=index&from=create" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark w-full">发布主题</a>
-                            <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid']; ?>&type=threads" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover w-full">我的主题</a>
                         <?php else: ?>
-                            <a href="index.php?c=auth&a=register" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark w-full">创建账号</a>
-                            <a href="index.php?c=auth&a=login" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover w-full">登录参与讨论</a>
+                            <a href="index.php?c=auth&a=login" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover w-full">登录</a>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -85,56 +74,20 @@
             </div>
 
             <!-- Thread List -->
-            <div class="flex flex-col">
-                <?php foreach ($template_threads as $thread): ?>
-                    <?php $author = $template_users[$thread['uid']] ?? null; ?>
-                    <?php $forum = $template_forums[$thread['fid']] ?? null; ?>
-                    <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" class="flex items-center gap-3 p-3 border-b border-border last:border-b-0 hover:bg-hover transition-colors">
-                    <div class="w-8 h-8 rounded-full bg-primary-light text-primary flex items-center justify-center font-semibold text-sm flex-shrink-0 overflow-hidden">
-                        <?php if ($author && !empty($author['avatar'])): ?>
-                            <img src="<?php echo htmlspecialchars($author['avatar']); ?>" alt="" class="w-full h-full object-cover">
-                        <?php else: ?>
-                            <?php echo \Lib\Helper::getAvatarInitial($author['username'] ?? '?'); ?>
-                        <?php endif; ?>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="font-semibold truncate"><?php echo htmlspecialchars($thread['subject']); ?></span>
-                            <?php if ($forum): ?>
-                                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-success-light text-success flex-shrink-0"><?php echo htmlspecialchars($forum['name']); ?></span>
-                            <?php endif; ?>
-                        </div>
-                        <div class="flex items-center gap-2 text-sm text-muted mt-1">
-                            <span><?php echo htmlspecialchars($author['username'] ?? '匿名'); ?></span>
-                            <span>·</span>
-                            <span><?php echo date('Y-m-d H:i', $thread['dateline']); ?></span>
-                            <?php if (!empty($thread['reply_time']) && (int)$thread['reply_time'] !== (int)$thread['dateline']): ?>
-                                <span>·</span>
-                                <span>最后活跃 <?php echo date('Y-m-d H:i', (int)$thread['reply_time']); ?></span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4 text-sm flex-shrink-0">
-                        <div class="text-center">
-                            <div class="font-semibold"><?php echo $thread['view_num']; ?></div>
-                            <div class="text-xs text-muted">浏览</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-semibold"><?php echo $thread['reply_num']; ?></div>
-                            <div class="text-xs text-muted">回复</div>
-                        </div>
-                    </div>
-                </a>
-                <?php endforeach; ?>
-                <?php if (empty($template_threads)): ?>
-                    <div class="p-8 text-center text-muted">
-                        <svg class="w-12 h-12 mx-auto mb-3 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"/>
-                        </svg>
-                        <p>暂无话题</p>
-                    </div>
-                <?php endif; ?>
-            </div>
+            <?php if ($template_threads): ?>
+                <div class="flex flex-col">
+                    <?php foreach ($template_threads as $thread): ?>
+                        <?php echo \Lib\ThreadHelper::renderThread($thread, $template_users, $template_forums, ['show_forum' => true]); ?>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="p-8 text-center text-muted">
+                    <svg class="w-12 h-12 mx-auto mb-3 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"/>
+                    </svg>
+                    <p>暂无话题</p>
+                </div>
+            <?php endif; ?>
 
             <!-- Pagination -->
             <?php if ($template_pages > 1): ?>
@@ -150,8 +103,8 @@
 
         <!-- Collapsed Forums -->
         <?php if ($template_collapsedTotal > 0): ?>
-        <div class="bg-panel border border-border rounded shadow-sm">
-            <div id="collapse-header" class="flex items-center justify-between p-3 rounded bg-soft cursor-pointer hover:bg-hover transition-colors" onclick="toggleCollapsed()">
+        <div class="bg-panel border border-border rounded shadow-sm overflow-hidden">
+            <div id="collapse-header" class="flex items-center justify-between p-3 rounded-t bg-soft cursor-pointer hover:bg-hover transition-colors" onclick="toggleCollapsed()">
                 <div class="flex items-center gap-2">
                     <svg id="collapse-icon" class="w-4 h-4 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M9 18l6-6-6-6" />
@@ -162,44 +115,13 @@
                 <span class="text-sm text-muted">点击展开</span>
             </div>
             <div id="collapsed-content" class="hidden">
-                <div class="flex flex-col">
-                    <?php foreach ($template_collapsedThreads as $thread): ?>
-                        <?php $author = $template_users[$thread['uid']] ?? null; ?>
-                        <?php $forum = $template_forums[$thread['fid']] ?? null; ?>
-                        <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" class="flex items-center gap-3 p-3 border-b border-border last:border-b-0 hover:bg-hover transition-colors">
-                            <div class="w-8 h-8 rounded-full bg-primary-light text-primary flex items-center justify-center font-semibold text-sm flex-shrink-0 overflow-hidden">
-                                <?php if ($author && !empty($author['avatar'])): ?>
-                                    <img src="<?php echo htmlspecialchars($author['avatar']); ?>" alt="" class="w-full h-full object-cover">
-                                <?php else: ?>
-                                    <?php echo \Lib\Helper::getAvatarInitial($author['username'] ?? '?'); ?>
-                                <?php endif; ?>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <span class="font-semibold truncate"><?php echo htmlspecialchars($thread['subject']); ?></span>
-                                    <?php if ($forum): ?>
-                                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-soft text-sub flex-shrink-0"><?php echo htmlspecialchars($forum['name']); ?></span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="flex items-center gap-2 text-sm text-muted mt-1">
-                                    <span><?php echo htmlspecialchars($author['username'] ?? '匿名'); ?></span>
-                                    <span>·</span>
-                                    <span><?php echo date('Y-m-d H:i', $thread['dateline']); ?></span>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-4 text-sm flex-shrink-0">
-                                <div class="text-center">
-                                    <div class="font-semibold"><?php echo $thread['view_num']; ?></div>
-                                    <div class="text-xs text-muted">浏览</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="font-semibold"><?php echo $thread['reply_num']; ?></div>
-                                    <div class="text-xs text-muted">回复</div>
-                                </div>
-                            </div>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
+                <?php if ($template_collapsedThreads): ?>
+                    <div class="flex flex-col">
+                        <?php foreach ($template_collapsedThreads as $thread): ?>
+                            <?php echo \Lib\ThreadHelper::renderThread($thread, $template_users, $template_forums, ['show_forum' => true, 'truncate_subject' => true]); ?>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </div>
             <div class="p-2 text-sm text-muted bg-soft border-t border-border">
                 以上主题来自折叠版块：<?php echo implode(', ', array_column($template_collapsedForums, 'name')); ?>

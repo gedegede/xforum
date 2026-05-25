@@ -1,7 +1,7 @@
 <?php include '_menu.php'; ?>
 
-<div class="bg-panel border border-border rounded shadow-sm">
-    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border">
+<div class="bg-panel border border-border rounded shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border bg-soft">
         <div class="flex items-center gap-3">
             <a href="index.php?c=admin&a=forums" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover">← 返回版块管理</a>
             <h2 class="font-semibold">版主管理 - <?php echo htmlspecialchars($template_forum['name']); ?></h2>

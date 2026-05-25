@@ -12,6 +12,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(isset($template_title) ? $template_title : 'XForum'); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <?php
+    $customCss = '';
+    if (isset($template_user) && is_array($template_user) && !empty($template_user) && isset($template_user['json_data'])) {
+        $jsonData = json_decode($template_user['json_data'], true);
+        $customCss = $jsonData['custom_css'] ?? '';
+    }
+    if (!empty($customCss)):
+    ?>
+    <style id="user-custom-css"><?php echo $customCss; ?></style>
+    <?php endif; ?>
 </head>
 <body class="flex flex-col min-h-screen">
     <?php
@@ -26,7 +36,7 @@
 
     <!-- Header -->
     <header class="h-header bg-panel border-b border-border">
-        <div class="container h-full flex items-center justify-between gap-4">
+        <div class="container h-full flex items-center justify-between gap-4 px-3">
             <a href="index.php" class="flex items-center gap-2 font-bold text-lg text-primary">
                 <span class="inline-flex items-center justify-center w-7 h-7 rounded bg-primary text-white text-sm">X</span>
                 <span>XForum</span>
@@ -55,47 +65,14 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 container py-6">
+    <main class="flex-1 container p-3">
         <?php echo $content; ?>
     </main>
 
     <!-- Footer -->
-    <footer class="hide-mobile mt-10 py-8 pb-6 bg-text text-white/70">
-        <div class="container">
-            <div class="grid grid-cols-auto-fit-40 gap-8 mb-8">
-                <div>
-                    <h4 class="mb-3 text-base font-semibold text-white">XForum</h4>
-                    <p class="text-sm leading-relaxed">以主题、回复和持续讨论为核心的社区界面，强调清晰的信息流与稳定的内容沉淀。</p>
-                </div>
-                <div>
-                    <h4 class="mb-3 text-base font-semibold text-white">社区入口</h4>
-                    <ul class="list-none m-0 p-0">
-                        <li class="mb-2"><a href="index.php" class="hover:text-white transition-colors">社区首页</a></li>
-                        <li class="mb-2"><a href="index.php?c=forum&a=index" class="hover:text-white transition-colors">论坛导航</a></li>
-                        <li class="mb-2"><a href="index.php?order=reply_time" class="hover:text-white transition-colors">最新讨论</a></li>
-                        <li class="mb-2"><a href="index.php?order=view_num" class="hover:text-white transition-colors">热门浏览</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="mb-3 text-base font-semibold text-white">账号与消息</h4>
-                    <ul class="list-none m-0 p-0">
-                        <li class="mb-2"><a href="index.php?c=auth&a=login" class="hover:text-white transition-colors">用户登录</a></li>
-                        <li class="mb-2"><a href="index.php?c=auth&a=register" class="hover:text-white transition-colors">注册账号</a></li>
-                        <li class="mb-2"><a href="index.php?c=notify&a=index" class="hover:text-white transition-colors">通知中心</a></li>
-                        <li class="mb-2"><a href="index.php?c=pm&a=inbox" class="hover:text-white transition-colors">站内私信</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="mb-3 text-base font-semibold text-white">创作与管理</h4>
-                    <ul class="list-none m-0 p-0">
-                        <li class="mb-2"><a href="index.php?c=forum&a=index" class="hover:text-white transition-colors">版块列表</a></li>
-                        <li class="mb-2"><a href="index.php?c=forum&a=index&from=create" class="hover:text-white transition-colors">发布主题</a></li>
-                        <li class="mb-2"><a href="index.php?c=member&a=settings" class="hover:text-white transition-colors">个人设置</a></li>
-                        <li class="mb-2"><a href="index.php?c=admin&a=index" class="hover:text-white transition-colors">管理后台</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="flex flex-wrap justify-between items-center gap-4 pt-6 border-t border-white/10 text-xs">
+    <footer class="hide-mobile mt-1 bg-text text-white/70">
+        <div class="container px-3">
+            <div class="flex flex-wrap justify-between items-center gap-4 pt-6 text-xs">
                 <div class="flex flex-wrap gap-4">
                     <a href="index.php" class="hover:text-white transition-colors">首页</a>
                     <a href="index.php?c=forum&a=index" class="hover:text-white transition-colors">论坛</a>

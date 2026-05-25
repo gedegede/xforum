@@ -18,6 +18,7 @@ use Models\FavModel;
 use Models\CreditModel;
 use Models\SessionModel;
 use Models\UsergroupModel;
+use Models\ForumModel;
 use Lib\Permission;
 
 class MemberController {
@@ -77,11 +78,23 @@ class MemberController {
 
         $isSelf = $uid == Session::getUid();
 
+        // 获取主题作者信息
+        $users = [];
+        $forums = [];
+        if (!empty($threads)) {
+            $authorUids = array_unique(array_column($threads, 'uid'));
+            $users = MemberModel::getMembersByUids($authorUids);
+            $fids = array_unique(array_column($threads, 'fid'));
+            $forums = ForumModel::getForumsByIds($fids);
+        }
+
         Template::set('title', $member['username'] . '的个人主页');
         Template::set('member', $member);
         Template::set('type', $type);
         Template::set('isSelf', $isSelf);
         Template::set('threads', $threads);
+        Template::set('users', $users);
+        Template::set('forums', $forums);
         Template::set('posts', $posts);
         Template::set('favorites', $favorites);
         Template::set('credits', $credits);
@@ -167,6 +180,10 @@ class MemberController {
                     $theme = 'light';
                 }
                 MemberModel::setJsonData(Session::getUid(), 'theme', $theme);
+
+                $customCss = Request::postRaw('custom_css', '');
+                MemberModel::setJsonData(Session::getUid(), 'custom_css', $customCss);
+
                 $success = '主题设置已保存';
                 $member = MemberModel::get(Session::getUid());
             }

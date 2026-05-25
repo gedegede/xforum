@@ -251,7 +251,7 @@ class ThreadModel {
         }
 
         $placeholders = implode(',', array_fill(0, count($tids), '?'));
-        $sql = "SELECT tid, subject, fid, reply_num, view_num, dateline FROM " . self::TABLE . " WHERE tid IN ($placeholders)";
+        $sql = "SELECT tid, uid, subject, fid, reply_num, view_num, dateline FROM " . self::TABLE . " WHERE tid IN ($placeholders)";
         $threads = Database::fetchAll($sql, $tids);
 
         return array_column(ViewCounter::applyPendingToThreads($threads), null, 'tid');

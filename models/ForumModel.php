@@ -297,14 +297,16 @@ class ForumModel {
             $result = [];
             foreach ($fids as $fid) {
                 if (isset($cache[$fid])) {
-                    $result[] = $cache[$fid];
+                    $result[$fid] = $cache[$fid];
                 }
             }
             return $result;
         }
 
         $placeholders = implode(',', array_fill(0, count($fids), '?'));
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE fid IN ($placeholders)", $fids);
+        $rows = Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE fid IN ($placeholders)", $fids);
+        // 返回以 fid 为 key 的关联数组
+        return array_column($rows, null, 'fid');
     }
 }
 ?>

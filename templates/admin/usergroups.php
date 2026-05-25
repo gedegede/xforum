@@ -1,7 +1,7 @@
 <?php include '_menu.php'; ?>
 
-<div class="bg-panel border border-border rounded shadow-sm">
-    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border">
+<div class="bg-panel border border-border rounded shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border bg-soft">
         <h2 class="font-semibold">用户组管理</h2>
         <a href="index.php?c=admin&a=usergroupAdd" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark">添加用户组</a>
     </div>

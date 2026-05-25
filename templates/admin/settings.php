@@ -1,11 +1,8 @@
 <?php include '_menu.php'; ?>
 
-<div class="bg-panel border border-border rounded shadow-sm">
-    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border">
-        <div>
-            <h2 class="font-semibold">站点设置</h2>
-            <p class="text-sm text-muted">集中管理社区名称、首页展示与内容风控规则。</p>
-        </div>
+<div class="bg-panel border border-border rounded shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border bg-soft">
+        <h2 class="font-semibold">站点设置</h2>
     </div>
     <div class="p-4">
         <?php if ($template_error): ?>

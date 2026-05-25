@@ -55,11 +55,10 @@
     </div>
 </div>
 
-<div class="bg-panel border border-border rounded shadow-sm">
-    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border">
+<div class="bg-panel border border-border rounded shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border bg-soft">
         <div>
             <h2 class="font-semibold">个人设置</h2>
-            <p class="text-sm text-muted mt-1">维护账号资料、安全信息和界面偏好。</p>
         </div>
     </div>
 
@@ -74,6 +73,7 @@
         <?php
         $jsonData = isset($template_member['json_data']) ? json_decode($template_member['json_data'], true) : [];
         $currentTheme = $jsonData['theme'] ?? 'light';
+        $currentCustomCss = $jsonData['custom_css'] ?? '';
         ?>
 
         <div class="flex flex-wrap gap-1 p-1 rounded bg-soft mb-4">
@@ -174,6 +174,13 @@
                                 <input type="radio" name="theme" value="dark" <?php echo $currentTheme == 'dark' ? 'checked' : ''; ?> class="ml-2">
                             </label>
                         </div>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex-1 min-w-0">
+                            <label class="text-sm text-muted" for="custom_css">自定义 CSS</label>
+                            <p class="text-xs text-muted mt-0.5">输入自定义样式代码，将应用于全局。</p>
+                        </div>
+                        <textarea id="custom_css" name="custom_css" rows="4" class="w-full px-3 py-2 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary resize-y font-mono text-sm" placeholder="body { background-color: #f0f0f0; }"><?php echo htmlspecialchars($currentCustomCss); ?></textarea>
                     </div>
                 </div>
             </div>

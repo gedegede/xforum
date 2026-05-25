@@ -66,55 +66,22 @@
             </div>
 
             <!-- Thread List -->
-            <div class="flex flex-col">
-                <?php foreach ($template_threads as $thread): ?>
-                    <?php $author = $template_users[$thread['uid']] ?? null; ?>
-                    <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" class="flex items-center gap-3 p-3 border-b border-border last:border-b-0 hover:bg-hover transition-colors">
-                        <div class="w-8 h-8 rounded-full bg-primary-light text-primary flex items-center justify-center font-semibold text-sm flex-shrink-0 overflow-hidden">
-                            <?php if ($author && !empty($author['avatar'])): ?>
-                                <img src="<?php echo htmlspecialchars($author['avatar']); ?>" alt="" class="w-full h-full object-cover">
-                            <?php else: ?>
-                                <?php echo \Lib\Helper::getAvatarInitial($author['username'] ?? '?'); ?>
-                            <?php endif; ?>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="font-semibold truncate"><?php echo htmlspecialchars($thread['subject']); ?></span>
-                                <?php if (!empty($template_keyword)): ?>
-                                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary-light text-primary flex-shrink-0">命中搜索</span>
-                                <?php endif; ?>
-                            </div>
-                            <div class="flex items-center gap-2 text-sm text-muted mt-1">
-                                <span><?php echo htmlspecialchars($author['username'] ?? '匿名'); ?></span>
-                                <span>·</span>
-                                <span><?php echo date('Y-m-d H:i', $thread['dateline']); ?></span>
-                                <?php if (!empty($thread['reply_time']) && (int)$thread['reply_time'] !== (int)$thread['dateline']): ?>
-                                    <span>·</span>
-                                    <span>最后活跃 <?php echo date('Y-m-d H:i', (int)$thread['reply_time']); ?></span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-4 text-sm flex-shrink-0">
-                            <div class="text-center">
-                                <div class="font-semibold"><?php echo $thread['view_num']; ?></div>
-                                <div class="text-xs text-muted">浏览</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="font-semibold"><?php echo $thread['reply_num']; ?></div>
-                                <div class="text-xs text-muted">回复</div>
-                            </div>
-                        </div>
-                    </a>
-                <?php endforeach; ?>
-                <?php if (empty($template_threads)): ?>
-                    <div class="p-8 text-center text-muted">
-                        <svg class="w-12 h-12 mx-auto mb-3 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"/>
-                        </svg>
-                        <p>暂无主题，点击上方按钮发布新主题</p>
-                    </div>
-                <?php endif; ?>
-            </div>
+            <?php if ($template_threads): ?>
+                <div class="flex flex-col">
+                    <?php foreach ($template_threads as $thread): ?>
+                        <?php echo \Lib\ThreadHelper::renderThread($thread, $template_users, [], [
+                            'badge' => !empty($template_keyword) ? ['text' => '命中搜索', 'class' => 'bg-primary-light text-primary'] : null
+                        ]); ?>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="p-8 text-center text-muted">
+                    <svg class="w-12 h-12 mx-auto mb-3 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"/>
+                    </svg>
+                    <p>暂无主题，点击上方按钮发布新主题</p>
+                </div>
+            <?php endif; ?>
 
             <!-- Pagination -->
             <?php if ($template_pages > 1): ?>
