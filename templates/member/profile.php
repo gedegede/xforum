@@ -92,7 +92,7 @@
     <div class="p-0">
         <?php if ($template_type == 'threads'): ?>
             <?php if ($template_threads): ?>
-                <div class="divide-y">
+                <div class="flex flex-col">
                     <?php foreach ($template_threads as $thread): ?>
                         <?php echo \Lib\ThreadHelper::renderThread($thread, $template_users, $template_forums, ['show_avatar' => true, 'show_forum' => true]); ?>
                     <?php endforeach; ?>
@@ -105,7 +105,7 @@
 
         <?php elseif ($template_type == 'replies'): ?>
             <?php if ($template_posts): ?>
-                <div class="divide-y">
+                <div class="flex flex-col">
                     <?php foreach ($template_posts as $post): ?>
                         <?php
                         $thread = $template_threads[$post['tid']] ?? null;
@@ -123,7 +123,7 @@
 
         <?php elseif ($template_type == 'favorites'): ?>
             <?php if ($template_favorites): ?>
-                <div class="divide-y">
+                <div class="flex flex-col">
                     <?php foreach ($template_favorites as $fav): ?>
                         <?php
                         $thread = $template_threads[$fav['tid']] ?? null;
@@ -141,7 +141,7 @@
 
         <?php elseif ($template_type == 'credits'): ?>
             <?php if ($template_credits): ?>
-                <div class="divide-y">
+                <div class="flex flex-col">
                     <?php foreach ($template_credits as $credit): ?>
                         <?php $creditValue = (int)$credit['credit']; ?>
                         <?php $creditUrl = trim((string)($credit['url'] ?? '')); ?>

@@ -54,7 +54,7 @@ class PostHelper {
             </a>
             <div class="flex flex-col gap-1">
                 <div class="flex items-center gap-2">
-                    <a href="index.php?c=member&a=profile&uid=<?php echo $postUid; ?>" class="font-semibold text-primary hover:underline"><?php echo htmlspecialchars($users[$postUid]['username'] ?? '已删除用户'); ?></a>
+                    <a href="index.php?c=member&a=profile&uid=<?php echo $postUid; ?>" class="font-semibold text-text hover:underline"><?php echo htmlspecialchars($users[$postUid]['username'] ?? '已删除用户'); ?></a>
                     <?php if ($isFirst): ?>
                         <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary-light text-primary">楼主</span>
                     <?php endif; ?>

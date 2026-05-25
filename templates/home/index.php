@@ -209,7 +209,7 @@
                     <div class="flex flex-col">
                         <?php foreach ($template_noticeThreads as $thread): ?>
                             <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" class="flex items-center gap-2 p-2 px-4 border-b border-border last:border-b-0 hover:bg-hover transition-colors">
-                                <span class="flex-1 min-w-0 font-medium truncate text-primary text-sm"><?php echo htmlspecialchars($thread['subject']); ?></span>
+                                <span class="flex-1 min-w-0 font-medium truncate text-text text-sm"><?php echo htmlspecialchars($thread['subject']); ?></span>
                                 <span class="text-xs text-muted flex-shrink-0 ml-2"><?php echo date('Y-m-d', $thread['dateline']); ?></span>
                             </a>
                         <?php endforeach; ?>
