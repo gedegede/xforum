@@ -63,8 +63,8 @@ class HomeController {
         }
 
         $orderOptions = [
-            ['value' => 'tid', 'label' => '最新发布'],
             ['value' => 'reply_time', 'label' => '最后回复'],
+            ['value' => 'tid', 'label' => '最新发布'],
             ['value' => 'reply_num', 'label' => '回复数'],
             ['value' => 'view_num', 'label' => '查看数']
         ];
@@ -86,12 +86,7 @@ class HomeController {
             $userGroup = UsergroupModel::get((int)($currentUser['gid'] ?? 0));
         }
 
-        $noticeThreads = [];
-        $noticeFid = (int)SettingModel::get('notice_forum_fid', '0');
-        if ($noticeFid > 0) {
-            $noticeThreads = ThreadModel::getThreads($noticeFid, 1, 'dateline', '');
-            $noticeThreads = array_slice($noticeThreads, 0, 5);
-        }
+        $noticeThreads = ThreadModel::getHomeNoticeThreads((int)SettingModel::get('notice_forum_fid', '0'), 5);
 
         $onlineCount = self::getOnlineCount();
 

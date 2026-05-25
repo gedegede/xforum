@@ -1,4 +1,4 @@
-<div class="bg-panel border border-border rounded shadow-sm">
+<div class="bg-panel border border-border rounded shadow-sm mb-4">
     <div class="p-0">
         <div class="flex flex-wrap border-b">
             <a href="index.php?c=admin&a=index"

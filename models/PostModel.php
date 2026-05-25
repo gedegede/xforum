@@ -114,6 +114,16 @@ class PostModel {
         return Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = :pid");
     }
 
+    public static function incrementRateNum(int $pid): void {
+        if ($pid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET rate_num = rate_num + 1 WHERE pid = :pid", ['pid' => $pid]);
+    }
+
+    public static function decrementRateNum(int $pid): void {
+        if ($pid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET rate_num = CASE WHEN rate_num > 0 THEN rate_num - 1 ELSE 0 END WHERE pid = :pid", ['pid' => $pid]);
+    }
+
     public static function delete(int $pid): int {
         return Database::delete(self::TABLE, self::PRIMARY_KEY . " = :pid", ['pid' => $pid]);
     }

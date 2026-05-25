@@ -27,6 +27,9 @@ class SettingModel {
             Database::query("INSERT INTO " . self::TABLE . " (skey, val) VALUES (:skey, :val)", ['skey' => $key, 'val' => $value]);
         }
         CacheHelper::deleteCache(self::TABLE);
+        if ($key === 'notice_forum_fid') {
+            ThreadModel::clearHomeNoticeCache();
+        }
     }
 
     public static function getAll(): array {

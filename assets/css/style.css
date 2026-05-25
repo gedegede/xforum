@@ -787,6 +787,7 @@ h1,h2,h3,h4,h5,h6,p,ul,ol{margin:0}
    MOBILE RESPONSIVE
 ========================= */
 @media (max-width:768px){
+    body{padding-bottom:56px}
     .md\:hidden{display:none!important}
     .md\:flex{display:flex}
     .md\:block{display:block}

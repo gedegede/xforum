@@ -34,7 +34,7 @@
 </div>
 
 <?php if ($template_isSelf): ?>
-<div class="bg-panel border border-border rounded shadow-sm">
+<div class="bg-panel border border-border rounded shadow-sm my-4">
     <div class="p-0">
         <div class="flex flex-wrap border-b">
             <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=threads"

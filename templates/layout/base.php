@@ -35,12 +35,16 @@
                 <a href="index.php" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors <?php echo $isIndex ? 'bg-primary-light text-primary' : ''; ?>">首页</a>
                 <a href="index.php?c=forum&a=index" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors <?php echo $isForum ? 'bg-primary-light text-primary' : ''; ?>">论坛</a>
                 <?php if (isset($template_user) && is_array($template_user) && !empty($template_user)): ?>
+                    <?php if ($notifyCount > 0): ?>
                     <a href="index.php?c=notify&a=index" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors <?php echo $isNotify ? 'bg-primary-light text-primary' : ''; ?>">
-                        通知<?php if ($notifyCount > 0): ?><span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-xs ml-1.5"><?php echo min(99, $notifyCount); ?></span><?php endif; ?>
+                        通知<span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-xs ml-1.5"><?php echo min(99, $notifyCount); ?></span>
                     </a>
+                    <?php endif; ?>
+                    <?php if ($inboxCount > 0): ?>
                     <a href="index.php?c=pm&a=inbox" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors <?php echo $isPm ? 'bg-primary-light text-primary' : ''; ?>">
-                        私信<?php if ($inboxCount > 0): ?><span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-xs ml-1.5"><?php echo min(99, $inboxCount); ?></span><?php endif; ?>
+                        私信<span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-xs ml-1.5"><?php echo min(99, $inboxCount); ?></span>
                     </a>
+                    <?php endif; ?>
                     <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid'] ?? 0; ?>" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors <?php echo $isProfile ? 'bg-primary-light text-primary' : ''; ?>">我的</a>
                 <?php else: ?>
                     <a href="index.php?c=auth&a=login" class="flex items-center gap-1 px-3 py-1.5 rounded text-sub hover:bg-hover hover:text-text transition-colors">登录</a>
@@ -56,7 +60,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="mt-10 py-8 pb-6 bg-text text-white/70">
+    <footer class="hide-mobile mt-10 py-8 pb-6 bg-text text-white/70">
         <div class="container">
             <div class="grid grid-cols-auto-fit-40 gap-8 mb-8">
                 <div>
@@ -157,7 +161,7 @@
     </footer>
 
     <!-- Mobile Bottom Nav -->
-    <nav class="fixed left-0 right-0 bottom-0 bg-panel border-t border-border z-50">
+    <nav class="mobile-only fixed left-0 right-0 bottom-0 bg-panel border-t border-border z-50">
         <div class="flex justify-around h-14">
             <a href="index.php" class="flex flex-1 flex-col items-center justify-center gap-0.5 <?php echo $isIndex ? 'text-primary' : 'text-muted hover:text-primary'; ?> transition-colors">
                 <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">

@@ -24,7 +24,7 @@
     </div>
 </div>
 
-<div class="bg-panel border border-border rounded shadow-sm">
+<div class="bg-panel border border-border rounded shadow-sm my-4">
     <div class="p-0">
         <div class="flex flex-wrap border-b">
             <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=threads"
@@ -76,10 +76,10 @@
         $currentTheme = $jsonData['theme'] ?? 'light';
         ?>
 
-        <div class="flex border-b mb-4">
-            <button class="px-4 py-2 text-sm font-medium border-b-2 transition-colors border-primary text-primary" data-tab="profile">基本信息</button>
-            <button class="px-4 py-2 text-sm font-medium border-b-2 transition-colors border-transparent text-sub hover:text-text hover:border-border" data-tab="password">修改密码</button>
-            <button class="px-4 py-2 text-sm font-medium border-b-2 transition-colors border-transparent text-sub hover:text-text hover:border-border" data-tab="theme">主题设置</button>
+        <div class="flex flex-wrap gap-1 p-1 rounded bg-soft mb-4">
+            <button type="button" class="flex-1 min-w-42 px-4 py-2 border-0 rounded bg-panel text-primary text-sm font-semibold text-center cursor-pointer shadow-sm transition-colors" data-tab="profile">基本信息</button>
+            <button type="button" class="flex-1 min-w-42 px-4 py-2 border-0 rounded bg-transparent text-sub text-sm font-medium text-center cursor-pointer hover:bg-hover hover:text-text transition-colors" data-tab="password">修改密码</button>
+            <button type="button" class="flex-1 min-w-42 px-4 py-2 border-0 rounded bg-transparent text-sub text-sm font-medium text-center cursor-pointer hover:bg-hover hover:text-text transition-colors" data-tab="theme">主题设置</button>
         </div>
 
         <form method="post" class="mb-4" id="profile-form">
@@ -187,11 +187,11 @@ document.addEventListener('DOMContentLoaded', function() {
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
             tabs.forEach(t => {
-                t.classList.remove('border-primary', 'text-primary');
-                t.classList.add('border-transparent', 'text-sub', 'hover:text-text', 'hover:border-border');
+                t.classList.remove('bg-panel', 'text-primary', 'font-semibold', 'shadow-sm');
+                t.classList.add('bg-transparent', 'text-sub', 'font-medium', 'hover:bg-hover', 'hover:text-text');
             });
-            this.classList.remove('border-transparent', 'text-sub', 'hover:text-text', 'hover:border-border');
-            this.classList.add('border-primary', 'text-primary');
+            this.classList.remove('bg-transparent', 'text-sub', 'font-medium', 'hover:bg-hover', 'hover:text-text');
+            this.classList.add('bg-panel', 'text-primary', 'font-semibold', 'shadow-sm');
 
             const tabName = this.dataset.tab;
             forms.forEach(form => {

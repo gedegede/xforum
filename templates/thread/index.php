@@ -4,8 +4,8 @@
         <!-- Thread Detail Card -->
         <div class="bg-panel border border-border rounded shadow-sm">
             <!-- Card Header -->
-            <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border">
-                <div class="flex items-center gap-2 text-sm text-muted mb-2">
+            <div class="flex flex-col items-stretch gap-3 px-4 py-3.5 border-b border-border">
+                <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
                     <a href="index.php" class="hover:text-primary">首页</a>
                     <span>/</span>
                     <a href="index.php?c=forum&a=index&fid=<?php echo $template_thread['fid']; ?>" class="hover:text-primary"><?php echo htmlspecialchars($template_forum['name'] ?? '未命名版块'); ?></a>
@@ -19,7 +19,7 @@
                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-soft text-sub"><?php echo (int)$template_thread['reply_num']; ?> 回复</span>
                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-soft text-sub"><?php echo (int)$template_thread['view_num']; ?> 浏览</span>
                             <?php if (isset($template_user)): ?>
-                                <button type="button" id="fav-btn-mobile" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors <?php echo $template_isFavorited ? 'bg-soft text-sub' : 'bg-success-light text-success'; ?>" data-tid="<?php echo $template_thread['tid']; ?>" data-favorited="<?php echo $template_isFavorited ? '1' : '0'; ?>">
+                                <button type="button" id="fav-btn-mobile" class="inline-flex items-center border-0 gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors bg-soft text-sub hover:bg-hover" data-tid="<?php echo $template_thread['tid']; ?>" data-favorited="<?php echo $template_isFavorited ? '1' : '0'; ?>">
                                     <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="<?php echo $template_isFavorited ? 'currentColor' : 'none'; ?>" stroke="currentColor" stroke-width="2">
                                         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                                     </svg>
@@ -34,9 +34,9 @@
             <!-- Post List -->
             <div class="flex flex-col">
                 <?php foreach ($template_posts as $index => $post): ?>
-                    <?php $floor = ($template_page - 1) * 20 + $index + 1; ?>
+                    <?php $floor = (int)($post['_floor'] ?? (($template_page - 1) * 20 + $index + 1)); ?>
                     <?php $isAuthor = $post['uid'] == $template_thread['uid']; ?>
-                    <?php echo Lib\PostHelper::renderPost($post, $template_users, $floor, $isAuthor, $template_user ?? null, $template_isModerator ?? false); ?>
+                    <?php echo Lib\PostHelper::renderPost($post, $template_users, $floor, $isAuthor, $template_user ?? null, $template_isModerator ?? false, $template_ratedPids ?? []); ?>
                 <?php endforeach; ?>
             </div>
 
@@ -93,7 +93,7 @@
             <div class="p-0">
                 <div class="flex flex-col">
                     <?php foreach ($template_hotThreads as $index => $thread): ?>
-                        <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" class="flex items-center gap-3 p-2 rounded hover:bg-hover transition-colors">
+                        <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" class="flex items-center gap-3 p-2 hover:bg-hover transition-colors">
                             <span class="w-5 h-5 flex items-center justify-center rounded-sm text-xs font-semibold flex-shrink-0 <?php echo $index < 3 ? 'bg-primary-light text-primary' : 'bg-soft text-muted'; ?>"><?php echo $index + 1; ?></span>
                             <div class="flex-1 min-w-0 flex flex-col gap-0.5">
                                 <span class="text-sm text-text truncate"><?php echo htmlspecialchars($thread['subject']); ?></span>
@@ -135,6 +135,46 @@
     document.addEventListener('DOMContentLoaded', function() {
         // Delete post handler
         document.addEventListener('click', function(e) {
+            const rateBtn = e.target.closest('[data-action="rate"]');
+            if (rateBtn) {
+                e.preventDefault();
+                const pid = rateBtn.dataset.pid;
+
+                fetch('index.php?c=thread&a=rate&pid=' + pid, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            alert(data.message || '操作失败，请重试');
+                            return;
+                        }
+
+                        rateBtn.dataset.rated = data.rated ? '1' : '0';
+                        rateBtn.classList.toggle('text-primary', data.rated);
+                        const rateNum = Number(data.rate_num || 0);
+                        rateBtn.title = (data.rated ? '取消点赞' : '点赞') + (rateNum > 0 ? ' (' + rateNum + ')' : '');
+                        const rateCount = rateBtn.closest('[data-rate-group]')?.querySelector('[data-role="rate-count"]');
+                        if (rateCount) {
+                            rateCount.textContent = rateNum > 0 ? String(rateNum) : '';
+                            rateCount.classList.toggle('hidden', rateNum <= 0);
+                        }
+
+                        const svg = rateBtn.querySelector('svg');
+                        if (svg) {
+                            svg.setAttribute('fill', data.rated ? 'currentColor' : 'none');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        window.location.href = 'index.php?c=auth&a=login';
+                    });
+                return;
+            }
+
             const deleteBtn = e.target.closest('[data-action="delete-post"]');
             if (deleteBtn) {
                 const pid = deleteBtn.dataset.pid;
@@ -173,6 +213,7 @@
         document.addEventListener('click', function(e) {
             const quoteBtn = e.target.closest('[data-action="quote"]');
             if (quoteBtn) {
+                e.preventDefault();
                 const pid = quoteBtn.dataset.pid;
                 const uid = quoteBtn.dataset.uid;
                 const floor = quoteBtn.dataset.floor;
@@ -312,8 +353,8 @@
                             // Unfavorite
                             [favBtn, mobileBtn, desktopBtn].forEach(btn => {
                                 if (!btn) return;
-                                btn.classList.remove('bg-soft', 'border-border', 'text-text', 'hover:bg-hover', 'text-sub');
-                                btn.classList.add('bg-success-light', 'text-success');
+                                btn.classList.remove('border-border', 'text-text');
+                                btn.classList.add('bg-soft', 'text-sub', 'hover:bg-hover');
                                 const svg = btn.querySelector('svg');
                                 if (svg) svg.setAttribute('fill', 'none');
                             });
@@ -327,8 +368,8 @@
                             // Favorite
                             [favBtn, mobileBtn, desktopBtn].forEach(btn => {
                                 if (!btn) return;
-                                btn.classList.remove('bg-success-light', 'text-success');
-                                btn.classList.add('bg-soft', 'border-border', 'text-sub', 'hover:bg-hover');
+                                btn.classList.remove('border-border', 'text-text');
+                                btn.classList.add('bg-soft', 'text-sub', 'hover:bg-hover');
                                 const svg = btn.querySelector('svg');
                                 if (svg) svg.setAttribute('fill', 'currentColor');
                             });

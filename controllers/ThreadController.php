@@ -20,6 +20,7 @@ use Models\ForumModel;
 use Models\MemberModel;
 use Models\NotifyModel;
 use Models\FavModel;
+use Models\RateModel;
 use Models\PmModel;
 use Models\SettingModel;
 use Models\UsergroupModel;
@@ -65,7 +66,7 @@ class ThreadController {
                 $targetPid = 0;
             }
         }
-        $posts = PostModel::getPosts($tid, $page, $isModerator);
+        $posts = self::sortCurrentPagePostsByRate(PostModel::getPosts($tid, $page, $isModerator), $page);
         $total = (int)($thread['reply_num'] ?? 0) + 1;
         
         ThreadModel::incrementView($tid);
@@ -81,6 +82,9 @@ class ThreadController {
         $users = MemberModel::getMembersByUids($uids);
 
         $isFavorited = Session::isLoggedIn() && FavModel::isFavorite(Session::getUid(), $tid);
+        $ratedPids = Session::isLoggedIn()
+            ? RateModel::getRatedPids(Session::getUid(), array_column($posts, 'pid'))
+            : [];
 
         Template::set('title', $thread['subject']);
         Template::set('thread', $thread);
@@ -92,9 +96,48 @@ class ThreadController {
         Template::set('targetPid', $targetPid);
         Template::set('user', Session::getUser());
         Template::set('isFavorited', $isFavorited);
+        Template::set('ratedPids', $ratedPids);
         Template::set('isModerator', $isModerator);
         Template::set('hotThreads', ThreadModel::getHotThreadsByFid($thread['fid'], 5, $tid));
         Template::display('thread/index');
+    }
+
+    private static function sortCurrentPagePostsByRate(array $posts, int $page): array {
+        $indexedPosts = [];
+        $floorOffset = (max(1, $page) - 1) * 20;
+        foreach ($posts as $index => $post) {
+            $post['_floor'] = $floorOffset + $index + 1;
+            $indexedPosts[] = [
+                'index' => $index,
+                'post' => $post,
+            ];
+        }
+
+        if (count($indexedPosts) <= 1) {
+            return array_column($indexedPosts, 'post');
+        }
+
+        usort($indexedPosts, static function (array $a, array $b): int {
+            $postA = $a['post'];
+            $postB = $b['post'];
+            $isThreadA = (int)($postA['is_thread'] ?? 0) === 1;
+            $isThreadB = (int)($postB['is_thread'] ?? 0) === 1;
+
+            if ($isThreadA !== $isThreadB) {
+                return $isThreadA ? -1 : 1;
+            }
+
+            if (!$isThreadA) {
+                $rateCompare = (int)($postB['rate_num'] ?? 0) <=> (int)($postA['rate_num'] ?? 0);
+                if ($rateCompare !== 0) {
+                    return $rateCompare;
+                }
+            }
+
+            return $a['index'] <=> $b['index'];
+        });
+
+        return array_column($indexedPosts, 'post');
     }
 
     public static function create(?int $fid = null): void {
@@ -462,6 +505,44 @@ class ThreadController {
         }
 
         Response::redirect("index.php?c=thread&a=index&tid={$tid}");
+    }
+
+    public static function rate(int $pid): void {
+        Permission::requireLogin();
+
+        $post = PostModel::get($pid);
+        if (!$post) {
+            if (Response::isAjaxRequest()) {
+                Response::error('帖子不存在');
+            }
+            Response::redirect('index.php');
+        }
+
+        if (!Permission::canViewPost($post)) {
+            if (Response::isAjaxRequest()) {
+                Response::error('无权限访问', 403);
+            }
+            Response::redirect('index.php?c=thread&a=index&tid=' . $post['tid']);
+        }
+
+        $uid = Session::getUid();
+        $isRated = RateModel::isRated($uid, $pid);
+        if ($isRated) {
+            RateModel::removeRate($uid, $pid);
+        } else {
+            RateModel::addRate($uid, $pid);
+        }
+
+        $post = PostModel::get($pid) ?? $post;
+        if (Response::isAjaxRequest()) {
+            Response::json([
+                'success' => true,
+                'rated' => !$isRated,
+                'rate_num' => (int)($post['rate_num'] ?? 0),
+            ]);
+        }
+
+        Response::redirect("index.php?c=thread&a=index&tid={$post['tid']}&pid={$pid}");
     }
 
     public static function edit(int $pid): void {

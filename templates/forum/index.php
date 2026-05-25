@@ -4,8 +4,8 @@
         <!-- Thread List Card -->
         <div class="bg-panel border border-border rounded shadow-sm">
             <!-- Card Header -->
-            <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border">
-                <div class="flex items-center gap-2 text-sm text-muted mb-2">
+            <div class="flex flex-col items-stretch gap-3 px-4 py-3.5 border-b border-border">
+                <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
                     <a href="index.php" class="hover:text-primary">首页</a>
                     <span>/</span>
                     <?php if ($template_parentForum): ?>
@@ -184,7 +184,7 @@
             <div class="p-0">
                 <div class="flex flex-col">
                     <?php foreach ($template_hotThreads as $index => $thread): ?>
-                        <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" class="flex items-center gap-3 p-2 rounded hover:bg-hover transition-colors">
+                        <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" class="flex items-center gap-3 p-2 hover:bg-hover transition-colors">
                                 <span class="w-5 h-5 flex items-center justify-center rounded-sm text-xs font-semibold flex-shrink-0 <?php echo $index < 3 ? 'bg-primary-light text-primary' : 'bg-soft text-muted'; ?>"><?php echo $index + 1; ?></span>
                                 <div class="flex-1 min-w-0 flex flex-col gap-0.5">
                                     <span class="text-sm text-text truncate"><?php echo htmlspecialchars($thread['subject']); ?></span>

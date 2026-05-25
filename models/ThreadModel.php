@@ -15,6 +15,8 @@ class ThreadModel {
     const PRIMARY_KEY = 'tid';
     private const PAGE_SIZE = 20;
     private const FILTER_BATCH_SIZE = 100;
+    private const HOT_THREADS_CACHE_TTL = 3600;
+    private const HOME_NOTICE_CACHE_KEY = 'home_notice_threads';
     
     private static array $memoryCache = [];
 
@@ -91,7 +93,9 @@ class ThreadModel {
         $data['dateline'] = time();
         $data['reply_time'] = time();
         $data['hash'] = md5(uniqid());
-        return Database::insert(self::TABLE, $data);
+        $tid = Database::insert(self::TABLE, $data);
+        self::deleteApcuCache(self::homeNoticeCacheKey());
+        return $tid;
     }
 
     public static function update(int $tid, array $data): int {
@@ -254,6 +258,12 @@ class ThreadModel {
     }
 
     public static function getHotThreadsByFid(int $fid, int $limit = 5, int $excludeTid = 0): array {
+        $cacheKey = self::hotThreadsCacheKey($fid, $limit, $excludeTid);
+        $cachedThreads = self::getApcuCache($cacheKey);
+        if ($cachedThreads !== null) {
+            return $cachedThreads;
+        }
+
         $threads = Database::fetchAll(
             "SELECT tid, subject, fid, reply_num, view_num, dateline, sort_order FROM " . self::TABLE . " WHERE fid = :fid ORDER BY tid DESC LIMIT :limit",
             ['fid' => $fid, 'limit' => max($limit, 20)]
@@ -263,7 +273,77 @@ class ThreadModel {
             return self::isApproved($thread) && (int)$thread['tid'] !== $excludeTid;
         }));
 
-        return array_slice(self::sortThreads(ViewCounter::applyPendingToThreads($threads), 'reply_num'), 0, $limit);
+        $threads = array_slice(self::sortThreads(ViewCounter::applyPendingToThreads($threads), 'reply_num'), 0, $limit);
+        self::setApcuCache($cacheKey, $threads, self::HOT_THREADS_CACHE_TTL);
+
+        return $threads;
+    }
+
+    public static function getHomeNoticeThreads(int $noticeFid, int $limit = 5): array {
+        if ($noticeFid <= 0 || $limit <= 0) {
+            return [];
+        }
+
+        $cacheKey = self::homeNoticeCacheKey();
+        $cachedThreads = self::getApcuCache($cacheKey);
+        if ($cachedThreads !== null) {
+            return $cachedThreads;
+        }
+
+        $threads = array_slice(self::getThreads($noticeFid, 1, 'dateline', ''), 0, $limit);
+        self::setApcuCache($cacheKey, $threads, 0);
+
+        return $threads;
+    }
+
+    public static function clearHomeNoticeCache(): void {
+        self::deleteApcuCache(self::homeNoticeCacheKey());
+    }
+
+    private static function homeNoticeCacheKey(): string {
+        return 'xforum:' . md5(ROOT_PATH) . ':' . self::HOME_NOTICE_CACHE_KEY;
+    }
+
+    private static function hotThreadsCacheKey(int $fid, int $limit, int $excludeTid): string {
+        return 'xforum:' . md5(ROOT_PATH) . ':hot_threads:' . $fid . ':' . $limit . ':' . $excludeTid;
+    }
+
+    private static function getApcuCache(string $key): ?array {
+        if (!self::isApcuAvailable()) {
+            return null;
+        }
+
+        $success = false;
+        $data = apcu_fetch($key, $success);
+        return $success && is_array($data) ? $data : null;
+    }
+
+    private static function setApcuCache(string $key, array $data, int $ttl): void {
+        if (!self::isApcuAvailable()) {
+            return;
+        }
+
+        apcu_store($key, $data, $ttl);
+    }
+
+    private static function deleteApcuCache(string $key): void {
+        if (!self::isApcuAvailable() || !function_exists('apcu_delete')) {
+            return;
+        }
+
+        apcu_delete($key);
+    }
+
+    private static function isApcuAvailable(): bool {
+        if (!function_exists('apcu_fetch') || !function_exists('apcu_store')) {
+            return false;
+        }
+
+        if (function_exists('apcu_enabled')) {
+            return apcu_enabled();
+        }
+
+        return filter_var((string)ini_get('apc.enabled'), FILTER_VALIDATE_BOOLEAN);
     }
 
     private static function isApproved(array $thread): bool {

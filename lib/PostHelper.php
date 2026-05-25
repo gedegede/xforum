@@ -12,7 +12,7 @@ use Lib\Session;
 use Lib\MarkdownHelper;
 
 class PostHelper {
-    public static function renderPost(array $post, array $users, int $index, bool $isFirst = false, ?array $currentUser = null, bool $isModerator = false): string {
+    public static function renderPost(array $post, array $users, int $index, bool $isFirst = false, ?array $currentUser = null, bool $isModerator = false, array $ratedPids = []): string {
         $post += [
             'pid' => 0,
             'fid' => 0,
@@ -33,6 +33,8 @@ class PostHelper {
         $quotePid = (int)($post['quote_pid'] ?? 0);
         $quoteFloor = (int)($post['quote_floor'] ?? 0);
         $sortOrder = (int)($post['sort_order'] ?? 0);
+        $rateNum = (int)($post['rate_num'] ?? 0);
+        $isRated = isset($ratedPids[$postPid]) || in_array($postPid, $ratedPids, true);
         $canEdit = $currentUser ? Permission::canEditPost($post) : false;
         $isPending = $sortOrder < 0;
         $canViewContent = !$isPending || $isModerator;
@@ -67,14 +69,32 @@ class PostHelper {
         </div>
         <div class="flex items-center gap-1 text-muted">
             <?php if ($canViewContent): ?>
-            <button type="button" class="flex items-center justify-center w-7 h-7 rounded-sm cursor-pointer hover:bg-hover hover:text-text transition-colors" data-action="quote" data-pid="<?php echo $postPid; ?>" data-uid="<?php echo $postUid; ?>" data-floor="<?php echo $index; ?>" data-username="<?php echo htmlspecialchars($users[$postUid]['username'] ?? ''); ?>" title="引用">
+            <div class="flex items-center gap-0.5" data-rate-group="<?php echo $postPid; ?>">
+                <?php if ($currentUser): ?>
+                <a href="index.php?c=thread&a=rate&pid=<?php echo $postPid; ?>" class="flex items-center justify-center w-5 h-7 rounded-sm hover:bg-hover hover:text-text transition-colors <?php echo $isRated ? 'text-primary' : ''; ?>" data-action="rate" data-pid="<?php echo $postPid; ?>" data-rated="<?php echo $isRated ? '1' : '0'; ?>" title="<?php echo $isRated ? '取消点赞' : '点赞'; ?><?php echo $rateNum > 0 ? ' (' . $rateNum . ')' : ''; ?>">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="<?php echo $isRated ? 'currentColor' : 'none'; ?>" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M7 10v11"></path>
+                        <path d="M15 5.5 14 10h5.7a2 2 0 0 1 1.9 2.5l-2 7A2 2 0 0 1 17.7 21H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3l4.6-7a1.8 1.8 0 0 1 3.4 1.1v1.4z"></path>
+                    </svg>
+                </a>
+                <?php else: ?>
+                <a href="index.php?c=auth&a=login" class="flex items-center justify-center w-5 h-7 rounded-sm hover:bg-hover hover:text-text transition-colors" title="登录后点赞<?php echo $rateNum > 0 ? ' (' . $rateNum . ')' : ''; ?>">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M7 10v11"></path>
+                        <path d="M15 5.5 14 10h5.7a2 2 0 0 1 1.9 2.5l-2 7A2 2 0 0 1 17.7 21H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3l4.6-7a1.8 1.8 0 0 1 3.4 1.1v1.4z"></path>
+                    </svg>
+                </a>
+                <?php endif; ?>
+                <span class="text-xs text-muted <?php echo $rateNum > 0 ? '' : 'hidden'; ?>" data-role="rate-count"><?php echo $rateNum > 0 ? $rateNum : ''; ?></span>
+            </div>
+            <a href="#reply-section" class="flex items-center justify-center w-5 h-7 rounded-sm hover:bg-hover hover:text-text transition-colors" data-action="quote" data-pid="<?php echo $postPid; ?>" data-uid="<?php echo $postUid; ?>" data-floor="<?php echo $index; ?>" data-username="<?php echo htmlspecialchars($users[$postUid]['username'] ?? ''); ?>" title="引用">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/>
                 </svg>
-            </button>
+            </a>
             <?php endif; ?>
             <?php if ($canEdit): ?>
-            <a href="index.php?c=thread&a=edit&pid=<?php echo $postPid; ?>" class="flex items-center justify-center w-7 h-7 rounded-sm hover:bg-hover hover:text-text transition-colors" title="编辑">
+            <a href="index.php?c=thread&a=edit&pid=<?php echo $postPid; ?>" class="flex items-center justify-center w-5 h-7 rounded-sm hover:bg-hover hover:text-text transition-colors" title="编辑">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
