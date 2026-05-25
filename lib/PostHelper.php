@@ -44,7 +44,7 @@ class PostHelper {
     <div class="flex items-start justify-between gap-3 mb-3">
         <div class="flex items-start gap-3">
             <a href="index.php?c=member&a=profile&uid=<?php echo $postUid; ?>" class="flex-shrink-0">
-                <div class="w-10 h-10 rounded-full bg-primary-light text-primary flex items-center justify-center font-semibold text-base flex-shrink-0 overflow-hidden">
+                <div class="w-10 h-10 rounded-full bg-primary-light text-muted flex items-center justify-center font-semibold text-base flex-shrink-0 overflow-hidden">
                     <?php if (!empty($users[$postUid]['avatar'])): ?>
                         <img src="<?php echo htmlspecialchars($users[$postUid]['avatar']); ?>" alt="" class="w-full h-full object-cover">
                     <?php else: ?>

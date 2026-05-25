@@ -138,7 +138,7 @@
                 <?php if (isset($template_user) && is_array($template_user) && !empty($template_user)): ?>
                     <div class="flex items-center gap-3 mb-4">
                         <a href="index.php?c=member&a=profile&uid=<?php echo $template_user['uid']; ?>">
-                            <div class="w-14 h-14 rounded-full bg-primary-light text-primary flex items-center justify-center font-semibold text-xl flex-shrink-0 overflow-hidden">
+                            <div class="w-14 h-14 rounded-full bg-primary-light text-muted flex items-center justify-center font-semibold text-xl flex-shrink-0 overflow-hidden">
                                 <?php if (!empty($template_user['avatar'])): ?>
                                     <img src="<?php echo htmlspecialchars($template_user['avatar']); ?>" alt="" class="w-full h-full object-cover">
                                 <?php else: ?>

@@ -398,7 +398,7 @@ h1,h2,h3,h4,h5,h6,p,ul,ol{margin:0}
 .text-text{color:var(--text)}
 .text-inherit{color:inherit}
 .text-current{color:currentColor}
-.text-primary{color:var(--primary)}
+.text-primary{color:var(--text)}
 .text-danger{color:var(--danger)}
 .text-success{color:var(--success)}
 .text-warning{color:var(--warning)}

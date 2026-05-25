@@ -117,7 +117,7 @@
                     <?php foreach ($template_moderators as $moderator): ?>
                         <?php $user = $template_moderatorUsers[$moderator['uid']] ?? null; ?>
                         <a href="index.php?c=member&a=profile&uid=<?php echo $moderator['uid']; ?>" class="flex items-center gap-3 p-2 rounded hover:bg-hover transition-colors">
-                            <div class="w-8 h-8 rounded-full bg-primary-light text-primary flex items-center justify-center font-semibold text-sm flex-shrink-0 overflow-hidden">
+                            <div class="w-8 h-8 rounded-full bg-primary-light text-muted flex items-center justify-center font-semibold text-sm flex-shrink-0 overflow-hidden">
                                 <?php if ($user && !empty($user['avatar'])): ?>
                                     <img src="<?php echo htmlspecialchars($user['avatar']); ?>" alt="" class="w-full h-full object-cover">
                                 <?php else: ?>
