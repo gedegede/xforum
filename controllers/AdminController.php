@@ -143,6 +143,7 @@ class AdminController {
 
         Template::set('title', '版块管理');
         Template::set('forums', $forums);
+        Template::set('parentForums', $forums);
         Template::set('user', Session::getUser());
         Template::display('admin/forums');
     }

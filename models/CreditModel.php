@@ -111,11 +111,12 @@ class CreditModel {
             return 0;
         }
 
-        if (!self::changeCredit($uid, $amount, $message, $url)) {
+        $did = self::changeCredit($uid, $amount, $message, $url);
+        if ($did <= 0) {
             return 0;
         }
         self::recordAction($uid, $action, $amount);
-        return $amount;
+        return $did;
     }
 
     public static function applyWithId(string $action, int $uid, string $message, string $url = ''): int {
@@ -132,12 +133,12 @@ class CreditModel {
             return 0;
         }
 
-        $did = self::changeCredit($uid, $amount, $message, $url);
-        if ($did <= 0) {
+        $result = self::changeCredit($uid, $amount, $message, $url);
+        if ($result['did'] <= 0) {
             return 0;
         }
         self::recordAction($uid, $action, $amount);
-        return $did;
+        return $result['did'];
     }
 
     public static function updateCreditUrl(int $did, string $url): void {

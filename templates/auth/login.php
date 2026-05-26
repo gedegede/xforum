@@ -4,11 +4,6 @@
             <h2>登录</h2>
         </div>
         <div class="p-4">
-            <div class="flex flex-wrap gap-2 mb-4">
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary-light text-primary">继续讨论</span>
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-soft text-sub">同步通知</span>
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-soft text-sub">管理收藏</span>
-            </div>
             <?php if (!empty($template_error)): ?>
             <div class="p-3 rounded bg-danger-light text-danger mb-4 text-sm"><?php echo htmlspecialchars($template_error); ?></div>
             <?php endif; ?>

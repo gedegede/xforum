@@ -130,26 +130,24 @@
                         参数: <?php echo htmlspecialchars(json_encode($query['params'])); ?>
                     </div>
                     <?php endif; ?>
-                    <?php if ($query['explain']): ?>
+                    <?php if (!empty($query['explain'])): ?>
                     <div class="mt-3 pt-3 border-t border-white/8">
-                        <div class="mb-2 text-sm font-semibold text-amber-300">EXPLAIN QUERY PLAN:</div>
+                        <div class="mb-2 text-sm font-semibold text-amber-300">EXPLAIN:</div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm border-collapse">
                                 <thead>
                                     <tr>
-                                        <th class="text-left px-2 py-1.5 bg-black/20 text-muted font-semibold border border-white/10">id</th>
-                                        <th class="text-left px-2 py-1.5 bg-black/20 text-muted font-semibold border border-white/10">parent</th>
-                                        <th class="text-left px-2 py-1.5 bg-black/20 text-muted font-semibold border border-white/10">notused</th>
-                                        <th class="text-left px-2 py-1.5 bg-black/20 text-muted font-semibold border border-white/10">detail</th>
+                                        <?php foreach (array_keys($query['explain'][0]) as $col): ?>
+                                        <th class="text-left px-2 py-1.5 bg-black/20 text-muted font-semibold border border-white/10"><?php echo htmlspecialchars($col); ?></th>
+                                        <?php endforeach; ?>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($query['explain'] as $row): ?>
                                     <tr>
-                                        <td class="px-2 py-1.5 text-muted border border-white/10 font-mono"><?php echo $row['id'] ?? '-'; ?></td>
-                                        <td class="px-2 py-1.5 text-muted border border-white/10 font-mono"><?php echo $row['parent'] ?? '-'; ?></td>
-                                        <td class="px-2 py-1.5 text-muted border border-white/10 font-mono"><?php echo $row['notused'] ?? '-'; ?></td>
-                                        <td class="px-2 py-1.5 text-muted border border-white/10 font-mono"><?php echo htmlspecialchars($row['detail'] ?? '-'); ?></td>
+                                        <?php foreach ($row as $val): ?>
+                                        <td class="px-2 py-1.5 text-muted border border-white/10 font-mono"><?php echo htmlspecialchars((string)($val ?? '-')); ?></td>
+                                        <?php endforeach; ?>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -196,5 +194,57 @@
             <?php endif; ?>
         </div>
     </nav>
+
+    <!-- Credit Tips Toast -->
+    <div id="credit-toast" style="display:none; position:fixed; top:24px; left:50%; transform:translateX(-50%) translateY(-20px); z-index:9999; opacity:0; transition:all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+        <div style="display:flex; align-items:center; gap:8px; padding:12px 20px; border-radius:12px; background:linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow:0 10px 40px rgba(16, 185, 129, 0.3), 0 2px 8px rgba(0, 0, 0, 0.1); color:white; font-size:14px; font-weight:600;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v8M8 12h8"/>
+            </svg>
+            <span id="credit-toast-text"></span>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        var toast = document.getElementById('credit-toast');
+        var toastText = document.getElementById('credit-toast-text');
+        var toastTimer = null;
+
+        window.showCreditToast = function(amount) {
+            if (!toast || !toastText || !amount) return;
+
+            var isPositive = amount > 0;
+            var prefix = isPositive ? '+' : '';
+            var color = isPositive ? '#ffffff' : '#ffffff';
+            var bg = isPositive
+                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+            var shadow = isPositive
+                ? '0 10px 40px rgba(16, 185, 129, 0.3), 0 2px 8px rgba(0, 0, 0, 0.1)'
+                : '0 10px 40px rgba(239, 68, 68, 0.3), 0 2px 8px rgba(0, 0, 0, 0.1)';
+
+            toastText.textContent = '金币 ' + prefix + amount;
+            toast.firstElementChild.style.background = bg;
+            toast.firstElementChild.style.boxShadow = shadow;
+
+            toast.style.display = 'block';
+            requestAnimationFrame(function() {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateX(-50%) translateY(0)';
+            });
+
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(function() {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(-50%) translateY(-20px)';
+                setTimeout(function() {
+                    toast.style.display = 'none';
+                }, 400);
+            }, 2000);
+        };
+    })();
+    </script>
 </body>
 </html>

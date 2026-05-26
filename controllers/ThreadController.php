@@ -340,6 +340,7 @@ class ThreadController {
             $pid = 0;
             $errorMsg = '';
             $inTransaction = false;
+            $creditDid = 0;
             try {
                 Database::beginTransaction();
                 $inTransaction = true;
@@ -379,7 +380,7 @@ class ThreadController {
                 }
 
                 if (!$needApprove && (int)$creditRule['credit'] > 0) {
-                    CreditModel::apply(
+                    $creditDid = CreditModel::apply(
                         CreditModel::ACTION_THREAD_REPLY,
                         Session::getUid(),
                         '回复主题：' . ($thread['subject'] ?? ''),
@@ -427,7 +428,7 @@ class ThreadController {
             if (Response::isAjaxRequest()) {
                 $currentUser = Session::getUser();
                 $postIndex = (int)($thread['reply_num'] ?? 0) + 2;
-                
+
                 $newPost = [
                     'pid' => $pid,
                     'fid' => $thread['fid'],
@@ -441,27 +442,33 @@ class ThreadController {
                     'quote_floor' => $quoteFloor,
                     'sort_order' => $sortOrder,
                 ];
-                
+
                 $users = [
                     Session::getUid() => $currentUser,
                 ];
-                
+
                 if ($quoteUid > 0) {
                     $quoteUser = MemberModel::get($quoteUid);
                     if ($quoteUser) {
                         $users[$quoteUid] = $quoteUser;
                     }
                 }
-                
+
                 $isMod = Permission::isModerator($thread['fid']);
                 $html = PostHelper::renderPost($newPost, $users, $postIndex, false, $currentUser, $isMod);
-                
-                Response::json([
+
+                $response = [
                     'success' => true,
                     'message' => '回复成功',
                     'html' => $html,
                     'postIndex' => $postIndex,
-                ]);
+                ];
+
+                if ($creditDid > 0) {
+                    $response['credit_change'] = (int)$creditRule['credit'];
+                }
+
+                Response::json($response);
             }
 
             Response::redirect("index.php?c=thread&a=index&tid={$tid}");

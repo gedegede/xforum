@@ -290,6 +290,9 @@
                         messageInput.value = '';
                         clearQuoteReply();
                         updateReplyCount();
+                        if (data.credit_change && typeof window.showCreditToast === 'function') {
+                            window.showCreditToast(data.credit_change);
+                        }
                     } else {
                         alert(data.message || '回复失败，请重试');
                     }
@@ -315,7 +318,10 @@
                     behavior: 'smooth',
                     block: 'center'
                 });
+
                 newPost.classList.add('animate-highlight');
+                newPost.classList.remove('border-b');
+                newPost.classList.add('border-t');
                 setTimeout(() => {
                     newPost.classList.remove('animate-highlight');
                 }, 2600);

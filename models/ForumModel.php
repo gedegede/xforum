@@ -161,13 +161,13 @@ class ForumModel {
     }
 
     public static function update(int $fid, array $data): int {
-        $result = Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = ?", [$fid]);
+        $result = Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = :fid", ['fid' => $fid]);
         CacheHelper::deleteCache(self::TABLE);
         return $result;
     }
 
     public static function delete(int $fid): int {
-        $result = Database::delete(self::TABLE, self::PRIMARY_KEY . " = ?", [$fid]);
+        $result = Database::delete(self::TABLE, self::PRIMARY_KEY . " = :fid", ['fid' => $fid]);
         CacheHelper::deleteCache(self::TABLE);
         return $result;
     }
@@ -190,13 +190,13 @@ class ForumModel {
         if ($forum['today_time'] == $today) {
             Database::update(self::TABLE, [
                 'today_num' => $forum['today_num'] + 1,
-            ], self::PRIMARY_KEY . " = ?", [$fid]);
+            ], self::PRIMARY_KEY . " = :fid", ['fid' => $fid]);
             $forum['today_num'] = $forum['today_num'] + 1;
         } else {
             Database::update(self::TABLE, [
                 'today_num' => 1,
                 'today_time' => $today,
-            ], self::PRIMARY_KEY . " = ?", [$fid]);
+            ], self::PRIMARY_KEY . " = :fid", ['fid' => $fid]);
             $forum['today_num'] = 1;
             $forum['today_time'] = $today;
         }
@@ -211,7 +211,7 @@ class ForumModel {
         Database::update(self::TABLE, [
             'thread_num' => $forum['thread_num'] + 1,
             'last_tid' => $tid,
-        ], self::PRIMARY_KEY . " = ?", [$fid]);
+        ], self::PRIMARY_KEY . " = :fid", ['fid' => $fid]);
         $forum['thread_num'] = $forum['thread_num'] + 1;
         $forum['last_tid'] = $tid;
         self::updateCache($forum);
@@ -225,7 +225,7 @@ class ForumModel {
         Database::update(self::TABLE, [
             'reply_num' => $forum['reply_num'] + 1,
             'last_tid' => $tid,
-        ], self::PRIMARY_KEY . " = ?", [$fid]);
+        ], self::PRIMARY_KEY . " = :fid", ['fid' => $fid]);
         $forum['reply_num'] = $forum['reply_num'] + 1;
         $forum['last_tid'] = $tid;
         self::updateCache($forum);
@@ -238,7 +238,7 @@ class ForumModel {
         }
         Database::update(self::TABLE, [
             'thread_num' => max(0, $forum['thread_num'] - 1),
-        ], self::PRIMARY_KEY . " = ?", [$fid]);
+        ], self::PRIMARY_KEY . " = :fid", ['fid' => $fid]);
         $forum['thread_num'] = max(0, $forum['thread_num'] - 1);
         self::updateCache($forum);
     }
@@ -250,7 +250,7 @@ class ForumModel {
         }
         Database::update(self::TABLE, [
             'reply_num' => max(0, $forum['reply_num'] - 1),
-        ], self::PRIMARY_KEY . " = ?", [$fid]);
+        ], self::PRIMARY_KEY . " = :fid", ['fid' => $fid]);
         $forum['reply_num'] = max(0, $forum['reply_num'] - 1);
         self::updateCache($forum);
     }

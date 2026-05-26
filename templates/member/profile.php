@@ -81,11 +81,51 @@
             </h3>
         </div>
         <?php if ($template_type == 'credits' && $template_isSelf): ?>
-            <form method="post" action="index.php?c=member&a=signin">
-                <button type="submit" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed h-control-sm px-3 text-sm <?php echo !empty($template_signedToday) ? 'bg-soft border-border text-text hover:bg-hover' : 'bg-primary border-primary text-white hover:bg-primary-dark'; ?>" <?php echo !empty($template_signedToday) ? 'disabled' : ''; ?>>
+            <form id="signin-form" method="post" action="index.php?c=member&a=signin">
+                <button type="submit" id="signin-btn" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed h-control-sm px-3 text-sm <?php echo !empty($template_signedToday) ? 'bg-soft border-border text-text hover:bg-hover' : 'bg-primary border-primary text-white hover:bg-primary-dark'; ?>" <?php echo !empty($template_signedToday) ? 'disabled' : ''; ?>>
                     <?php echo !empty($template_signedToday) ? '今日已签到' : '每日签到'; ?>
                 </button>
             </form>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var form = document.getElementById('signin-form');
+                var btn = document.getElementById('signin-btn');
+                if (!form || !btn) return;
+
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    btn.disabled = true;
+                    btn.textContent = '签到中...';
+
+                    fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(function(response) { return response.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            btn.textContent = '今日已签到';
+                            btn.classList.remove('bg-primary', 'border-primary', 'text-white', 'hover:bg-primary-dark');
+                            btn.classList.add('bg-soft', 'border-border', 'text-text', 'hover:bg-hover');
+                            if (data.credit > 0 && typeof window.showCreditToast === 'function') {
+                                window.showCreditToast(data.credit);
+                            }
+                        } else {
+                            btn.disabled = false;
+                            btn.textContent = '每日签到';
+                            alert(data.message || '签到失败');
+                        }
+                    })
+                    .catch(function() {
+                        btn.disabled = false;
+                        btn.textContent = '每日签到';
+                        alert('网络错误，请重试');
+                    });
+                });
+            });
+            </script>
         <?php endif; ?>
     </div>
 

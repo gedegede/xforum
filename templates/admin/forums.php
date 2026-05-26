@@ -3,7 +3,7 @@
 <div class="bg-panel border border-border rounded shadow-sm overflow-hidden">
     <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border bg-soft">
         <h2 class="font-semibold">版块管理</h2>
-        <a href="index.php?c=admin&a=forumAdd" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark">添加版块</a>
+        <button type="button" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark" data-action="add-forum">添加版块</button>
     </div>
     <div class="p-4">
         <div class="overflow-x-auto">
@@ -45,6 +45,38 @@
                     <?php endif; ?>
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<div id="forum-add-modal" data-modal-overlay class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-panel rounded-lg shadow-xl w-full max-w-md mx-4">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+            <h3 class="font-semibold">添加版块</h3>
+            <button class="text-muted hover:text-text text-xl font-bold leading-none" onclick="closeModal('forum-add-modal')">×</button>
+        </div>
+        <div class="p-4">
+            <form id="forum-add-form" method="post" action="index.php?c=admin&a=forumAdd">
+                <div class="mb-4 flex flex-col gap-1.5">
+                    <label class="text-sm font-medium text-text">版块名称</label>
+                    <input type="text" name="name" id="add-forum-name" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" required>
+                </div>
+                <div class="mb-2 flex flex-col gap-1.5">
+                    <label class="text-sm font-medium text-text">上级版块</label>
+                    <select name="up_fid" id="add-forum-upfid" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary">
+                        <option value="0">无（顶级版块）</option>
+                        <?php foreach ($template_parentForums as $forum): ?>
+                            <option value="<?php echo $forum['fid']; ?>">
+                                <?php echo str_repeat('├─ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="flex justify-end gap-3 px-4 py-3 border-t border-border bg-soft">
+            <button type="button" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover" onclick="closeModal('forum-add-modal')">取消</button>
+            <button type="submit" form="forum-add-form" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark">添加版块</button>
         </div>
     </div>
 </div>
@@ -112,6 +144,15 @@ function closeModal(modalId) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    var addForumBtn = document.querySelector('[data-action="add-forum"]');
+    if (addForumBtn) {
+        addForumBtn.addEventListener('click', function() {
+            document.getElementById('forum-add-form').reset();
+            openModal('forum-add-modal');
+            document.getElementById('add-forum-name').focus();
+        });
+    }
+
     document.querySelectorAll('[data-action="edit-forum"]').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var fid = this.getAttribute('data-fid');

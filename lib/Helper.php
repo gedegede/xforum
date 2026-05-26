@@ -25,7 +25,7 @@ class Helper {
             return '';
         }
 
-        $html = '<div class="flex items-center justify-center gap-1 flex-wrap py-4">';
+        $html = '<div class="flex items-center justify-center gap-1 flex-wrap py-4 border-t">';
 
         $visibleCount = 5;
         $halfVisible = floor($visibleCount / 2);

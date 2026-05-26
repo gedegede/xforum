@@ -36,9 +36,10 @@ class Database {
             $this->connection = new PDO('sqlite:' . $connection['database']);
         } elseif ($connection['driver'] === 'mysql') {
             $dsn = "mysql:host={$connection['host']};dbname={$connection['database']};charset={$connection['charset']}";
+            $initCmd = defined('Pdo\Mysql::ATTR_INIT_COMMAND') ? \Pdo\Mysql::ATTR_INIT_COMMAND : PDO::MYSQL_ATTR_INIT_COMMAND;
             $this->connection = new PDO($dsn, $connection['username'], $connection['password'], [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES {$connection['charset']}",
+                $initCmd => "SET NAMES {$connection['charset']}",
             ]);
         }
 
@@ -52,7 +53,11 @@ class Database {
     public static function query(string $sql, array $params = []): PDOStatement {
         $startTime = microtime(true);
         $stmt = self::getConnection()->prepare($sql);
-        $stmt->execute($params);
+        foreach ($params as $key => $value) {
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue(is_int($key) ? $key + 1 : ':' . $key, $value, $type);
+        }
+        $stmt->execute();
         $endTime = microtime(true);
         $duration = ($endTime - $startTime) * 1000;
         
@@ -64,9 +69,15 @@ class Database {
         ];
         
         if (stripos(trim($sql), 'SELECT') === 0) {
-            $explainSql = 'EXPLAIN QUERY PLAN ' . $sql;
+            $driver = self::getConnection()->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $explainPrefix = $driver === 'mysql' ? 'EXPLAIN ' : 'EXPLAIN QUERY PLAN ';
+            $explainSql = $explainPrefix . $sql;
             $explainStmt = self::getConnection()->prepare($explainSql);
-            $explainStmt->execute($params);
+            foreach ($params as $key => $value) {
+                $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $explainStmt->bindValue(is_int($key) ? $key + 1 : ':' . $key, $value, $type);
+            }
+            $explainStmt->execute();
             $queryInfo['explain'] = $explainStmt->fetchAll(PDO::FETCH_ASSOC);
         }
         
@@ -149,7 +160,7 @@ class Database {
     }
 
     public static function insert(string $table, array $data): int {
-        $columns = implode(', ', array_keys($data));
+        $columns = implode(', ', array_map(fn($c) => "`{$c}`", array_keys($data)));
         $placeholders = ':' . implode(', :', array_keys($data));
         $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
         self::query($sql, $data);
@@ -159,7 +170,7 @@ class Database {
     public static function update(string $table, array $data, string $where, array $params = []): int {
         $set = [];
         foreach ($data as $key => $value) {
-            $set[] = "{$key} = :{$key}";
+            $set[] = "`{$key}` = :{$key}";
         }
         $set = implode(', ', $set);
         $sql = "UPDATE {$table} SET {$set} WHERE {$where}";
