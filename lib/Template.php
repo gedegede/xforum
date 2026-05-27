@@ -44,10 +44,10 @@ class Template {
 
             ob_start();
             $renderLayout();
-            return ob_get_clean();
+            return self::injectCsrfFields((string)ob_get_clean());
         }
 
-        return (string)$content;
+        return self::injectCsrfFields((string)$content);
     }
 
     public static function display(string $template): void {
@@ -56,6 +56,22 @@ class Template {
 
     public static function clear(): void {
         self::$vars = [];
+    }
+
+    private static function injectCsrfFields(string $html): string {
+        $field = CsrfHelper::field();
+        if ($field === '') {
+            return $html;
+        }
+
+        return (string)preg_replace_callback(
+            '~<form\b[^>]*\bmethod\s*=\s*([\'"]?)post\1[^>]*>~i',
+            static function (array $matches) use ($field): string {
+                $formTag = $matches[0];
+                return $formTag . $field;
+            },
+            $html
+        );
     }
 }
 ?>

@@ -95,7 +95,7 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-soft" onclick="closeModal('forum-delete-modal')">取消</button>
-            <a href="#" id="forum-delete-confirm-btn" class="btn btn-danger">确认删除</a>
+            <a href="#" id="forum-delete-confirm-btn" class="btn btn-danger" data-post-link="1">确认删除</a>
         </div>
     </div>
 </div>

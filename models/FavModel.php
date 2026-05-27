@@ -17,7 +17,7 @@ class FavModel {
     private const PAGE_SIZE = 20;
     private const FILTER_BATCH_SIZE = 100;
 
-    public static function getUserFavorites(int $uid, int $page = 1): array {
+    public static function getUserFavorites(int $uid, int $page = 1, int $pageSize = self::PAGE_SIZE): array {
         return Database::fetchFilteredPage(
             "SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY dateline DESC LIMIT :limit OFFSET :offset",
             ['uid' => $uid],
@@ -25,7 +25,7 @@ class FavModel {
                 return true;
             },
             $page,
-            self::PAGE_SIZE,
+            $pageSize,
             self::FILTER_BATCH_SIZE
         );
     }

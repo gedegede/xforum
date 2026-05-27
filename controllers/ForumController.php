@@ -22,8 +22,11 @@ class ForumController {
     public static function index(int $fid = 0): void {
         Template::clear();
         if (!$fid) {
-            $forums = ForumModel::getForumsFlat();
             $from = Request::getString('from');
+            $forums = array_values(array_filter(ForumModel::getForumsFlat(), static function(array $forum) use ($from): bool {
+                $fid = (int)($forum['fid'] ?? 0);
+                return $from === 'create' ? Permission::canPostThread($fid) : Permission::canViewForum($fid);
+            }));
 
             Template::set('title', $from === 'create' ? '选择版块' : '论坛导航');
             Template::set('forums', $forums);
@@ -64,7 +67,7 @@ class ForumController {
         }
         
         $threadsPerPage = (int)SettingModel::get('threads_per_page', '20');
-        $threads = ThreadModel::getThreads($fid, $page, $order, $keyword);
+        $threads = ThreadModel::getThreads($fid, $page, $order, $keyword, $threadsPerPage);
         $total = empty($keyword) ? (int)($forum['thread_num'] ?? 0) : ThreadModel::getThreadCount($fid, $keyword);
         $pages = (int)ceil($total / $threadsPerPage);
 
@@ -95,7 +98,9 @@ class ForumController {
         Template::set('title', $forum['name']);
         Template::set('forum', $forum);
         Template::set('parentForum', $parentForum);
-        Template::set('subForums', ForumModel::getForums($fid));
+        Template::set('subForums', array_values(array_filter(ForumModel::getForums($fid), static function(array $subForum): bool {
+            return Permission::canViewForum((int)($subForum['fid'] ?? 0));
+        })));
         Template::set('threads', $threads);
         Template::set('users', $users);
         Template::set('page', $page);

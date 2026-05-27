@@ -1,6 +1,11 @@
 <?php
 define('ROOT_PATH', dirname(__FILE__));
 
+if (PHP_SAPI !== 'cli') {
+    http_response_code(403);
+    exit('Install script can only be run from CLI.');
+}
+
 $dbFile = ROOT_PATH . '/database/forum.db';
 
 if (file_exists($dbFile)) {
@@ -238,8 +243,8 @@ foreach ($tables as $name => $sql) {
     $db->exec($sql);
 }
 
-$db->exec("INSERT INTO next_usergroup (gid, group_type, title, credit_lower, json_data) VALUES (1, 'system', '管理员', 0, '{\"can_manage\":1,\"thread_need_approve\":0,\"post_need_approve\":0}')");
-$db->exec("INSERT INTO next_usergroup (gid, group_type, title, credit_lower, json_data) VALUES (2, 'system', '普通会员', 0, '{\"can_manage\":0,\"thread_need_approve\":0,\"post_need_approve\":0}')");
+$db->exec("INSERT INTO next_usergroup (gid, group_type, title, credit_lower, json_data) VALUES (1, 'system', '管理员', 0, '{\"admin_thread\":1,\"admin_setting\":1,\"admin_forum\":1,\"admin_usergroup\":1,\"admin_user\":1,\"admin_log\":1,\"thread_need_approve\":0,\"post_need_approve\":0}')");
+$db->exec("INSERT INTO next_usergroup (gid, group_type, title, credit_lower, json_data) VALUES (2, 'system', '普通会员', 0, '{\"thread_need_approve\":0,\"post_need_approve\":0}')");
 
 $db->exec("INSERT INTO next_member (uid, username, gid, password, auth_secret, reg_ip, reg_date, status) VALUES (1, 'admin', 1, '" . password_hash('admin123', PASSWORD_DEFAULT) . "', '".md5(uniqid())."', '127.0.0.1', ".time().", 0)");
 

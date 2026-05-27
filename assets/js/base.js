@@ -1,3 +1,58 @@
+window.getCsrfToken = function() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') || '' : '';
+};
+
+window.submitPostUrl = function(url) {
+    if (!url) return;
+
+    var form = document.createElement('form');
+    form.method = 'post';
+    form.action = url;
+
+    var token = window.getCsrfToken ? window.getCsrfToken() : '';
+    if (token) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'csrf_token';
+        input.value = token;
+        form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+};
+
+document.addEventListener('click', function(e) {
+    var link = e.target.closest('[data-post-link]');
+    if (!link) return;
+    e.preventDefault();
+    window.submitPostUrl(link.getAttribute('href') || link.dataset.postUrl);
+});
+
+(function() {
+    if (typeof window.fetch !== 'function') return;
+
+    var nativeFetch = window.fetch.bind(window);
+    window.fetch = function(input, init) {
+        init = init || {};
+        var method = (init.method || (input && input.method) || 'GET').toUpperCase();
+        var token = window.getCsrfToken ? window.getCsrfToken() : '';
+
+        if (token && method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+            if (init.headers instanceof Headers) {
+                init.headers.set('X-CSRF-Token', token);
+            } else {
+                init.headers = Object.assign({}, init.headers || {}, {
+                    'X-CSRF-Token': token
+                });
+            }
+        }
+
+        return nativeFetch(input, init);
+    };
+})();
+
 var messageModal = document.getElementById('message-modal');
 var messageModalFooter = document.getElementById('message-modal-footer');
 

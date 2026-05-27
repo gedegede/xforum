@@ -21,7 +21,6 @@ use Models\MemberModel;
 use Models\NotifyModel;
 use Models\FavModel;
 use Models\RateModel;
-use Models\PmModel;
 use Models\SettingModel;
 use Models\UsergroupModel;
 use Models\DataModel;
@@ -58,10 +57,11 @@ class ThreadController {
 
         $targetPid = $pid > 0 ? $pid : Request::getInt('pid', 0);
         $page = Request::getInt('page', 1);
+        $postsPerPage = (int)SettingModel::get('posts_per_page', '20');
         if ($targetPid > 0) {
             $targetPost = PostModel::get($targetPid);
             if ($targetPost && (int)$targetPost['tid'] === $tid) {
-                $targetPage = PostModel::getPostPage($targetPid);
+                $targetPage = PostModel::getPostPage($targetPid, $postsPerPage);
                 if ($targetPage > 0) {
                     $page = $targetPage;
                 }
@@ -69,7 +69,6 @@ class ThreadController {
                 $targetPid = 0;
             }
         }
-        $postsPerPage = (int)SettingModel::get('posts_per_page', '20');
         $posts = self::sortCurrentPagePostsByRate(PostModel::getPosts($tid, $page, $isModerator, $postsPerPage), $page);
         $total = (int)($thread['reply_num'] ?? 0) + 1;
         
@@ -498,8 +497,7 @@ class ThreadController {
             self::handleAtMentions($message, $tid, $pid);
 
             Session::set('last_post_time_' . $user['uid'], time());
-            PmModel::markAsRead($thread['uid']);
-            
+
             SessionModel::updateOnline($user['uid'], $user['gid'], $user['invisible'], $thread['fid'], $tid);
 
             if (Response::isAjaxRequest()) {
@@ -573,8 +571,14 @@ class ThreadController {
 
     public static function favorite(int $tid): void {
         Permission::requireLogin();
+        self::requirePost();
         if (!Permission::canFavorite()) {
             Response::error('无权限收藏', 403);
+        }
+
+        $thread = ThreadModel::get($tid);
+        if (!$thread || !Permission::canViewForum((int)$thread['fid'])) {
+            Response::error('主题不存在或无权限访问', 404);
         }
 
         $isFavorited = FavModel::isFavorite(Session::getUid(), $tid);
@@ -596,6 +600,7 @@ class ThreadController {
 
     public static function rate(int $pid): void {
         Permission::requireLogin();
+        self::requirePost();
         if (!Permission::canRate()) {
             Response::error('无权限点赞', 403);
         }
@@ -608,7 +613,7 @@ class ThreadController {
             Response::redirect('index.php');
         }
 
-        if (!Permission::canViewPost($post)) {
+        if (!Permission::canViewForum((int)$post['fid']) || !Permission::canViewPost($post)) {
             if (Response::isAjaxRequest()) {
                 Response::error('无权限访问', 403);
             }
@@ -675,6 +680,7 @@ class ThreadController {
 
     public static function deletePost(int $pid): void {
         Permission::requireLogin();
+        self::requirePost();
 
         $post = PostModel::get($pid);
         if (!$post) {
@@ -692,21 +698,30 @@ class ThreadController {
         }
 
         $tid = $post['tid'];
+        $wasPending = (int)($post['sort_order'] ?? 0) < 0;
         PostModel::delete($pid);
 
         if ($post['is_thread'] == 1) {
             PostModel::deleteByTid($tid);
             ThreadModel::delete($tid);
-            MemberModel::decrementThreadNum($post['uid']);
-            ForumModel::decrementThreadNum($post['fid']);
+            if ($wasPending) {
+                DataModel::updateCount('pending_threads', -1);
+            } else {
+                MemberModel::decrementThreadNum($post['uid']);
+                ForumModel::decrementThreadNum($post['fid']);
+            }
             if (Response::isAjaxRequest()) {
                 Response::json(['success' => true, 'message' => '主题已删除', 'redirect' => 'index.php?c=forum&a=index&fid=' . $post['fid']]);
             }
             Response::redirect('index.php?c=forum&a=index&fid=' . $post['fid']);
         }
 
-        MemberModel::decrementReplyNum($post['uid']);
-        ForumModel::decrementReplyNum($post['fid']);
+        if ($wasPending) {
+            DataModel::updateCount('pending_posts', -1);
+        } else {
+            MemberModel::decrementReplyNum($post['uid']);
+            ForumModel::decrementReplyNum($post['fid']);
+        }
 
         if (Response::isAjaxRequest()) {
             Response::json(['success' => true, 'message' => '删除成功']);
@@ -727,6 +742,7 @@ class ThreadController {
 
     public static function report(int $pid): void {
         Permission::requireLogin();
+        self::requirePost();
         if (!Permission::canReport()) {
             Response::error('无权限举报', 403);
         }
@@ -734,6 +750,9 @@ class ThreadController {
         $post = PostModel::get($pid);
         if (!$post) {
             Response::error('帖子不存在');
+        }
+        if (!Permission::canViewForum((int)$post['fid']) || !Permission::canViewPost($post)) {
+            Response::error('无权限访问', 403);
         }
 
         $reason = Request::postString('reason');
@@ -805,6 +824,7 @@ class ThreadController {
     }
 
     public static function approve(int $tid): void {
+        self::requirePost();
         $thread = ThreadModel::get($tid);
         if (!$thread || !Permission::canManageForum($thread['fid'])) {
             Response::redirect('index.php');
@@ -836,6 +856,7 @@ class ThreadController {
     }
 
     public static function approvePost(int $pid): void {
+        self::requirePost();
         $post = PostModel::get($pid);
         if (!$post || !Permission::canManageForum($post['fid'])) {
             Response::redirect('index.php');
@@ -864,6 +885,15 @@ class ThreadController {
         }
 
         Response::redirect("index.php?c=thread&a=index&tid={$post['tid']}");
+    }
+
+    private static function requirePost(): void {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            if (Response::isAjaxRequest()) {
+                Response::error('Method not allowed', 405);
+            }
+            Response::redirect('index.php');
+        }
     }
 }
 ?>

@@ -5,12 +5,19 @@
         $jsonData = json_decode($template_user['json_data'], true);
         $theme = $jsonData['theme'] ?? 'light';
     }
+    if (!in_array($theme, ['light', 'dark'], true)) {
+        $theme = 'light';
+    }
     echo $theme;
 ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(isset($template_title) ? $template_title : \Models\SettingModel::get('site_name', 'XForum')); ?></title>
+    <?php $csrfToken = \Lib\CsrfHelper::generate(); ?>
+    <?php if ($csrfToken !== ''): ?>
+    <meta name="csrf-token" content="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+    <?php endif; ?>
     <link rel="stylesheet" href="assets/css/style.css">
     <?php
     $customCss = '';
@@ -20,7 +27,7 @@
     }
     if (!empty($customCss)):
     ?>
-    <style id="user-custom-css"><?php echo $customCss; ?></style>
+    <style id="user-custom-css"><?php echo str_ireplace('</style', '<\\/style', $customCss); ?></style>
     <?php endif; ?>
     <?php echo \Models\SettingModel::get('head_code', ''); ?>
 </head>
@@ -114,7 +121,7 @@
             <!-- SQL Query Log -->
             <?php
             $queryLog = \Lib\Database::getQueryLog();
-            if (!empty($queryLog)):
+            if (!empty($queryLog) && \Lib\Permission::isAdmin()):
             ?>
             <div class="mt-6 pt-5 border-t border-white/10">
                 <h4 class="mb-3 text-sm font-semibold text-gray-400">SQL查询日志 (共 <?php echo count($queryLog); ?> 条)</h4>

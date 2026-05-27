@@ -16,7 +16,7 @@ class PostModel {
     private const PAGE_SIZE = 20;
     private const FILTER_BATCH_SIZE = 100;
 
-    public static function getPosts(int $tid, int $page = 1, bool $includePending = false): array {
+    public static function getPosts(int $tid, int $page = 1, bool $includePending = false, int $pageSize = self::PAGE_SIZE): array {
         return Database::fetchFilteredPage(
             "SELECT * FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid ASC LIMIT :limit OFFSET :offset",
             ['tid' => $tid],
@@ -24,7 +24,7 @@ class PostModel {
                 return $includePending || (int)($post['sort_order'] ?? 0) >= 0;
             },
             $page,
-            self::PAGE_SIZE,
+            $pageSize,
             self::FILTER_BATCH_SIZE
         );
     }
@@ -45,7 +45,7 @@ class PostModel {
         return (int)($thread['reply_num'] ?? 0) + 1;
     }
 
-    public static function getUserPosts(int $uid, int $page = 1): array {
+    public static function getUserPosts(int $uid, int $page = 1, int $pageSize = self::PAGE_SIZE): array {
         return Database::fetchFilteredPage(
             "SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY pid DESC LIMIT :limit OFFSET :offset",
             ['uid' => $uid],
@@ -53,7 +53,7 @@ class PostModel {
                 return (int)($post['is_thread'] ?? 0) === 0 && (int)($post['sort_order'] ?? 0) >= 0;
             },
             $page,
-            self::PAGE_SIZE,
+            $pageSize,
             self::FILTER_BATCH_SIZE
         );
     }

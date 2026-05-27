@@ -69,6 +69,9 @@ class MemberController {
                 }
                 break;
             case 'credits':
+                if ($uid != Session::getUid()) {
+                    Response::redirect("index.php?c=member&a=profile&uid={$uid}");
+                }
                 $credits = CreditModel::getUserCredits($uid, $page, $usersPerPage);
                 $total = CreditModel::getUserCreditCount($uid);
                 break;

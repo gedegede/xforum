@@ -93,7 +93,9 @@ class Permission {
             return true;
         }
 
-        return !self::hasGroupPermission('deny_thread') && ForumModel::canGroup($fid, (int)$user['gid'], 'thread');
+        return !self::hasGroupPermission('deny_thread')
+            && ForumModel::canGroup($fid, (int)$user['gid'], 'view')
+            && ForumModel::canGroup($fid, (int)$user['gid'], 'thread');
     }
 
     public static function canReplyThread(int $fid): bool {
@@ -106,7 +108,9 @@ class Permission {
             return true;
         }
 
-        return !self::hasGroupPermission('deny_reply') && ForumModel::canGroup($fid, (int)$user['gid'], 'reply');
+        return !self::hasGroupPermission('deny_reply')
+            && ForumModel::canGroup($fid, (int)$user['gid'], 'view')
+            && ForumModel::canGroup($fid, (int)$user['gid'], 'reply');
     }
 
     public static function canViewForum(int $fid): bool {
@@ -286,10 +290,11 @@ class Permission {
         }
 
         if (self::hasGroupPermission('deny_access')) {
+            Session::clear();
             if (Response::isAjaxRequest()) {
                 Response::error('无权限访问', 403);
             }
-            Response::redirect('index.php?c=auth&a=logout');
+            Response::redirect('index.php');
         }
     }
 

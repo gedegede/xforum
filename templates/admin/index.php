@@ -36,10 +36,16 @@
                             <td>
                                 <?php echo htmlspecialchars((string)$value); ?>
                                 <?php if ($label === 'OPcache' && str_starts_with((string)$value, '已启用')): ?>
-                                    <a href="index.php?c=admin&a=index&opcache=reset" class="text-primary ml-2">[清空缓存]</a>
+                                    <form method="post" action="index.php?c=admin&a=index" class="inline">
+                                        <input type="hidden" name="cache_action" value="opcache_reset">
+                                        <button type="submit" class="text-primary ml-2">[清空缓存]</button>
+                                    </form>
                                 <?php endif; ?>
                                 <?php if ($label === 'APCu' && str_starts_with((string)$value, '已启用')): ?>
-                                    <a href="index.php?c=admin&a=index&apcu=clear" class="text-primary ml-2">[清空缓存]</a>
+                                    <form method="post" action="index.php?c=admin&a=index" class="inline">
+                                        <input type="hidden" name="cache_action" value="apcu_clear">
+                                        <button type="submit" class="text-primary ml-2">[清空缓存]</button>
+                                    </form>
                                 <?php endif; ?>
                             </td>
                         </tr>

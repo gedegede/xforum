@@ -57,10 +57,16 @@ class HomeController {
         }
         
         $collapsedFids = SettingModel::getCollapsedFids();
+        $viewableForumIds = array_map(
+            static fn(array $forum): int => (int)$forum['fid'],
+            array_values(array_filter(ForumModel::getForumsFlat(), static function(array $forum): bool {
+                return Permission::canViewForum((int)($forum['fid'] ?? 0));
+            }))
+        );
         
         $threadsPerPage = (int)SettingModel::get('threads_per_page', '20');
-        $allThreads = ThreadModel::getHomeThreadsWithFilter($page, $order, $keyword, $threadsPerPage);
-        $total = ThreadModel::getHomeThreadCount($keyword);
+        $allThreads = ThreadModel::getHomeThreadsWithFilter($page, $order, $keyword, $threadsPerPage, $viewableForumIds);
+        $total = ThreadModel::getHomeThreadCount($keyword, $viewableForumIds);
         $pages = (int)ceil($total / $threadsPerPage);
         $forums = [];
         if (!empty($allThreads)) {
@@ -111,11 +117,14 @@ class HomeController {
             $userGroup = UsergroupModel::get((int)($currentUser['gid'] ?? 0));
         }
 
-        $noticeThreads = ThreadModel::getHomeNoticeThreads((int)SettingModel::get('notice_forum_fid', '0'), 5);
+        $noticeFid = (int)SettingModel::get('notice_forum_fid', '0');
+        $noticeThreads = Permission::canViewForum($noticeFid) ? ThreadModel::getHomeNoticeThreads($noticeFid, 5) : [];
 
         $onlineCount = self::getOnlineCount();
 
-        $hotForums = ForumModel::getHotForums(10);
+        $hotForums = array_values(array_filter(ForumModel::getHotForums(10), static function(array $forum): bool {
+            return Permission::canViewForum((int)($forum['fid'] ?? 0));
+        }));
 
         $modStats = [];
         $canManage = false;
@@ -132,7 +141,9 @@ class HomeController {
 
         $collapsedForums = [];
         if (!empty($collapsedFids)) {
-            $collapsedForums = ForumModel::getForumsByIds($collapsedFids);
+            $collapsedForums = array_filter(ForumModel::getForumsByIds($collapsedFids), static function(array $forum): bool {
+                return Permission::canViewForum((int)($forum['fid'] ?? 0));
+            });
         }
 
         Template::set('title', 'XForum');
@@ -160,21 +171,7 @@ class HomeController {
     }
 
     private static function getClientIp(): string {
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-            return $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            return explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED'])) {
-            return $_SERVER['HTTP_X_FORWARDED'];
-        } elseif (!empty($_SERVER['HTTP_X_CLUSTER_CLIENT_IP'])) {
-            return $_SERVER['HTTP_X_CLUSTER_CLIENT_IP'];
-        } elseif (!empty($_SERVER['HTTP_FORWARDED_FOR'])) {
-            return $_SERVER['HTTP_FORWARDED_FOR'];
-        } elseif (!empty($_SERVER['HTTP_FORWARDED'])) {
-            return $_SERVER['HTTP_FORWARDED'];
-        } else {
-            return $_SERVER['REMOTE_ADDR'];
-        }
+        return $_SERVER['REMOTE_ADDR'] ?? '';
     }
 
     private static function getPendingReportCount(): int {

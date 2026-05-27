@@ -152,7 +152,7 @@
 <script>
 function doLogout() {
     showConfirmModal('确认退出', '确定要退出当前账号吗？', function() {
-        window.location.href = 'index.php?c=auth&a=logout';
+        window.submitPostUrl('index.php?c=auth&a=logout');
     });
 }
 

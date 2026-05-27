@@ -9,6 +9,7 @@ use Lib\Request;
 use Lib\Permission;
 use Lib\ViewCounter;
 use Lib\SettingsMiddleware;
+use Lib\CsrfHelper;
 use Models\SessionModel;
 use Models\SettingModel;
 
@@ -26,6 +27,10 @@ Template::init();
 SettingsMiddleware::check();
 
 ViewCounter::flushIfDue();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    CsrfHelper::check();
+}
 
 $uid = 0;
 $gid = 0;
@@ -46,6 +51,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $controller = Request::getString('c', 'home');
 $action = Request::getString('a', 'index');
+if (!preg_match('/^[A-Za-z0-9_]+$/', $controller)) {
+    $controller = 'home';
+}
+if (!preg_match('/^[A-Za-z0-9_]+$/', $action)) {
+    $action = 'index';
+}
 
 $controllerClass = 'Controllers\\' . ucfirst($controller) . 'Controller';
 
@@ -58,8 +69,13 @@ if (!method_exists($controllerClass, $action)) {
     $action = 'index';
 }
 
-$params = [];
 $method = new ReflectionMethod($controllerClass, $action);
+if (!$method->isPublic() || $method->getName() !== $action) {
+    $action = 'index';
+    $method = new ReflectionMethod($controllerClass, $action);
+}
+
+$params = [];
 foreach ($method->getParameters() as $parameter) {
     $name = $parameter->getName();
     if (!Request::has($name)) {

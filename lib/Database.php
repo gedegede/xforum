@@ -59,30 +59,32 @@ class Database {
         }
         $stmt->execute();
         $endTime = microtime(true);
-        $duration = ($endTime - $startTime) * 1000;
-        
-        $queryInfo = [
-            'sql' => $sql,
-            'params' => $params,
-            'duration' => $duration,
-            'explain' => null
-        ];
-        
-        if (stripos(trim($sql), 'SELECT') === 0) {
-            $driver = self::getConnection()->getAttribute(PDO::ATTR_DRIVER_NAME);
-            $explainPrefix = $driver === 'mysql' ? 'EXPLAIN ' : 'EXPLAIN QUERY PLAN ';
-            $explainSql = $explainPrefix . $sql;
-            $explainStmt = self::getConnection()->prepare($explainSql);
-            foreach ($params as $key => $value) {
-                $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
-                $explainStmt->bindValue(is_int($key) ? $key + 1 : ':' . $key, $value, $type);
+
+        if (self::isDebugEnabled()) {
+            $duration = ($endTime - $startTime) * 1000;
+            $queryInfo = [
+                'sql' => $sql,
+                'params' => $params,
+                'duration' => $duration,
+                'explain' => null
+            ];
+
+            if (stripos(trim($sql), 'SELECT') === 0) {
+                $driver = self::getConnection()->getAttribute(PDO::ATTR_DRIVER_NAME);
+                $explainPrefix = $driver === 'mysql' ? 'EXPLAIN ' : 'EXPLAIN QUERY PLAN ';
+                $explainSql = $explainPrefix . $sql;
+                $explainStmt = self::getConnection()->prepare($explainSql);
+                foreach ($params as $key => $value) {
+                    $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                    $explainStmt->bindValue(is_int($key) ? $key + 1 : ':' . $key, $value, $type);
+                }
+                $explainStmt->execute();
+                $queryInfo['explain'] = $explainStmt->fetchAll(PDO::FETCH_ASSOC);
             }
-            $explainStmt->execute();
-            $queryInfo['explain'] = $explainStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            self::$queryLog[] = $queryInfo;
         }
-        
-        self::$queryLog[] = $queryInfo;
-        
+
         return $stmt;
     }
 
@@ -221,6 +223,17 @@ class Database {
 
     public static function getDriverName(): string {
         return self::getConnection()->getAttribute(PDO::ATTR_DRIVER_NAME);
+    }
+
+    private static function isDebugEnabled(): bool {
+        static $enabled = null;
+        if ($enabled !== null) {
+            return $enabled;
+        }
+
+        $config = require ROOT_PATH . '/config/app.php';
+        $enabled = !empty($config['debug']);
+        return $enabled;
     }
 }
 ?>

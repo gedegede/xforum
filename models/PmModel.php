@@ -56,8 +56,11 @@ class PmModel {
         MemberModel::resetInboxNum($uid);
     }
 
-    public static function markSingleAsRead(int $pmid): void {
-        Database::query("UPDATE " . self::TABLE . " SET is_read = 1 WHERE " . self::PRIMARY_KEY . " = :pmid", ['pmid' => $pmid]);
+    public static function markSingleAsRead(int $pmid, int $uid): void {
+        Database::query(
+            "UPDATE " . self::TABLE . " SET is_read = 1 WHERE " . self::PRIMARY_KEY . " = :pmid AND to_uid = :uid",
+            ['pmid' => $pmid, 'uid' => $uid]
+        );
     }
 
     public static function getUnreadCount(int $uid): int {

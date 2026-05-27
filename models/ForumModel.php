@@ -228,6 +228,25 @@ class ForumModel {
         return $result;
     }
 
+    public static function rebuildStats(int $fid): void {
+        if ($fid <= 0) {
+            return;
+        }
+
+        $threadCount = Database::count(ThreadModel::TABLE, 'fid = :fid AND sort_order >= 0', ['fid' => $fid]);
+        $replyRow = Database::fetch(
+            'SELECT COALESCE(SUM(reply_num), 0) AS reply_num, COALESCE(MAX(tid), 0) AS last_tid FROM ' . ThreadModel::TABLE . ' WHERE fid = :fid AND sort_order >= 0',
+            ['fid' => $fid]
+        );
+
+        Database::update(self::TABLE, [
+            'thread_num' => $threadCount,
+            'reply_num' => (int)($replyRow['reply_num'] ?? 0),
+            'last_tid' => (int)($replyRow['last_tid'] ?? 0),
+        ], self::PRIMARY_KEY . ' = :fid', ['fid' => $fid]);
+        CacheHelper::deleteCache(self::TABLE);
+    }
+
     public static function count(): int {
         $cache = CacheHelper::getCache(self::TABLE);
         if ($cache !== null) {

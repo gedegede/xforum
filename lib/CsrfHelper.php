@@ -11,10 +11,6 @@ class CsrfHelper {
     private const TOKEN_NAME = 'csrf_token';
 
     public static function generate(): string {
-        if (!Session::isLoggedIn()) {
-            return '';
-        }
-        
         $existingToken = Session::get(self::TOKEN_NAME);
         if ($existingToken) {
             return $existingToken;
@@ -30,7 +26,7 @@ class CsrfHelper {
     }
 
     public static function field(): string {
-        $token = self::getToken();
+        $token = self::generate();
         if (empty($token)) {
             return '';
         }
@@ -38,12 +34,8 @@ class CsrfHelper {
     }
 
     public static function validate(?string $token = null): bool {
-        if (!Session::isLoggedIn()) {
-            return true;
-        }
-        
         if ($token === null) {
-            $token = Request::postRaw('csrf_token', Request::getRaw('csrf_token', ''));
+            $token = Request::postRaw('csrf_token', Request::getRaw('csrf_token', $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''));
         }
         
         if (empty($token)) {
@@ -51,7 +43,7 @@ class CsrfHelper {
         }
         
         $sessionToken = self::getToken();
-        return hash_equals($sessionToken, $token);
+        return $sessionToken !== '' && hash_equals($sessionToken, $token);
     }
 
     public static function check(): bool {
@@ -65,9 +57,6 @@ class CsrfHelper {
     }
 
     public static function refresh(): void {
-        if (!Session::isLoggedIn()) {
-            return;
-        }
         $token = bin2hex(random_bytes(32));
         Session::set(self::TOKEN_NAME, $token);
     }

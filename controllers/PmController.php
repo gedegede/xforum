@@ -86,7 +86,9 @@ class PmController {
             $toUid = Request::postInt('to_uid');
             $content = Request::postString('content');
 
-            if (!$toUid) {
+            if ($error !== '') {
+                // 保留无权限错误
+            } elseif (!$toUid) {
                 $error = '请选择收件人';
             } elseif (empty($content)) {
                 $error = '请输入消息内容';
@@ -174,7 +176,9 @@ class PmController {
             Response::redirect('index.php?c=pm&a=inbox');
         }
 
-        PmModel::markSingleAsRead($pmid);
+        if ((int)$message['to_uid'] === Session::getUid()) {
+            PmModel::markSingleAsRead($pmid, Session::getUid());
+        }
 
         $sender = MemberModel::get($message['uid']);
 

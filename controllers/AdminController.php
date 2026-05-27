@@ -22,20 +22,22 @@ use Models\PostModel;
 use Models\ModLogModel;
 use Models\ModeratorModel;
 use Models\CreditModel;
+use Models\DataModel;
 
 class AdminController {
     public static function index(): void {
         Template::clear();
         Permission::requireAdminPermission('admin_thread');
 
-        if (Request::getString('opcache') === 'reset') {
+        $cacheAction = Request::postString('cache_action');
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $cacheAction === 'opcache_reset') {
             if (function_exists('opcache_reset')) {
                 opcache_reset();
             }
             self::logAction('cache_opcache_reset', '清空 OPcache 缓存');
             Response::redirect('index.php?c=admin&a=index');
         }
-        if (Request::getString('apcu') === 'clear') {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $cacheAction === 'apcu_clear') {
             if (function_exists('apcu_clear_cache')) {
                 apcu_clear_cache();
             }
@@ -354,8 +356,15 @@ class AdminController {
 
     public static function forumDelete(int $fid): void {
         Permission::requireAdminPermission('admin_forum');
+        self::requirePost();
         $forum = ForumModel::get($fid);
-        ForumModel::delete($fid);
+        $forums = array_merge([$forum], ForumModel::getDescendantsFlat($fid));
+        $forumIds = array_values(array_filter(array_map(static fn($item): int => (int)($item['fid'] ?? 0), $forums)));
+        self::deleteThreadsByForumIds($forumIds);
+        foreach ($forumIds as $forumId) {
+            ModeratorModel::deleteByFid($forumId);
+            ForumModel::delete($forumId);
+        }
         if ($forum) {
             self::logAction('forum_delete', "删除版块: {$forum['name']} (FID: {$fid})");
         }
@@ -417,8 +426,8 @@ class AdminController {
 
     public static function threadDelete(int $tid): void {
         Permission::requireAdminPermission('admin_thread');
-        PostModel::deleteByTid($tid);
-        ThreadModel::delete($tid);
+        self::requirePost();
+        self::deleteThreadWithCounters($tid);
 
         self::logAction('delete_thread', "删除主题: tid=$tid");
 
@@ -434,17 +443,23 @@ class AdminController {
 
             if ($action == 'delete' && $tids) {
                 foreach ($tids as $tid) {
-                    PostModel::deleteByTid((int)$tid);
-                    ThreadModel::delete((int)$tid);
+                    self::deleteThreadWithCounters((int)$tid);
                 }
 
                 self::logAction('batch_delete_thread', "批量删除主题: " . implode(',', $tids));
             } elseif ($action == 'move' && $tids) {
                 $fid = Request::postInt('fid');
+                $affectedFids = [$fid];
 
                 foreach ($tids as $tid) {
-                    ThreadModel::update((int)$tid, ['fid' => $fid]);
+                    $thread = ThreadModel::get((int)$tid);
+                    if ($thread) {
+                        $affectedFids[] = (int)$thread['fid'];
+                        ThreadModel::update((int)$tid, ['fid' => $fid]);
+                        Database::update(PostModel::TABLE, ['fid' => $fid], 'tid = :tid', ['tid' => (int)$tid]);
+                    }
                 }
+                self::rebuildForumStats($affectedFids);
 
                 self::logAction('batch_move_thread', "批量移动主题到版块$fid: " . implode(',', $tids));
             }
@@ -551,6 +566,7 @@ class AdminController {
 
     public static function usergroupDelete(int $gid): void {
         Permission::requireAdminPermission('admin_usergroup');
+        self::requirePost();
         $group = UsergroupModel::get($gid);
         UsergroupModel::delete($gid);
         if ($group) {
@@ -671,6 +687,7 @@ class AdminController {
 
     public static function userDelete(int $uid): void {
         Permission::requireAdminPermission('admin_user');
+        self::requirePost();
         $member = MemberModel::get($uid);
         if ($member) {
             MemberModel::delete($uid);
@@ -704,6 +721,67 @@ class AdminController {
 
     private static function logAction(string $action, string $message): void {
         ModLogModel::addLog(Session::getUid(), $action, $message);
+    }
+
+    private static function requirePost(): void {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            Response::redirect('index.php?c=admin&a=index');
+        }
+    }
+
+    private static function deleteThreadsByForumIds(array $forumIds): void {
+        $forumIds = array_values(array_filter(array_unique(array_map('intval', $forumIds))));
+        if (empty($forumIds)) {
+            return;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($forumIds), '?'));
+        $threads = Database::fetchAll('SELECT tid FROM ' . ThreadModel::TABLE . " WHERE fid IN ($placeholders)", $forumIds);
+        foreach ($threads as $thread) {
+            self::deleteThreadWithCounters((int)$thread['tid']);
+        }
+    }
+
+    private static function deleteThreadWithCounters(int $tid): void {
+        $thread = ThreadModel::get($tid);
+        if (!$thread) {
+            return;
+        }
+
+        $posts = Database::fetchAll(
+            'SELECT uid, fid, is_thread, sort_order FROM ' . PostModel::TABLE . ' WHERE tid = :tid',
+            ['tid' => $tid]
+        );
+        $affectedUids = [(int)$thread['uid']];
+        $affectedFids = [(int)$thread['fid']];
+
+        if ((int)($thread['sort_order'] ?? 0) < 0) {
+            DataModel::updateCount('pending_threads', -1);
+        }
+        foreach ($posts as $post) {
+            $affectedUids[] = (int)$post['uid'];
+            $affectedFids[] = (int)$post['fid'];
+            if ((int)($post['is_thread'] ?? 0) === 0 && (int)($post['sort_order'] ?? 0) < 0) {
+                DataModel::updateCount('pending_posts', -1);
+            }
+        }
+
+        PostModel::deleteByTid($tid);
+        ThreadModel::delete($tid);
+        self::rebuildMemberContentStats($affectedUids);
+        self::rebuildForumStats($affectedFids);
+    }
+
+    private static function rebuildMemberContentStats(array $uids): void {
+        foreach (array_values(array_filter(array_unique(array_map('intval', $uids)))) as $uid) {
+            MemberModel::rebuildContentStats($uid);
+        }
+    }
+
+    private static function rebuildForumStats(array $fids): void {
+        foreach (array_values(array_filter(array_unique(array_map('intval', $fids)))) as $fid) {
+            ForumModel::rebuildStats($fid);
+        }
     }
 
     public static function moderators(int $fid = 0): void {
@@ -799,6 +877,7 @@ class AdminController {
 
     public static function moderatorDelete(): void {
         Permission::requireAdminPermission('admin_forum');
+        self::requirePost();
 
         $fid = Request::getInt('fid');
         $uid = Request::getInt('uid');

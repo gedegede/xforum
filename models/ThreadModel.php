@@ -20,7 +20,7 @@ class ThreadModel {
     
     private static array $memoryCache = [];
 
-    public static function getThreads(int $fid, int $page = 1, string $order = 'tid', string $keyword = ''): array {
+    public static function getThreads(int $fid, int $page = 1, string $order = 'tid', string $keyword = '', int $pageSize = self::PAGE_SIZE): array {
         [$sql, $params] = self::buildListQuery(['fid = :fid'], ['fid' => $fid], $keyword);
         $threads = Database::fetchFilteredPage(
             $sql,
@@ -29,7 +29,7 @@ class ThreadModel {
                 return self::isApproved($thread);
             },
             $page,
-            self::PAGE_SIZE,
+            $pageSize,
             self::FILTER_BATCH_SIZE
         );
         
@@ -69,7 +69,7 @@ class ThreadModel {
         return $result;
     }
 
-    public static function getUserThreads(int $uid, int $page = 1): array {
+    public static function getUserThreads(int $uid, int $page = 1, int $pageSize = self::PAGE_SIZE): array {
         $threads = Database::fetchFilteredPage(
             "SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY tid DESC LIMIT :limit OFFSET :offset",
             ['uid' => $uid],
@@ -77,7 +77,7 @@ class ThreadModel {
                 return self::isApproved($thread);
             },
             $page,
-            self::PAGE_SIZE,
+            $pageSize,
             self::FILTER_BATCH_SIZE
         );
 
@@ -137,7 +137,7 @@ class ThreadModel {
         Database::query("UPDATE " . self::TABLE . " SET fav_num = CASE WHEN fav_num > 0 THEN fav_num - 1 ELSE 0 END WHERE tid = :tid", ['tid' => $tid]);
     }
 
-    public static function search(int $page = 1, string $order = 'tid', int $fid = 0, int $uid = 0, string $keyword = ''): array {
+    public static function search(int $page = 1, string $order = 'tid', int $fid = 0, int $uid = 0, string $keyword = '', int $pageSize = self::PAGE_SIZE): array {
         [$sql, $params] = self::buildIndexedListQuery($fid, $uid, $keyword);
         $threads = Database::fetchFilteredPage(
             $sql,
@@ -146,7 +146,7 @@ class ThreadModel {
                 return self::matchesThreadFilters($thread, $fid, $uid, false);
             },
             $page,
-            self::PAGE_SIZE,
+            $pageSize,
             self::FILTER_BATCH_SIZE
         );
         
@@ -178,8 +178,9 @@ class ThreadModel {
         return ViewCounter::applyPendingToThreads($threads);
     }
 
-    public static function getHomeThreadsWithFilter(int $page = 1, string $order = 'tid', string $keyword = ''): array {
-        [$sql, $params] = self::buildListQuery([], [], $keyword);
+    public static function getHomeThreadsWithFilter(int $page = 1, string $order = 'tid', string $keyword = '', int $pageSize = self::PAGE_SIZE, array $includeFids = []): array {
+        [$where, $params] = self::buildFidFilter($includeFids);
+        [$sql, $params] = self::buildListQuery($where, $params, $keyword);
         $threads = Database::fetchFilteredPage(
             $sql,
             $params,
@@ -187,14 +188,36 @@ class ThreadModel {
                 return self::isApproved($thread);
             },
             $page,
-            self::PAGE_SIZE,
+            $pageSize,
             self::FILTER_BATCH_SIZE
         );
         
         return self::sortThreads(ViewCounter::applyPendingToThreads($threads), $order);
     }
 
-    public static function getHomeThreadCount(string $keyword = ''): int {
+    public static function getHomeThreadCount(string $keyword = '', array $includeFids = []): int {
+        if (empty($includeFids)) {
+            return 0;
+        }
+
+        if ($keyword === '') {
+            [$where, $params] = self::buildFidFilter($includeFids);
+            $where[] = 'sort_order >= 0';
+            return Database::count(self::TABLE, implode(' AND ', $where), $params);
+        }
+
+        [$where, $params] = self::buildFidFilter($includeFids);
+        [$sql, $params] = self::buildListQuery($where, $params, $keyword, 'tid, sort_order');
+        return Database::countFiltered(
+            $sql,
+            $params,
+            static function (array $thread): bool {
+                return self::isApproved($thread);
+            }
+        );
+    }
+
+    public static function getGlobalHomeThreadCount(string $keyword = ''): int {
         if ($keyword === '') {
             return max(0, self::count() - DataModel::getInt('pending_threads'));
         }
@@ -373,6 +396,23 @@ class ThreadModel {
         }
 
         return self::buildListQuery([], [], $keyword, $columns);
+    }
+
+    private static function buildFidFilter(array $fids): array {
+        $fids = array_values(array_filter(array_unique(array_map('intval', $fids))));
+        if (empty($fids)) {
+            return [['1 = 0'], []];
+        }
+
+        $params = [];
+        $placeholders = [];
+        foreach ($fids as $index => $fid) {
+            $key = 'fid_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $fid;
+        }
+
+        return [['fid IN (' . implode(',', $placeholders) . ')'], $params];
     }
 
     private static function buildListQuery(array $where, array $params, string $keyword = '', string $columns = '*'): array {

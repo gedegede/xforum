@@ -18,12 +18,12 @@ $template_canAccessAdmin = \Lib\Permission::isAdmin();
                 <span><?php echo !empty($template_isSelf) ? '我的回复' : 'Ta 的回复'; ?></span>
                 <span class="pill-nav-count"><?php echo (int)$template_member['reply_num']; ?></span>
             </a>
-            <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=credits"
-               class="pill-nav-item <?php echo ($template_isMemberProfile && $template_profileNavType == 'credits') ? 'active' : ''; ?>">
-                <span><?php echo !empty($template_isSelf) ? '我的金币' : 'Ta 的金币'; ?></span>
-                <span class="pill-nav-count"><?php echo (int)($template_member['credit'] ?? 0); ?></span>
-            </a>
             <?php if (!empty($template_isSelf)): ?>
+                <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=credits"
+                   class="pill-nav-item <?php echo ($template_isMemberProfile && $template_profileNavType == 'credits') ? 'active' : ''; ?>">
+                    <span>我的金币</span>
+                    <span class="pill-nav-count"><?php echo (int)($template_member['credit'] ?? 0); ?></span>
+                </a>
                 <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=favorites"
                    class="pill-nav-item <?php echo ($template_isMemberProfile && $template_profileNavType == 'favorites') ? 'active' : ''; ?>">
                     <span>我的收藏</span>

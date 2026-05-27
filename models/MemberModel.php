@@ -196,6 +196,20 @@ class MemberModel {
         return $result;
     }
 
+    public static function rebuildContentStats(int $uid): void {
+        if ($uid <= 0) {
+            return;
+        }
+
+        $threadCount = Database::count(ThreadModel::TABLE, 'uid = :uid AND sort_order >= 0', ['uid' => $uid]);
+        $replyCount = Database::count(PostModel::TABLE, 'uid = :uid AND is_thread = 0 AND sort_order >= 0', ['uid' => $uid]);
+        Database::update(self::TABLE, [
+            'thread_num' => $threadCount,
+            'reply_num' => $replyCount,
+        ], self::PRIMARY_KEY . ' = :uid', ['uid' => $uid]);
+        unset(self::$memoryCache[$uid]);
+    }
+
     public static function getJsonData(int $uid): array {
         $member = self::get($uid);
         if (!$member) {

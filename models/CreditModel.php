@@ -133,12 +133,12 @@ class CreditModel {
             return 0;
         }
 
-        $result = self::changeCredit($uid, $amount, $message, $url);
-        if ($result['did'] <= 0) {
+        $did = self::changeCredit($uid, $amount, $message, $url);
+        if ($did <= 0) {
             return 0;
         }
         self::recordAction($uid, $action, $amount);
-        return $result['did'];
+        return $did;
     }
 
     public static function updateCreditUrl(int $did, string $url): void {
@@ -204,11 +204,12 @@ class CreditModel {
         return $member ? self::isSameDay((int)($member['signin_time'] ?? 0), time()) : false;
     }
 
-    public static function getUserCredits(int $uid, int $page = 1): array {
-        $offset = (max(1, $page) - 1) * self::PAGE_SIZE;
+    public static function getUserCredits(int $uid, int $page = 1, int $pageSize = self::PAGE_SIZE): array {
+        $pageSize = max(1, $pageSize);
+        $offset = (max(1, $page) - 1) * $pageSize;
         return Database::fetchAll(
             "SELECT * FROM " . self::TABLE_CREDIT . " WHERE uid = :uid ORDER BY did DESC LIMIT :limit OFFSET :offset",
-            ['uid' => $uid, 'limit' => self::PAGE_SIZE, 'offset' => $offset]
+            ['uid' => $uid, 'limit' => $pageSize, 'offset' => $offset]
         );
     }
 

@@ -64,6 +64,12 @@ class ModeratorModel {
         return $result;
     }
 
+    public static function deleteByFid(int $fid): int {
+        $result = Database::delete(self::TABLE, 'fid = :fid', ['fid' => $fid]);
+        CacheHelper::deleteCache(self::TABLE);
+        return $result;
+    }
+
     public static function isModerator(int $uid, int $fid): bool {
         $all = self::getAll();
         foreach ($all as $row) {
