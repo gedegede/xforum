@@ -19,6 +19,7 @@ use Models\CreditModel;
 use Models\SessionModel;
 use Models\UsergroupModel;
 use Models\ForumModel;
+use Models\SettingModel;
 use Lib\Permission;
 
 class MemberController {
@@ -43,9 +44,13 @@ class MemberController {
         $total = 0;
 
         $page = Request::getInt('page', 1);
+        $threadsPerPage = (int)SettingModel::get('threads_per_page', '20');
+        $postsPerPage = (int)SettingModel::get('posts_per_page', '20');
+        $usersPerPage = (int)SettingModel::get('users_per_page', '20');
+        
         switch ($type) {
             case 'replies':
-                $posts = PostModel::getUserPosts($uid, $page);
+                $posts = PostModel::getUserPosts($uid, $page, $postsPerPage);
                 $total = (int)($member['reply_num'] ?? 0);
                 if (!empty($posts)) {
                     $tids = array_unique(array_column($posts, 'tid'));
@@ -56,7 +61,7 @@ class MemberController {
                 if ($uid != Session::getUid()) {
                     Response::redirect("index.php?c=member&a=profile&uid={$uid}");
                 }
-                $favorites = FavModel::getUserFavorites($uid, $page);
+                $favorites = FavModel::getUserFavorites($uid, $page, $threadsPerPage);
                 $total = (int)($member['fav_num'] ?? 0);
                 if (!empty($favorites)) {
                     $tids = array_column($favorites, 'tid');
@@ -64,19 +69,18 @@ class MemberController {
                 }
                 break;
             case 'credits':
-                if ($uid != Session::getUid()) {
-                    Response::redirect("index.php?c=member&a=profile&uid={$uid}");
-                }
-                $credits = CreditModel::getUserCredits($uid, $page);
+                $credits = CreditModel::getUserCredits($uid, $page, $usersPerPage);
                 $total = CreditModel::getUserCreditCount($uid);
                 break;
             default:
-                $threads = ThreadModel::getUserThreads($uid, $page);
+                $threads = ThreadModel::getUserThreads($uid, $page, $threadsPerPage);
                 $total = (int)($member['thread_num'] ?? 0);
                 break;
         }
 
         $isSelf = $uid == Session::getUid();
+        $usergroups = UsergroupModel::getAll();
+        $memberGroup = $usergroups[(int)($member['gid'] ?? 0)] ?? null;
 
         // 获取主题作者信息
         $users = [];
@@ -90,6 +94,7 @@ class MemberController {
 
         Template::set('title', $member['username'] . '的个人主页');
         Template::set('member', $member);
+        Template::set('memberGroup', $memberGroup);
         Template::set('type', $type);
         Template::set('isSelf', $isSelf);
         Template::set('threads', $threads);
@@ -99,8 +104,9 @@ class MemberController {
         Template::set('favorites', $favorites);
         Template::set('credits', $credits);
         Template::set('signedToday', $isSelf ? CreditModel::hasSignedToday($uid) : false);
+        $perPage = $type === 'replies' ? $postsPerPage : ($type === 'credits' ? $usersPerPage : $threadsPerPage);
         Template::set('page', $page);
-        Template::set('pages', (int)ceil($total / 20));
+        Template::set('pages', (int)ceil($total / $perPage));
         Template::set('user', Session::getUser());
         Template::display('member/profile');
     }
@@ -206,8 +212,12 @@ class MemberController {
             }
         }
 
+        $usergroups = UsergroupModel::getAll();
+        $memberGroup = $usergroups[(int)($member['gid'] ?? 0)] ?? null;
+
         Template::set('title', '个人设置');
         Template::set('member', $member);
+        Template::set('memberGroup', $memberGroup);
         Template::set('error', $error);
         Template::set('success', $success);
         Template::set('user', Session::getUser());

@@ -36,12 +36,37 @@ class HomeController {
         
         $keyword = Request::getString('keyword', '');
         
+        $searchInterval = (int)SettingModel::get('search_interval', '10');
+        $searchError = '';
+        
+        if (!empty($keyword) && !Permission::canSearch()) {
+            $searchError = '无权限搜索';
+            $keyword = '';
+        }
+
+        if (!empty($keyword) && $searchInterval > 0) {
+            $ip = self::getClientIp();
+            $lastSearchTime = Session::get('last_search_time_' . $ip, 0);
+            if (time() - $lastSearchTime < $searchInterval) {
+                $remaining = $searchInterval - (time() - $lastSearchTime);
+                $searchError = '搜索过于频繁，请等待 ' . $remaining . ' 秒';
+                $keyword = '';
+            } else {
+                Session::set('last_search_time_' . $ip, time());
+            }
+        }
+        
         $collapsedFids = SettingModel::getCollapsedFids();
         
-        $forums = ForumModel::getForums();
-        $allThreads = ThreadModel::getHomeThreadsWithFilter($page, $order, $keyword);
+        $threadsPerPage = (int)SettingModel::get('threads_per_page', '20');
+        $allThreads = ThreadModel::getHomeThreadsWithFilter($page, $order, $keyword, $threadsPerPage);
         $total = ThreadModel::getHomeThreadCount($keyword);
-        $pages = (int)ceil($total / 20);
+        $pages = (int)ceil($total / $threadsPerPage);
+        $forums = [];
+        if (!empty($allThreads)) {
+            $fids = array_unique(array_map('intval', array_column($allThreads, 'fid')));
+            $forums = ForumModel::getForumsByIds($fids);
+        }
 
         $threads = [];
         $collapsedThreads = [];
@@ -130,7 +155,26 @@ class HomeController {
         Template::set('pages', $pages);
         Template::set('canManage', $canManage);
         Template::set('modStats', $modStats);
+        Template::set('searchError', $searchError);
         Template::display('home/index');
+    }
+
+    private static function getClientIp(): string {
+        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+            return $_SERVER['HTTP_CLIENT_IP'];
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            return explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED'])) {
+            return $_SERVER['HTTP_X_FORWARDED'];
+        } elseif (!empty($_SERVER['HTTP_X_CLUSTER_CLIENT_IP'])) {
+            return $_SERVER['HTTP_X_CLUSTER_CLIENT_IP'];
+        } elseif (!empty($_SERVER['HTTP_FORWARDED_FOR'])) {
+            return $_SERVER['HTTP_FORWARDED_FOR'];
+        } elseif (!empty($_SERVER['HTTP_FORWARDED'])) {
+            return $_SERVER['HTTP_FORWARDED'];
+        } else {
+            return $_SERVER['REMOTE_ADDR'];
+        }
     }
 
     private static function getPendingReportCount(): int {

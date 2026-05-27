@@ -1,73 +1,20 @@
-<div class="bg-panel border border-border rounded shadow-sm">
-    <div class="p-4">
-        <div class="flex items-center gap-4">
-            <div class="w-16 h-16 rounded-full bg-primary-light text-primary flex items-center justify-center font-semibold text-2xl flex-shrink-0 overflow-hidden">
-                <?php echo \Lib\Helper::getAvatarInitial($template_member['username']); ?>
-            </div>
-            <div class="flex-1 min-w-0">
-                <h2 class="text-xl font-bold mb-2"><?php echo htmlspecialchars($template_member['username']); ?></h2>
-                <div class="text-sm text-muted mb-2">
-                    注册于 <?php echo date('Y-m-d', $template_member['reg_date']); ?> ·
-                    <?php echo $template_member['thread_num']; ?> 主题 ·
-                    <?php echo $template_member['reply_num']; ?> 回复 ·
-                    <?php echo (int)($template_member['credit'] ?? 0); ?> 金币
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-soft text-sub">资料管理</span>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-soft text-sub">账号安全</span>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-success-light text-success">
-                        <?php echo (int)($template_member['credit'] ?? 0); ?> 金币
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<?php $template_isSelf = true; ?>
+<?php include __DIR__ . '/_profile_header.php'; ?>
+<?php include __DIR__ . '/_profile_nav.php'; ?>
 
-<div class="bg-panel border border-border rounded shadow-sm my-4">
-    <div class="p-0">
-        <div class="flex flex-wrap border-b">
-            <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=threads"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors <?php echo (isset($_GET['c']) && $_GET['c'] == 'member' && $_GET['a'] == 'profile') ? 'border-primary text-primary' : 'border-transparent text-sub hover:text-text hover:border-border'; ?>">
-                我的主题
-            </a>
-            <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=replies"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors border-transparent text-sub hover:text-text hover:border-border">
-                我的回复
-            </a>
-            <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=favorites"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors border-transparent text-sub hover:text-text hover:border-border">
-                我的收藏
-            </a>
-            <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=credits"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors border-transparent text-sub hover:text-text hover:border-border">
-                金币明细
-            </a>
-            <a href="index.php?c=member&a=settings"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors border-primary text-primary">
-                个人设置
-            </a>
-            <a href="index.php?c=admin&a=index"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors <?php echo (isset($_GET['c']) && $_GET['c'] == 'admin') ? 'border-primary text-primary' : 'border-transparent text-sub hover:text-text hover:border-border'; ?>">
-                站点设置
-            </a>
-        </div>
-    </div>
-</div>
-
-<div class="bg-panel border border-border rounded shadow-sm overflow-hidden">
-    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border bg-soft">
+<div class="card card-clip">
+    <div class="card-header" data-profile-only>
         <div>
             <h2 class="font-semibold">个人设置</h2>
         </div>
     </div>
 
-    <div class="p-4">
+    <div class="card-body">
         <?php if (!empty($template_error)): ?>
-            <div class="p-3 rounded bg-danger-light text-danger mb-4 text-sm"><?php echo htmlspecialchars($template_error); ?></div>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($template_error); ?></div>
         <?php endif; ?>
         <?php if (!empty($template_success)): ?>
-            <div class="p-3 rounded bg-success-light text-success mb-4 text-sm"><?php echo htmlspecialchars($template_success); ?></div>
+            <div class="alert alert-success"><?php echo htmlspecialchars($template_success); ?></div>
         <?php endif; ?>
 
         <?php
@@ -76,18 +23,18 @@
         $currentCustomCss = $jsonData['custom_css'] ?? '';
         ?>
 
-        <div class="flex flex-wrap gap-1 p-1 rounded bg-soft mb-4">
-            <button type="button" class="flex-1 min-w-42 px-4 py-2 border-0 rounded bg-panel text-primary text-sm font-semibold text-center cursor-pointer shadow-sm transition-colors" data-tab="profile">基本信息</button>
-            <button type="button" class="flex-1 min-w-42 px-4 py-2 border-0 rounded bg-transparent text-sub text-sm font-medium text-center cursor-pointer hover:bg-hover hover:text-text transition-colors" data-tab="password">修改密码</button>
-            <button type="button" class="flex-1 min-w-42 px-4 py-2 border-0 rounded bg-transparent text-sub text-sm font-medium text-center cursor-pointer hover:bg-hover hover:text-text transition-colors" data-tab="theme">主题设置</button>
+        <div class="tabs mb-4">
+            <button type="button" class="tab active" data-tab="profile">基本信息</button>
+            <button type="button" class="tab" data-tab="password">修改密码</button>
+            <button type="button" class="tab" data-tab="theme">主题设置</button>
         </div>
 
         <form method="post" class="mb-4" id="profile-form">
             <input type="hidden" name="action" value="profile">
-            <div class="mb-4 p-4 rounded border bg-soft">
-                <div class="text-sm font-medium text-text mb-4">公开资料</div>
+            <div class="form-section">
+                <div class="form-section-title">公开资料</div>
                 <div class="flex flex-col gap-4">
-                    <div class="flex flex-col gap-1.5">
+                    <div class="form-group">
                         <div class="flex-1 min-w-0">
                             <label class="text-sm text-muted" for="member_username">用户名</label>
                             <p class="text-xs text-muted mt-0.5">用于发帖、回复和个人主页展示。</p>
@@ -97,61 +44,61 @@
                             <p class="text-xs text-success mt-0.5">修改用户名可获得 <?php echo (int)$template_usernameChangeCredit; ?> 金币</p>
                             <?php endif; ?>
                         </div>
-                        <input type="text" id="member_username" name="username" value="<?php echo htmlspecialchars($template_member['username']); ?>" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" required>
+                        <input type="text" id="member_username" name="username" value="<?php echo htmlspecialchars($template_member['username']); ?>" class="form-control" required>
                     </div>
-                    <div class="flex flex-col gap-1.5">
+                    <div class="form-group">
                         <div class="flex-1 min-w-0">
                             <label class="text-sm text-muted" for="member_email">邮箱</label>
                             <p class="text-xs text-muted mt-0.5">用于账号识别和后续通知能力。</p>
                         </div>
-                        <input type="email" id="member_email" name="email" value="<?php echo htmlspecialchars($template_member['email']); ?>" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" required>
+                        <input type="email" id="member_email" name="email" value="<?php echo htmlspecialchars($template_member['email']); ?>" class="form-control" required>
                     </div>
                 </div>
             </div>
-            <div class="flex justify-end">
-                <button type="submit" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark">保存修改</button>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">保存修改</button>
             </div>
         </form>
 
         <form method="post" class="mb-4 hidden" id="password-form">
             <input type="hidden" name="action" value="password">
-            <div class="mb-4 p-4 rounded border bg-soft">
-                <div class="text-sm font-medium text-text mb-4">账号安全</div>
+            <div class="form-section">
+                <div class="form-section-title">账号安全</div>
                 <div class="flex flex-col gap-4">
-                    <div class="flex flex-col gap-1.5">
+                    <div class="form-group">
                         <div class="flex-1 min-w-0">
                             <label class="text-sm text-muted" for="old_password">原密码</label>
                             <p class="text-xs text-muted mt-0.5">修改密码前需要验证当前密码。</p>
                         </div>
-                        <input type="password" id="old_password" name="old_password" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" required>
+                        <input type="password" id="old_password" name="old_password" class="form-control" required>
                     </div>
-                    <div class="flex flex-col gap-1.5">
+                    <div class="form-group">
                         <div class="flex-1 min-w-0">
                             <label class="text-sm text-muted" for="new_password">新密码</label>
                             <p class="text-xs text-muted mt-0.5">建议至少 6 位，避免与其他站点重复。</p>
                         </div>
-                        <input type="password" id="new_password" name="new_password" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" required>
+                        <input type="password" id="new_password" name="new_password" class="form-control" required>
                     </div>
-                    <div class="flex flex-col gap-1.5">
+                    <div class="form-group">
                         <div class="flex-1 min-w-0">
                             <label class="text-sm text-muted" for="confirm_password">确认密码</label>
                             <p class="text-xs text-muted mt-0.5">再次输入新密码，确认没有输错。</p>
                         </div>
-                        <input type="password" id="confirm_password" name="confirm_password" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" required>
+                        <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
                     </div>
                 </div>
             </div>
-            <div class="flex justify-end">
-                <button type="submit" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark">修改密码</button>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">修改密码</button>
             </div>
         </form>
 
         <form method="post" class="hidden" id="theme-form">
             <input type="hidden" name="action" value="theme">
-            <div class="mb-4 p-4 rounded border bg-soft">
-                <div class="text-sm font-medium text-text mb-4">界面偏好</div>
+            <div class="form-section">
+                <div class="form-section-title">界面偏好</div>
                 <div class="flex flex-col gap-4">
-                    <div class="flex flex-col gap-1.5">
+                    <div class="form-group">
                         <div class="flex-1 min-w-0">
                             <label class="text-sm text-muted">主题模式</label>
                             <p class="text-xs text-muted mt-0.5">系统会在后续访问中保持你的选择。</p>
@@ -175,23 +122,40 @@
                             </label>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-1.5">
+                    <div class="form-group">
                         <div class="flex-1 min-w-0">
                             <label class="text-sm text-muted" for="custom_css">自定义 CSS</label>
                             <p class="text-xs text-muted mt-0.5">输入自定义样式代码，将应用于全局。</p>
                         </div>
-                        <textarea id="custom_css" name="custom_css" rows="4" class="w-full px-3 py-2 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary resize-y font-mono text-sm" placeholder="body { background-color: #f0f0f0; }"><?php echo htmlspecialchars($currentCustomCss); ?></textarea>
+                        <textarea id="custom_css" name="custom_css" rows="4" class="form-control font-mono text-sm" placeholder="body { background-color: #f0f0f0; }"><?php echo htmlspecialchars($currentCustomCss); ?></textarea>
                     </div>
                 </div>
             </div>
-            <div class="flex justify-end">
-                <button type="submit" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark">保存设置</button>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">保存设置</button>
             </div>
         </form>
+
+        <div class="form-section mt-6" data-profile-only>
+            <div class="form-section-title">安全操作</div>
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-sm text-text">退出登录</div>
+                    <div class="text-xs text-muted mt-0.5">安全退出当前账号</div>
+                </div>
+                <button type="button" onclick="doLogout()" class="btn btn-danger">退出登录</button>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
+function doLogout() {
+    showConfirmModal('确认退出', '确定要退出当前账号吗？', function() {
+        window.location.href = 'index.php?c=auth&a=logout';
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const tabs = document.querySelectorAll('[data-tab]');
     const forms = document.querySelectorAll('form[id$="-form"]');
@@ -199,15 +163,16 @@ document.addEventListener('DOMContentLoaded', function() {
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
             tabs.forEach(t => {
-                t.classList.remove('bg-panel', 'text-primary', 'font-semibold', 'shadow-sm');
-                t.classList.add('bg-transparent', 'text-sub', 'font-medium', 'hover:bg-hover', 'hover:text-text');
+                t.classList.remove('active');
             });
-            this.classList.remove('bg-transparent', 'text-sub', 'font-medium', 'hover:bg-hover', 'hover:text-text');
-            this.classList.add('bg-panel', 'text-primary', 'font-semibold', 'shadow-sm');
+            this.classList.add('active');
 
             const tabName = this.dataset.tab;
             forms.forEach(form => {
                 form.classList.toggle('hidden', form.id !== tabName + '-form');
+            });
+            document.querySelectorAll('[data-profile-only]').forEach(item => {
+                item.classList.toggle('hidden', tabName !== 'profile');
             });
         });
     });

@@ -8,10 +8,22 @@ use Lib\Session;
 use Lib\Request;
 use Lib\Permission;
 use Lib\ViewCounter;
+use Lib\SettingsMiddleware;
 use Models\SessionModel;
+use Models\SettingModel;
 
 Autoloader::register();
+
+$appConfig = require ROOT_PATH . '/config/app.php';
+$timezone = SettingModel::get('timezone', (string)($appConfig['timezone'] ?? 'UTC'));
+if (!in_array($timezone, DateTimeZone::listIdentifiers(), true)) {
+    $timezone = (string)($appConfig['timezone'] ?? 'UTC');
+}
+date_default_timezone_set($timezone);
+
 Template::init();
+
+SettingsMiddleware::check();
 
 ViewCounter::flushIfDue();
 
@@ -47,11 +59,14 @@ if (!method_exists($controllerClass, $action)) {
 }
 
 $params = [];
-if (Request::has('fid')) $params[] = Request::getInt('fid');
-if (Request::has('tid')) $params[] = Request::getInt('tid');
-if (Request::has('pid')) $params[] = Request::getInt('pid');
-if (Request::has('gid')) $params[] = Request::getInt('gid');
-if (Request::has('uid')) $params[] = Request::getInt('uid');
+$method = new ReflectionMethod($controllerClass, $action);
+foreach ($method->getParameters() as $parameter) {
+    $name = $parameter->getName();
+    if (!Request::has($name)) {
+        break;
+    }
+    $params[] = isset($_GET[$name]) ? Request::getInt($name) : Request::postInt($name);
+}
 
 call_user_func_array([$controllerClass, $action], $params);
 ?>

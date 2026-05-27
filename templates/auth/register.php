@@ -1,31 +1,31 @@
-<div class="flex items-center justify-center min-h-screen py-8">
-    <div class="w-full max-w-md bg-panel border border-border rounded shadow-sm">
-        <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border">
+<div class="auth-shell">
+    <div class="w-full max-w-md card">
+        <div class="card-header">
             <h2>注册</h2>
         </div>
-        <div class="p-4">
+        <div class="card-body">
             <?php if (!empty($template_error)): ?>
-            <div class="p-3 rounded bg-danger-light text-danger mb-4 text-sm"><?php echo htmlspecialchars($template_error); ?></div>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($template_error); ?></div>
             <?php endif; ?>
 
             <form method="post" action="index.php?c=auth&a=register">
-                <div class="mb-4">
-                    <label for="username" class="block mb-1.5 text-sm font-medium text-text">用户名</label>
-                    <input type="text" id="username" name="username" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" placeholder="请输入用户名" required autocomplete="username">
+                <div class="form-field">
+                    <label for="username" class="form-label">用户名</label>
+                    <input type="text" id="username" name="username" class="form-control" placeholder="请输入用户名" required autocomplete="username">
                 </div>
-                <div class="mb-4">
-                    <label for="email" class="block mb-1.5 text-sm font-medium text-text">邮箱</label>
-                    <input type="email" id="email" name="email" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" placeholder="请输入邮箱地址" required autocomplete="email">
+                <div class="form-field">
+                    <label for="email" class="form-label">邮箱</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="请输入邮箱地址" required autocomplete="email">
                 </div>
-                <div class="mb-4">
-                    <label for="password" class="block mb-1.5 text-sm font-medium text-text">密码</label>
-                    <input type="password" id="password" name="password" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" placeholder="请输入密码（至少6位）" required autocomplete="new-password">
+                <div class="form-field">
+                    <label for="password" class="form-label">密码</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="请输入密码（至少6位）" required autocomplete="new-password">
                 </div>
-                <div class="mb-4">
-                    <label for="confirm_password" class="block mb-1.5 text-sm font-medium text-text">确认密码</label>
-                    <input type="password" id="confirm_password" name="confirm_password" class="w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" placeholder="请再次输入密码" required autocomplete="new-password">
+                <div class="form-field">
+                    <label for="confirm_password" class="form-label">确认密码</label>
+                    <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="请再次输入密码" required autocomplete="new-password">
                 </div>
-                <button type="submit" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark w-full">注册</button>
+                <button type="submit" class="btn btn-block btn-primary">注册</button>
             </form>
 
             <div class="mt-4 text-center text-muted text-sm">

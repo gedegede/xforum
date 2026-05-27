@@ -174,10 +174,15 @@ class CreditModel {
         }
 
         MemberModel::updateSigninTime($uid, time());
+        $member = MemberModel::get($uid);
+        $groups = UsergroupModel::getAll();
+        $group = $member ? ($groups[(int)($member['gid'] ?? 0)] ?? null) : null;
         return [
             'success' => true,
             'message' => $amount > 0 ? "签到成功，获得 {$amount} 金币" : '签到成功',
-            'credit' => $amount,
+            'got_credit' => $amount,
+            'credit' => (int)($member['credit'] ?? 0),
+            'group_title' => (string)($group['title'] ?? ''),
         ];
     }
 

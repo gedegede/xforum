@@ -1,28 +1,28 @@
 <?php include '_menu.php'; ?>
 
-<div class="bg-panel border border-border rounded shadow-sm overflow-hidden">
-    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border bg-soft">
+<div class="card card-clip">
+    <div class="card-header">
         <h2 class="font-semibold">主题管理</h2>
     </div>
-    <div class="p-4">
+    <div class="card-body">
         <form method="get" class="mb-4">
             <input type="hidden" name="c" value="admin">
             <input type="hidden" name="a" value="threads">
             <div class="flex gap-2 flex-wrap">
-                <select name="fid" class="w-auto h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary">
+                <select name="fid" class="form-control w-auto">
                     <option value="0">全部版块</option>
                     <?php foreach ($template_forums as $forum): ?>
                         <option value="<?php echo $forum['fid']; ?>" <?php echo $template_fid == $forum['fid'] ? 'selected' : ''; ?>>
-                            <?php echo str_repeat('├─ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?>
+                            <?php echo str_repeat('→ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <select name="search_type" class="w-auto h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary">
+                <select name="search_type" class="form-control w-auto">
                     <option value="title" <?php echo (!isset($template_searchType) || $template_searchType == 'title') ? 'selected' : ''; ?>>标题</option>
                     <option value="username" <?php echo isset($template_searchType) && $template_searchType == 'username' ? 'selected' : ''; ?>>用户名</option>
                 </select>
-                <input type="text" name="keyword" class="flex-1 min-w-50 w-full h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary" placeholder="输入关键词" value="<?php echo htmlspecialchars($template_keyword); ?>">
-                <button type="submit" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark">搜索</button>
+                <input type="text" name="keyword" class="flex-1 min-w-50 form-control" placeholder="输入关键词" value="<?php echo htmlspecialchars($template_keyword); ?>">
+                <button type="submit" class="btn btn-primary">搜索</button>
             </div>
         </form>
 
@@ -31,17 +31,17 @@
 
             <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center gap-2">
-                    <select id="action-select" class="w-auto h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary">
+                    <select id="action-select" class="form-control w-auto">
                         <option value="">批量操作</option>
                         <option value="delete">批量删除</option>
                         <option value="move">批量移动</option>
                     </select>
-                    <select name="fid" id="move-fid" class="w-auto h-control px-3 border border-border rounded bg-panel text-text text-base transition-colors focus:outline-none focus:border-primary hidden">
+                    <select name="fid" id="move-fid" class="form-control w-auto hidden">
                         <?php foreach ($template_forums as $forum): ?>
-                            <option value="<?php echo $forum['fid']; ?>"><?php echo str_repeat('├─ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?></option>
+                            <option value="<?php echo $forum['fid']; ?>"><?php echo str_repeat('→ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <button type="submit" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover" id="batch-submit" disabled>执行</button>
+                    <button type="submit" class="btn btn-soft" id="batch-submit" disabled>执行</button>
                 </div>
             </div>
 
@@ -52,39 +52,39 @@
             }
             ?>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm border-collapse">
+            <div class="table-wrap">
+                <table class="table">
                     <thead>
-                        <tr class="bg-soft">
-                            <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border"><input type="checkbox" id="select-all"></th>
-                            <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border">ID</th>
-                            <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border">标题</th>
-                            <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border whitespace-nowrap">版块</th>
-                            <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border whitespace-nowrap">作者</th>
-                            <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border whitespace-nowrap">回复/浏览</th>
-                            <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border whitespace-nowrap">时间</th>
-                            <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border whitespace-nowrap">操作</th>
+                        <tr>
+                            <th><input type="checkbox" id="select-all"></th>
+                            <th>ID</th>
+                            <th>标题</th>
+                            <th class="whitespace-nowrap">版块</th>
+                            <th class="whitespace-nowrap">作者</th>
+                            <th class="whitespace-nowrap">回复/浏览</th>
+                            <th class="whitespace-nowrap">时间</th>
+                            <th class="whitespace-nowrap">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php if (!empty($template_threads)): ?>
                     <?php foreach ($template_threads as $thread): ?>
-                        <tr class="hover:bg-hover transition-colors">
-                            <td class="px-4 py-3 border-b border-border"><input type="checkbox" name="tids[]" value="<?php echo $thread['tid']; ?>"></td>
-                            <td class="px-4 py-3 border-b border-border"><?php echo $thread['tid']; ?></td>
-                            <td class="px-4 py-3 border-b border-border"><a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" target="_blank" class="text-primary hover:underline"><?php echo htmlspecialchars($thread['subject']); ?></a></td>
-                            <td class="px-4 py-3 border-b border-border whitespace-nowrap"><?php echo htmlspecialchars($forumNames[$thread['fid']] ?? $thread['fid']); ?></td>
-                            <td class="px-4 py-3 border-b border-border whitespace-nowrap"><?php echo htmlspecialchars($template_users[$thread['uid']]['username'] ?? '已删除用户'); ?></td>
-                            <td class="px-4 py-3 border-b border-border whitespace-nowrap"><?php echo $thread['reply_num']; ?>/<?php echo $thread['view_num']; ?></td>
-                            <td class="px-4 py-3 border-b border-border whitespace-nowrap"><?php echo date('Y-m-d H:i', $thread['dateline']); ?></td>
-                            <td class="px-4 py-3 border-b border-border whitespace-nowrap">
-                                <button class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover h-control-sm px-3 text-sm" data-action="delete-thread" data-tid="<?php echo $thread['tid']; ?>" data-title="<?php echo htmlspecialchars($thread['subject']); ?>">删除</button>
+                        <tr>
+                            <td><input type="checkbox" name="tids[]" value="<?php echo $thread['tid']; ?>"></td>
+                            <td><?php echo $thread['tid']; ?></td>
+                            <td><a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" target="_blank" class="text-primary hover:underline"><?php echo htmlspecialchars($thread['subject']); ?></a></td>
+                            <td class="whitespace-nowrap"><?php echo htmlspecialchars($forumNames[$thread['fid']] ?? $thread['fid']); ?></td>
+                            <td class="whitespace-nowrap"><?php echo htmlspecialchars($template_users[$thread['uid']]['username'] ?? '已删除用户'); ?></td>
+                            <td class="whitespace-nowrap"><?php echo $thread['reply_num']; ?>/<?php echo $thread['view_num']; ?></td>
+                            <td class="whitespace-nowrap"><?php echo \Lib\Helper::formatTime((int)$thread['dateline']); ?></td>
+                            <td class="whitespace-nowrap">
+                                <button class="btn btn-soft btn-sm" data-action="delete-thread" data-tid="<?php echo $thread['tid']; ?>" data-title="<?php echo htmlspecialchars($thread['subject']); ?>">删除</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="8" class="px-4 py-8 text-center text-muted">暂无主题</td>
+                            <td colspan="8" class="table-empty">暂无主题</td>
                         </tr>
                     <?php endif; ?>
                     </tbody>
@@ -166,18 +166,18 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<div id="thread-delete-modal" data-modal-overlay class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-panel rounded-lg max-w-md w-full mx-4 shadow-lg">
-        <div class="flex items-center justify-between p-4 border-b border-border">
+<div id="thread-delete-modal" data-modal-overlay class="modal hidden">
+    <div class="modal-panel">
+        <div class="modal-header">
             <h3 class="font-semibold">确认删除</h3>
-            <button onclick="closeModal('thread-delete-modal')" class="text-muted hover:text-text text-xl">&times;</button>
+            <button onclick="closeModal('thread-delete-modal')" class="modal-close">&times;</button>
         </div>
-        <div class="p-4">
+        <div class="modal-body">
             <p class="text-muted" id="thread-delete-confirm-text">确定要删除该主题吗？此操作无法撤销。</p>
         </div>
-        <div class="flex justify-end gap-3 p-4 border-t border-border">
-            <button class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-soft border-border text-text hover:bg-hover" onclick="closeModal('thread-delete-modal')">取消</button>
-            <a href="#" id="thread-delete-confirm-btn" class="inline-flex items-center justify-center gap-1.5 h-control px-4 border rounded bg-panel text-text text-base font-medium cursor-pointer transition-all whitespace-nowrap hover:bg-hover active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed bg-primary border-primary text-white hover:bg-primary-dark">确认删除</a>
+        <div class="modal-footer">
+            <button class="btn btn-soft" onclick="closeModal('thread-delete-modal')">取消</button>
+            <a href="#" id="thread-delete-confirm-btn" class="btn btn-primary">确认删除</a>
         </div>
     </div>
 </div>

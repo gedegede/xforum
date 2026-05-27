@@ -218,5 +218,9 @@ class Database {
     public static function clearQueryLog(): void {
         self::$queryLog = [];
     }
+
+    public static function getDriverName(): string {
+        return self::getConnection()->getAttribute(PDO::ATTR_DRIVER_NAME);
+    }
 }
 ?>

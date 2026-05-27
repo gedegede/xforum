@@ -13,6 +13,7 @@ use Lib\CacheHelper;
 class ForumModel {
     const TABLE = 'next_forum';
     const PRIMARY_KEY = 'fid';
+    public const GROUP_PERMISSION_KEYS = ['view', 'thread', 'reply'];
 
     public static function getForums(?int $upFid = null): array {
         $cache = CacheHelper::getCache(self::TABLE);
@@ -40,6 +41,7 @@ class ForumModel {
         }
 
         foreach ($forums as &$forum) {
+            $forum = self::parseJsonDataItem($forum);
             $forum['parent_name'] = $parentNames[$forum['up_fid']] ?? '';
         }
 
@@ -134,13 +136,67 @@ class ForumModel {
         return self::flattenTree($forums);
     }
 
+    public static function getDescendantsFlat(int $fid): array {
+        $forums = self::getForumsFlat();
+        if (empty($forums)) {
+            return [];
+        }
+
+        $childrenByParent = [];
+        foreach ($forums as $forum) {
+            $parentFid = (int)($forum['up_fid'] ?? 0);
+            $childrenByParent[$parentFid][] = $forum;
+        }
+
+        $result = [];
+        self::collectDescendants($fid, $childrenByParent, $result, 1);
+        return $result;
+    }
+
+    private static function collectDescendants(int $fid, array $childrenByParent, array &$result, int $level): void {
+        if (empty($childrenByParent[$fid])) {
+            return;
+        }
+
+        foreach ($childrenByParent[$fid] as $forum) {
+            $forum['relative_depth'] = $level;
+            $result[] = $forum;
+            self::collectDescendants((int)$forum['fid'], $childrenByParent, $result, $level + 1);
+        }
+    }
+
     public static function get(int $fid): ?array {
         $cache = CacheHelper::getCache(self::TABLE);
         if ($cache !== null) {
-            return $cache[$fid] ?? null;
+            return isset($cache[$fid]) ? self::parseJsonDataItem($cache[$fid]) : null;
         }
 
-        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE fid = ?", [$fid]);
+        $forum = Database::fetch("SELECT * FROM " . self::TABLE . " WHERE fid = ?", [$fid]);
+        return $forum ? self::parseJsonDataItem($forum) : null;
+    }
+
+    private static function parseJsonDataItem(array $forum): array {
+        if (!empty($forum['json_data'])) {
+            $json = json_decode($forum['json_data'], true);
+            if (is_array($json)) {
+                $forum = array_merge($forum, $json);
+            }
+        }
+        return $forum;
+    }
+
+    public static function canGroup(int $fid, int $gid, string $action): bool {
+        if ($gid <= 0 || !in_array($action, self::GROUP_PERMISSION_KEYS, true)) {
+            return false;
+        }
+
+        $forum = self::get($fid);
+        if (!$forum) {
+            return false;
+        }
+
+        $permissions = $forum['group_permissions'][$action] ?? [];
+        return empty($permissions) || in_array($gid, array_map('intval', (array)$permissions), true);
     }
 
     public static function getForumName(int $fid): string {

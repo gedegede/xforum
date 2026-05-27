@@ -41,6 +41,9 @@ class ThreadController {
         }
 
         $forum = ForumModel::get($thread['fid']);
+        if (!Permission::canViewForum((int)$thread['fid'])) {
+            Response::redirect('index.php');
+        }
 
         $user = Session::getUser();
         SessionModel::updateOnline(
@@ -66,11 +69,12 @@ class ThreadController {
                 $targetPid = 0;
             }
         }
-        $posts = self::sortCurrentPagePostsByRate(PostModel::getPosts($tid, $page, $isModerator), $page);
+        $postsPerPage = (int)SettingModel::get('posts_per_page', '20');
+        $posts = self::sortCurrentPagePostsByRate(PostModel::getPosts($tid, $page, $isModerator, $postsPerPage), $page);
         $total = (int)($thread['reply_num'] ?? 0) + 1;
         
         ThreadModel::incrementView($tid);
-        $pages = (int)ceil($total / 20);
+        $pages = (int)ceil($total / $postsPerPage);
 
         $uids = array_unique(array_merge([$thread['uid']], array_column($posts, 'uid')));
         
@@ -99,12 +103,20 @@ class ThreadController {
         Template::set('ratedPids', $ratedPids);
         Template::set('isModerator', $isModerator);
         Template::set('hotThreads', ThreadModel::getHotThreadsByFid($thread['fid'], 5, $tid));
+
+        $creditChange = Session::get('credit_change');
+        if ($creditChange) {
+            Template::set('creditChange', $creditChange);
+            Session::delete('credit_change');
+        }
+
         Template::display('thread/index');
     }
 
     private static function sortCurrentPagePostsByRate(array $posts, int $page): array {
         $indexedPosts = [];
-        $floorOffset = (max(1, $page) - 1) * 20;
+        $postsPerPage = (int)\Models\SettingModel::get('posts_per_page', '20');
+        $floorOffset = (max(1, $page) - 1) * $postsPerPage;
         foreach ($posts as $index => $post) {
             $post['_floor'] = $floorOffset + $index + 1;
             $indexedPosts[] = [
@@ -154,12 +166,37 @@ class ThreadController {
         }
 
         $error = '';
+        $user = Session::getUser();
+        if (!Permission::canPostThread($fid)) {
+            $error = '无权限发布主题';
+        }
+        
+        $newbieWaitHours = (int)SettingModel::get('newbie_wait_hours', '0');
+        if ($newbieWaitHours > 0) {
+            $regTime = (int)($user['reg_date'] ?? 0);
+            if (time() - $regTime < $newbieWaitHours * 3600) {
+                $remaining = $newbieWaitHours * 3600 - (time() - $regTime);
+                $error = '新用户需要等待 ' . self::formatTime($remaining) . ' 后才能发帖';
+            }
+        }
+
+        $postInterval = (int)SettingModel::get('post_interval', '30');
+        if (empty($error) && $postInterval > 0) {
+            $lastPostTime = Session::get('last_post_time_' . $user['uid'], 0);
+            if (time() - $lastPostTime < $postInterval) {
+                $remaining = $postInterval - (time() - $lastPostTime);
+                $error = '发帖过于频繁，请等待 ' . $remaining . ' 秒';
+            }
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $subject = Request::postString('subject');
             $message = Request::postString('message');
 
             if (empty($subject) || empty($message)) {
                 $error = '请填写标题和内容';
+            } elseif (!empty($error)) {
+                // 保留之前的错误
             } else {
                 $blockKeywords = SettingModel::getBlockKeywords();
                 foreach ($blockKeywords as $keyword) {
@@ -182,6 +219,7 @@ class ThreadController {
                     $sortOrder = $needApprove ? -1 : 0;
                     $creditRule = CreditModel::getRule(CreditModel::ACTION_THREAD_CREATE);
                     $creditDid = 0;
+                    $actualCredit = 0;
                     $inTransaction = false;
 
                     if (!$error) {
@@ -221,7 +259,7 @@ class ThreadController {
                             $creditUrl = "index.php?c=thread&a=index&tid={$tid}";
                             CreditModel::updateCreditUrl($creditDid, $creditUrl);
                             if (!$needApprove && (int)$creditRule['credit'] > 0) {
-                                CreditModel::apply(CreditModel::ACTION_THREAD_CREATE, Session::getUid(), '发布主题：' . $subject, $creditUrl);
+                                $actualCredit = CreditModel::apply(CreditModel::ACTION_THREAD_CREATE, Session::getUid(), '发布主题：' . $subject, $creditUrl);
                             }
 
                             if ($needApprove) {
@@ -249,9 +287,13 @@ class ThreadController {
                         }
 
                         if (!$error) {
-                            // 发帖成功后更新在线状态
-                            $user = Session::getUser();
+                            Session::set('last_post_time_' . $user['uid'], time());
+                            
                             SessionModel::updateOnline($user['uid'], $user['gid'], $user['invisible'], $fid, $tid);
+
+                            if ($actualCredit > 0) {
+                                Session::set('credit_change', (int)$creditRule['credit']);
+                            }
 
                             Response::redirect("index.php?c=thread&a=index&tid={$tid}");
                         }
@@ -279,10 +321,46 @@ class ThreadController {
             Response::redirect('index.php');
         }
 
+        $user = Session::getUser();
+        $errorMsg = '';
+        if (!Permission::canReplyThread((int)$thread['fid'])) {
+            $errorMsg = '无权限回复主题';
+        }
+        
+        $newbieWaitHours = (int)SettingModel::get('newbie_wait_hours', '0');
+        if ($newbieWaitHours > 0) {
+            $regTime = (int)($user['reg_date'] ?? 0);
+            if (time() - $regTime < $newbieWaitHours * 3600) {
+                $remaining = $newbieWaitHours * 3600 - (time() - $regTime);
+                $errorMsg = '新用户需要等待 ' . self::formatTime($remaining) . ' 后才能回帖';
+            }
+        }
+
+        $postInterval = (int)SettingModel::get('post_interval', '30');
+        if (empty($errorMsg) && $postInterval > 0) {
+            $lastPostTime = Session::get('last_post_time_' . $user['uid'], 0);
+            if (time() - $lastPostTime < $postInterval) {
+                $remaining = $postInterval - (time() - $lastPostTime);
+                $errorMsg = '发帖过于频繁，请等待 ' . $remaining . ' 秒';
+            }
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = Request::postString('message');
             $quotePid = Request::postInt('quote_pid');
             $quoteUid = Request::postInt('quote_uid');
+
+            if (!empty($errorMsg)) {
+                if (Response::isAjaxRequest()) {
+                    Response::error($errorMsg);
+                }
+                Template::set('title', '回复帖子');
+                Template::set('thread', $thread);
+                Template::set('error', $errorMsg);
+                Template::set('user', $user);
+                Template::display('thread/reply');
+                exit;
+            }
 
             if (empty($message)) {
                 $errorMsg = '请填写回复内容';
@@ -292,7 +370,7 @@ class ThreadController {
                 Template::set('title', '回复帖子');
                 Template::set('thread', $thread);
                 Template::set('error', $errorMsg);
-                Template::set('user', Session::getUser());
+                Template::set('user', $user);
                 Template::display('thread/reply');
                 exit;
             }
@@ -419,10 +497,9 @@ class ThreadController {
 
             self::handleAtMentions($message, $tid, $pid);
 
+            Session::set('last_post_time_' . $user['uid'], time());
             PmModel::markAsRead($thread['uid']);
             
-            // 回复成功后更新在线状态
-            $user = Session::getUser();
             SessionModel::updateOnline($user['uid'], $user['gid'], $user['invisible'], $thread['fid'], $tid);
 
             if (Response::isAjaxRequest()) {
@@ -496,6 +573,9 @@ class ThreadController {
 
     public static function favorite(int $tid): void {
         Permission::requireLogin();
+        if (!Permission::canFavorite()) {
+            Response::error('无权限收藏', 403);
+        }
 
         $isFavorited = FavModel::isFavorite(Session::getUid(), $tid);
         if ($isFavorited) {
@@ -516,6 +596,9 @@ class ThreadController {
 
     public static function rate(int $pid): void {
         Permission::requireLogin();
+        if (!Permission::canRate()) {
+            Response::error('无权限点赞', 403);
+        }
 
         $post = PostModel::get($pid);
         if (!$post) {
@@ -632,8 +715,21 @@ class ThreadController {
         Response::redirect("index.php?c=thread&a=index&tid={$tid}");
     }
 
+    private static function formatTime(int $seconds): string {
+        if ($seconds < 60) {
+            return $seconds . '秒';
+        } elseif ($seconds < 3600) {
+            return (int)($seconds / 60) . '分钟';
+        } else {
+            return (int)($seconds / 3600) . '小时';
+        }
+    }
+
     public static function report(int $pid): void {
         Permission::requireLogin();
+        if (!Permission::canReport()) {
+            Response::error('无权限举报', 403);
+        }
 
         $post = PostModel::get($pid);
         if (!$post) {

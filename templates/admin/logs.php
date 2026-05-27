@@ -1,33 +1,33 @@
 <?php include '_menu.php'; ?>
 
-<div class="bg-panel border border-border rounded shadow-sm overflow-hidden">
-    <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-border bg-soft">
+<div class="card card-clip">
+    <div class="card-header">
         <h2 class="font-semibold">管理日志</h2>
     </div>
-    <div class="p-4">
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm border-collapse">
+    <div class="card-body">
+        <div class="table-wrap">
+            <table class="table">
                 <thead>
-                    <tr class="bg-soft">
-                        <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border">ID</th>
-                        <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border">操作人</th>
-                        <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border">操作内容</th>
-                        <th class="text-left px-4 py-2 font-semibold text-muted border-b border-border">时间</th>
+                    <tr>
+                        <th>ID</th>
+                        <th>操作人</th>
+                        <th>操作内容</th>
+                        <th>时间</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (!empty($template_logs)): ?>
                     <?php foreach ($template_logs as $log): ?>
-                        <tr class="hover:bg-hover transition-colors">
-                            <td class="px-4 py-3 border-b border-border"><?php echo $log['did']; ?></td>
-                            <td class="px-4 py-3 border-b border-border"><?php echo htmlspecialchars($template_users[$log['uid']]['username'] ?? '未知'); ?></td>
-                            <td class="px-4 py-3 border-b border-border"><?php echo htmlspecialchars($log['message']); ?></td>
-                            <td class="px-4 py-3 border-b border-border"><?php echo date('Y-m-d H:i:s', $log['dateline']); ?></td>
+                        <tr>
+                            <td><?php echo $log['did']; ?></td>
+                            <td><?php echo htmlspecialchars($template_users[$log['uid']]['username'] ?? '未知'); ?></td>
+                            <td><?php echo htmlspecialchars($log['message']); ?></td>
+                            <td><?php echo \Lib\Helper::formatTime((int)$log['dateline']); ?></td>
                         </tr>
                     <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="4" class="px-4 py-8 text-center text-muted">暂无管理日志</td>
+                            <td colspan="4" class="table-empty">暂无管理日志</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>

@@ -15,6 +15,8 @@ use Models\ForumModel;
 use Models\ThreadModel;
 use Models\MemberModel;
 use Models\ModeratorModel;
+use Models\SettingModel;
+use Lib\Permission;
 
 class ForumController {
     public static function index(int $fid = 0): void {
@@ -35,6 +37,9 @@ class ForumController {
         if (!$forum) {
             Response::redirect('index.php?c=forum&a=index');
         }
+        if (!Permission::canViewForum($fid)) {
+            Response::redirect('index.php');
+        }
 
         $parentForum = null;
         if (!empty($forum['up_fid'])) {
@@ -48,10 +53,20 @@ class ForumController {
             $order = 'reply_time';
         }
         $keyword = Request::getString('keyword');
+        $searchError = '';
+        if ($keyword !== '' && !Permission::canSearch()) {
+            $searchError = '无权限搜索';
+            $keyword = '';
+        }
+        if ($keyword !== '' && !self::checkSearchInterval()) {
+            $searchError = '搜索过于频繁，请等待 ' . self::getSearchRemainingSeconds() . ' 秒';
+            $keyword = '';
+        }
         
+        $threadsPerPage = (int)SettingModel::get('threads_per_page', '20');
         $threads = ThreadModel::getThreads($fid, $page, $order, $keyword);
         $total = empty($keyword) ? (int)($forum['thread_num'] ?? 0) : ThreadModel::getThreadCount($fid, $keyword);
-        $pages = (int)ceil($total / 20);
+        $pages = (int)ceil($total / $threadsPerPage);
 
         $users = [];
         if (!empty($threads)) {
@@ -80,18 +95,44 @@ class ForumController {
         Template::set('title', $forum['name']);
         Template::set('forum', $forum);
         Template::set('parentForum', $parentForum);
+        Template::set('subForums', ForumModel::getForums($fid));
         Template::set('threads', $threads);
         Template::set('users', $users);
         Template::set('page', $page);
         Template::set('pages', $pages);
         Template::set('order', $order);
         Template::set('keyword', $keyword);
+        Template::set('searchError', $searchError);
         Template::set('orderOptions', $orderOptions);
         Template::set('hotThreads', ThreadModel::getHotThreadsByFid($fid, 5));
         Template::set('moderators', $moderators);
         Template::set('moderatorUsers', $moderatorUsers);
         Template::set('user', Session::getUser());
         Template::display('forum/index');
+    }
+
+    private static function checkSearchInterval(): bool {
+        $interval = (int)SettingModel::get('search_interval', '10');
+        if ($interval <= 0) {
+            return true;
+        }
+        $key = 'last_search_time_' . self::getClientIp();
+        $lastSearchTime = (int)Session::get($key, 0);
+        if (time() - $lastSearchTime < $interval) {
+            return false;
+        }
+        Session::set($key, time());
+        return true;
+    }
+
+    private static function getSearchRemainingSeconds(): int {
+        $interval = (int)SettingModel::get('search_interval', '10');
+        $lastSearchTime = (int)Session::get('last_search_time_' . self::getClientIp(), 0);
+        return max(1, $interval - (time() - $lastSearchTime));
+    }
+
+    private static function getClientIp(): string {
+        return $_SERVER['REMOTE_ADDR'] ?? '';
     }
 }
 ?>

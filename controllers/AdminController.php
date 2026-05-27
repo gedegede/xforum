@@ -12,6 +12,7 @@ use Lib\Template;
 use Lib\Response;
 use Lib\Request;
 use Lib\Permission;
+use Lib\Database;
 use Models\MemberModel;
 use Models\ThreadModel;
 use Models\ForumModel;
@@ -25,7 +26,22 @@ use Models\CreditModel;
 class AdminController {
     public static function index(): void {
         Template::clear();
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_thread');
+
+        if (Request::getString('opcache') === 'reset') {
+            if (function_exists('opcache_reset')) {
+                opcache_reset();
+            }
+            self::logAction('cache_opcache_reset', '清空 OPcache 缓存');
+            Response::redirect('index.php?c=admin&a=index');
+        }
+        if (Request::getString('apcu') === 'clear') {
+            if (function_exists('apcu_clear_cache')) {
+                apcu_clear_cache();
+            }
+            self::logAction('cache_apcu_clear', '清空 APCu 缓存');
+            Response::redirect('index.php?c=admin&a=index');
+        }
 
         $stats = [
             'users' => MemberModel::count(),
@@ -35,13 +51,75 @@ class AdminController {
 
         Template::set('title', '管理后台');
         Template::set('stats', $stats);
+        Template::set('systemInfo', self::getSystemInfo());
         Template::set('user', Session::getUser());
         Template::display('admin/index');
     }
 
+    private static function getSystemInfo(): array {
+        return [
+            '当前版本' => '1.0.0-alpha build 20250624',
+            '当前时间' => date('Y-m-d H:i:s'),
+            '当前时区' => date_default_timezone_get(),
+            '服务器软件' => $_SERVER['SERVER_SOFTWARE'] ?? '',
+            '操作系统及 PHP' => PHP_OS . ' / PHP v' . PHP_VERSION,
+            'OPcache' => self::getOpcacheInfo(),
+            'APCu' => self::getApcuInfo(),
+            'PHP 禁用函数' => ini_get('disable_functions') ?: '',
+            'PHP 单次上传尺寸' => ini_get('upload_max_filesize') ?: '',
+            'PHP 单次上传数量' => ini_get('max_file_uploads') ?: '',
+            'MYSQL版本' => self::getMysqlVersion(),
+            '数据库数据尺寸' => self::getDatabaseSize('data'),
+            '数据库索引尺寸' => self::getDatabaseSize('index'),
+            '访问IP' => $_SERVER['REMOTE_ADDR'] ?? '',
+        ];
+    }
+
+    private static function getOpcacheInfo(): string {
+        if (!function_exists('opcache_get_status') || !opcache_get_status(false)) {
+            return '未启用';
+        }
+        $version = function_exists('opcache_get_configuration') ? (opcache_get_configuration()['version']['version'] ?? PHP_VERSION) : PHP_VERSION;
+        return '已启用, 版本' . $version;
+    }
+
+    private static function getApcuInfo(): string {
+        if (!function_exists('apcu_enabled') || !apcu_enabled()) {
+            return '未启用';
+        }
+        $version = phpversion('apcu') ?: '';
+        return '已启用' . ($version !== '' ? ', 版本' . $version : '');
+    }
+
+    private static function getMysqlVersion(): string {
+        if (Database::getDriverName() !== 'mysql') {
+            return '-';
+        }
+        $row = Database::fetch('SELECT VERSION() AS version');
+        return (string)($row['version'] ?? '');
+    }
+
+    private static function getDatabaseSize(string $type): string {
+        if (Database::getDriverName() !== 'mysql') {
+            return '-';
+        }
+        $column = $type === 'index' ? 'INDEX_LENGTH' : 'DATA_LENGTH';
+        $row = Database::fetch("SELECT SUM({$column}) AS size FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()");
+        return self::formatBytes((int)($row['size'] ?? 0));
+    }
+
+    private static function formatBytes(int $bytes): string {
+        if ($bytes <= 0) {
+            return '0 B';
+        }
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $power = min((int)floor(log($bytes, 1024)), count($units) - 1);
+        return number_format($bytes / (1024 ** $power), 2) . ' ' . $units[$power];
+    }
+
     public static function settings(): void {
         Template::clear();
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_setting');
 
         $error = '';
         $success = '';
@@ -73,21 +151,31 @@ class AdminController {
                     }
                     if ($skey === 'collapsed_fids' && is_array($value)) {
                         $value = implode(',', array_filter($value));
+                    } elseif ($skey === 'register_default_gid') {
+                        $group = UsergroupModel::getRegisterDefaultGroup((int)$value);
+                        $value = $group ? (string)$group['gid'] : '';
+                    } elseif ($skey === 'timezone') {
+                        $value = self::normalizeTimezone((string)$value);
                     } elseif (is_array($value)) {
                         $value = implode(',', $value);
                     }
                     SettingModel::set($skey, (string)$value);
                 }
             }
+            self::logAction('settings_update', '保存站点设置');
             $success = '设置已保存';
         }
 
         $settings = SettingModel::getAll();
         $forums = ForumModel::getForumsFlat();
+        $usergroups = UsergroupModel::getAll();
 
         Template::set('title', '站点设置');
         Template::set('settings', $settings);
         Template::set('forums', $forums);
+        Template::set('usergroups', $usergroups);
+        Template::set('timezone', self::normalizeTimezone($settings['timezone'] ?? ''));
+        Template::set('timezoneOptions', \DateTimeZone::listIdentifiers());
         Template::set('creditRules', CreditModel::getRules());
         Template::set('creditActionLabels', CreditModel::getActionLabels());
         Template::set('signinRange', CreditModel::getSigninRange());
@@ -95,6 +183,16 @@ class AdminController {
         Template::set('success', $success);
         Template::set('user', Session::getUser());
         Template::display('admin/settings');
+    }
+
+    private static function normalizeTimezone(string $timezone): string {
+        if (in_array($timezone, \DateTimeZone::listIdentifiers(), true)) {
+            return $timezone;
+        }
+
+        $config = require ROOT_PATH . '/config/app.php';
+        $default = (string)($config['timezone'] ?? 'UTC');
+        return in_array($default, \DateTimeZone::listIdentifiers(), true) ? $default : 'UTC';
     }
 
     private static function buildSigninCreditRange(): string {
@@ -135,22 +233,31 @@ class AdminController {
         return implode("\n", $lines);
     }
 
+    private static function buildUsergroupPermissions(): array {
+        $permissions = [];
+        foreach (UsergroupModel::PERMISSION_KEYS as $key) {
+            $permissions[$key] = Request::postInt($key);
+        }
+        return $permissions;
+    }
+
     public static function forums(): void {
         Template::clear();
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_forum');
 
         $forums = ForumModel::getForumsFlat();
 
         Template::set('title', '版块管理');
         Template::set('forums', $forums);
         Template::set('parentForums', $forums);
+        Template::set('success', Request::getString('success'));
         Template::set('user', Session::getUser());
         Template::display('admin/forums');
     }
 
     public static function forumAdd(): void {
         Template::clear();
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_forum');
 
         $parentForums = ForumModel::getForumsFlat();
 
@@ -162,12 +269,14 @@ class AdminController {
             if (empty($name)) {
                 $error = '版块名称不能为空';
             } else {
-                ForumModel::create([
+                $newFid = ForumModel::create([
                     'name' => $name,
                     'up_fid' => $upFid,
                     'status' => 1,
+                    'json_data' => json_encode(['group_permissions' => self::buildForumGroupPermissions()]),
                 ]);
-                Response::redirect('index.php?c=admin&a=forums');
+                self::logAction('forum_add', "添加版块: {$name} (FID: {$newFid})");
+                Response::redirect('index.php?c=admin&a=forums&success=' . urlencode('版块已添加'));
             }
         }
 
@@ -179,7 +288,7 @@ class AdminController {
     }
 
     public static function forumEdit(int $fid): void {
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_forum');
 
         $forum = ForumModel::get($fid);
 
@@ -212,11 +321,13 @@ class AdminController {
                         'name' => $name,
                         'up_fid' => $upFid,
                         'status' => $status,
+                        'json_data' => json_encode(['group_permissions' => self::buildForumGroupPermissions()]),
                     ]);
                     if ($result === false) {
                         $error = '更新失败';
                     } else {
-                        Response::redirect('index.php?c=admin&a=forums');
+                        self::logAction('forum_edit', "编辑版块: {$forum['name']} (FID: {$fid})");
+                        Response::redirect('index.php?c=admin&a=forums&success=' . urlencode('版块已更新'));
                     }
                 } catch (Exception $e) {
                     $error = '更新出错: ' . $e->getMessage();
@@ -227,20 +338,33 @@ class AdminController {
         Template::set('title', '编辑版块');
         Template::set('forum', $forum);
         Template::set('parentForums', $parentForums);
+        Template::set('usergroups', UsergroupModel::getAll());
         Template::set('error', $error);
         Template::set('user', Session::getUser());
         Template::display('admin/forum_edit');
     }
 
+    private static function buildForumGroupPermissions(): array {
+        $permissions = [];
+        foreach (ForumModel::GROUP_PERMISSION_KEYS as $key) {
+            $permissions[$key] = array_map('intval', Request::postArray('group_' . $key));
+        }
+        return $permissions;
+    }
+
     public static function forumDelete(int $fid): void {
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_forum');
+        $forum = ForumModel::get($fid);
         ForumModel::delete($fid);
-        Response::redirect('index.php?c=admin&a=forums');
+        if ($forum) {
+            self::logAction('forum_delete', "删除版块: {$forum['name']} (FID: {$fid})");
+        }
+        Response::redirect('index.php?c=admin&a=forums&success=' . urlencode('版块已删除'));
     }
 
     public static function threads(): void {
         Template::clear();
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_thread');
 
         $page = Request::getInt('page', 1);
         $fid = Request::getInt('fid');
@@ -292,7 +416,7 @@ class AdminController {
     }
 
     public static function threadDelete(int $tid): void {
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_thread');
         PostModel::deleteByTid($tid);
         ThreadModel::delete($tid);
 
@@ -302,7 +426,7 @@ class AdminController {
     }
 
     public static function threadBatch(): void {
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_thread');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $action = Request::postRaw('action');
@@ -331,44 +455,42 @@ class AdminController {
 
     public static function usergroups(): void {
         Template::clear();
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_usergroup');
 
         $groups = UsergroupModel::getAll();
 
         Template::set('title', '用户组管理');
         Template::set('groups', $groups);
+        Template::set('success', Request::getString('success'));
         Template::set('user', Session::getUser());
         Template::display('admin/usergroups');
     }
 
     public static function usergroupAdd(): void {
         Template::clear();
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_usergroup');
 
         $error = '';
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $title = Request::postString('title');
             $groupType = Request::postRaw('group_type', 'member');
             $creditLower = Request::postInt('credit_lower');
-            $canManage = Request::postInt('can_manage');
-            $threadNeedApprove = Request::postInt('thread_need_approve');
-            $postNeedApprove = Request::postInt('post_need_approve');
+            if ($groupType !== 'member') {
+                $creditLower = 0;
+            }
 
             if (empty($title)) {
                 $error = '用户组名称不能为空';
             } else {
-                $jsonData = json_encode([
-                    'can_manage' => $canManage,
-                    'thread_need_approve' => $threadNeedApprove,
-                    'post_need_approve' => $postNeedApprove,
-                ]);
-                UsergroupModel::create([
+                $jsonData = json_encode(self::buildUsergroupPermissions());
+                $newGid = UsergroupModel::create([
                     'title' => $title,
                     'group_type' => $groupType,
                     'credit_lower' => $creditLower,
                     'json_data' => $jsonData,
                 ]);
-                Response::redirect('index.php?c=admin&a=usergroups');
+                self::logAction('usergroup_add', "添加用户组: {$title} (GID: {$newGid})");
+                Response::redirect('index.php?c=admin&a=usergroups&success=' . urlencode('用户组已添加'));
             }
         }
 
@@ -379,7 +501,7 @@ class AdminController {
     }
 
     public static function usergroupEdit(int $gid): void {
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_usergroup');
 
         $group = UsergroupModel::get($gid);
 
@@ -401,25 +523,22 @@ class AdminController {
             $title = Request::postString('title');
             $groupType = Request::postRaw('group_type', 'member');
             $creditLower = Request::postInt('credit_lower');
-            $canManage = Request::postInt('can_manage');
-            $threadNeedApprove = Request::postInt('thread_need_approve');
-            $postNeedApprove = Request::postInt('post_need_approve');
+            if ($groupType !== 'member') {
+                $creditLower = 0;
+            }
 
             if (empty($title)) {
                 $error = '用户组名称不能为空';
             } else {
-                $jsonData = json_encode([
-                    'can_manage' => $canManage,
-                    'thread_need_approve' => $threadNeedApprove,
-                    'post_need_approve' => $postNeedApprove,
-                ]);
+                $jsonData = json_encode(self::buildUsergroupPermissions());
                 UsergroupModel::update($gid, [
                     'title' => $title,
                     'group_type' => $groupType,
                     'credit_lower' => $creditLower,
                     'json_data' => $jsonData,
                 ]);
-                Response::redirect('index.php?c=admin&a=usergroups');
+                self::logAction('usergroup_edit', "编辑用户组: {$group['title']} (GID: {$gid})");
+                Response::redirect('index.php?c=admin&a=usergroups&success=' . urlencode('用户组已更新'));
             }
         }
 
@@ -431,14 +550,18 @@ class AdminController {
     }
 
     public static function usergroupDelete(int $gid): void {
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_usergroup');
+        $group = UsergroupModel::get($gid);
         UsergroupModel::delete($gid);
-        Response::redirect('index.php?c=admin&a=usergroups');
+        if ($group) {
+            self::logAction('usergroup_delete', "删除用户组: {$group['title']} (GID: {$gid})");
+        }
+        Response::redirect('index.php?c=admin&a=usergroups&success=' . urlencode('用户组已删除'));
     }
 
     public static function users(): void {
         Template::clear();
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_user');
 
         $page = Request::getInt('page', 1);
         $keyword = Request::getString('keyword');
@@ -455,14 +578,21 @@ class AdminController {
         Template::set('gid', $gid);
         Template::set('page', $page);
         Template::set('pages', (int)ceil($total / 20));
+        Template::set('success', Request::getString('success'));
         Template::set('user', Session::getUser());
         Template::display('admin/users');
     }
 
     public static function userEdit(int $uid): void {
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_user');
+
+        if ($uid <= 0 && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $uid = Request::postInt('uid');
+        }
 
         $member = MemberModel::get($uid);
+        $groups = UsergroupModel::getAll();
+
         if (!$member) {
             if (Request::getBool('ajax')) {
                 Response::json(['success' => false, 'message' => '用户不存在'], 404);
@@ -470,31 +600,65 @@ class AdminController {
             Response::redirect('index.php?c=admin&a=users');
         }
 
-        if (Request::getBool('ajax')) {
+        if (Request::getBool('ajax') && $_SERVER['REQUEST_METHOD'] !== 'POST') {
             Response::json(['success' => true, 'user' => $member]);
         }
 
-        Template::clear();
-
-        $groups = UsergroupModel::getAll();
         $error = '';
-
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $data = [
-                'username' => Request::postString('username'),
-                'email' => Request::postString('email'),
-                'gid' => Request::postInt('gid'),
-                'status' => Request::postInt('status'),
-            ];
+            try {
+                $username = Request::postString('username');
+                $email = Request::postString('email');
 
-            $password = Request::postRaw('password');
-            if (!empty($password)) {
-                $data['password'] = password_hash($password, PASSWORD_DEFAULT);
+                if (empty($username)) {
+                    throw new \RuntimeException('用户名不能为空');
+                }
+                if (empty($email)) {
+                    throw new \RuntimeException('邮箱不能为空');
+                }
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    throw new \RuntimeException('邮箱格式不正确');
+                }
+
+                $gid = Request::postInt('gid');
+                if (!$gid) {
+                    $gid = (int)SettingModel::get('register_default_gid', '1');
+                }
+                if (!isset($groups[$gid])) {
+                    throw new \RuntimeException('无效的用户组');
+                }
+
+                $data = [
+                    'username' => $username,
+                    'email' => $email,
+                    'avatar' => Request::postString('avatar'),
+                    'gid' => $gid,
+                    'credit' => max(0, Request::postInt('credit')),
+                    'status' => Request::postInt('status') ?: 0,
+                ];
+
+                $password = Request::postRaw('password');
+                if (!empty($password)) {
+                    $data['password'] = password_hash($password, PASSWORD_DEFAULT);
+                }
+
+                $result = MemberModel::update($uid, $data);
+                if ($result === 0) {
+                    if (!MemberModel::get($uid)) {
+                        throw new \RuntimeException('更新失败：用户不存在');
+                    }
+                }
+                self::logAction('user_edit', "编辑用户: {$member['username']} (UID: {$uid})");
+                if (Response::isAjaxRequest()) {
+                    Response::json(['success' => true, 'message' => '用户已更新']);
+                }
+                Response::redirect('index.php?c=admin&a=users&success=' . urlencode('用户已更新'));
+            } catch (\Throwable $e) {
+                if (Response::isAjaxRequest()) {
+                    Response::json(['success' => false, 'message' => $e->getMessage()], 500);
+                }
+                $error = $e->getMessage();
             }
-
-            MemberModel::update($uid, $data);
-            self::logAction('user_edit', "编辑用户: {$member['username']} (UID: {$uid})");
-            Response::redirect('index.php?c=admin&a=users');
         }
 
         Template::set('title', '编辑用户');
@@ -506,18 +670,18 @@ class AdminController {
     }
 
     public static function userDelete(int $uid): void {
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_user');
         $member = MemberModel::get($uid);
         if ($member) {
             MemberModel::delete($uid);
             self::logAction('user_delete', "删除用户: {$member['username']} (UID: {$uid})");
         }
-        Response::redirect('index.php?c=admin&a=users');
+        Response::redirect('index.php?c=admin&a=users&success=' . urlencode('用户已删除'));
     }
 
     public static function logs(): void {
         Template::clear();
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_log');
 
         $page = Request::getInt('page', 1);
         $logs = ModLogModel::getLogs($page);
@@ -544,7 +708,7 @@ class AdminController {
 
     public static function moderators(int $fid = 0): void {
         Template::clear();
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_forum');
 
         if (!$fid) {
             Response::redirect('index.php?c=admin&a=forums');
@@ -575,7 +739,7 @@ class AdminController {
     }
 
     public static function moderatorAdd(): void {
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_forum');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fid = Request::postInt('fid');
@@ -607,7 +771,7 @@ class AdminController {
     }
 
     public static function moderatorEdit(): void {
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_forum');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fid = Request::postInt('fid');
@@ -634,7 +798,7 @@ class AdminController {
     }
 
     public static function moderatorDelete(): void {
-        Permission::requireAdmin();
+        Permission::requireAdminPermission('admin_forum');
 
         $fid = Request::getInt('fid');
         $uid = Request::getInt('uid');

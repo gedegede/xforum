@@ -71,7 +71,7 @@ class PmController {
         Template::clear();
         Permission::requireLogin();
 
-        $error = '';
+        $error = Permission::canSendPm() ? '' : '无权限发送私信';
         $receiver = null;
 
         if ($toUid) {

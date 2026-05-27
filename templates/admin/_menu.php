@@ -1,34 +1,31 @@
-<div class="bg-panel border border-border rounded shadow-sm mb-4">
-    <div class="p-0">
-        <div class="flex flex-wrap border-b">
+<?php
+$template_adminAction = $_GET['a'] ?? 'index';
+$template_isForumAdmin = in_array($template_adminAction, ['forums', 'forumAdd', 'forumEdit', 'forumDelete'], true);
+$template_isThreadAdmin = in_array($template_adminAction, ['threads', 'threadDelete', 'threadBatch'], true);
+$template_isUsergroupAdmin = in_array($template_adminAction, ['usergroups', 'usergroupAdd', 'usergroupEdit', 'usergroupDelete'], true);
+$template_isUserAdmin = in_array($template_adminAction, ['users', 'userEdit', 'userDelete'], true);
+$template_adminPermissions = [
+    'settings' => \Lib\Permission::hasGroupPermission('admin_setting'),
+    'forums' => \Lib\Permission::hasGroupPermission('admin_forum'),
+    'threads' => \Lib\Permission::hasGroupPermission('admin_thread'),
+    'usergroups' => \Lib\Permission::hasGroupPermission('admin_usergroup'),
+    'users' => \Lib\Permission::hasGroupPermission('admin_user'),
+    'logs' => \Lib\Permission::hasGroupPermission('admin_log'),
+];
+?>
+<div class="card card-lg mb-4 card-clip">
+    <nav class="pill-nav" aria-label="后台菜单">
+        <div class="pill-nav-list">
             <a href="index.php?c=admin&a=index"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors <?php echo (!isset($_GET['a']) || $_GET['a'] == 'index') ? 'border-primary text-primary' : 'border-transparent text-sub hover:text-text hover:border-border'; ?>">
+               class="pill-nav-item <?php echo $template_adminAction == 'index' ? 'active' : ''; ?>">
                 首页
             </a>
-            <a href="index.php?c=admin&a=settings"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors <?php echo (isset($_GET['a']) && ($_GET['a'] == 'settings')) ? 'border-primary text-primary' : 'border-transparent text-sub hover:text-text hover:border-border'; ?>">
-                站点设置
-            </a>
-            <a href="index.php?c=admin&a=forums"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors <?php echo (isset($_GET['a']) && ($_GET['a'] == 'forums' || $_GET['a'] == 'forumAdd' || $_GET['a'] == 'forumEdit' || $_GET['a'] == 'forumDelete')) ? 'border-primary text-primary' : 'border-transparent text-sub hover:text-text hover:border-border'; ?>">
-                版块管理
-            </a>
-            <a href="index.php?c=admin&a=threads"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors <?php echo (isset($_GET['a']) && ($_GET['a'] == 'threads' || $_GET['a'] == 'threadDelete' || $_GET['a'] == 'threadBatch')) ? 'border-primary text-primary' : 'border-transparent text-sub hover:text-text hover:border-border'; ?>">
-                主题管理
-            </a>
-            <a href="index.php?c=admin&a=usergroups"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors <?php echo (isset($_GET['a']) && ($_GET['a'] == 'usergroups' || $_GET['a'] == 'usergroupAdd' || $_GET['a'] == 'usergroupEdit' || $_GET['a'] == 'usergroupDelete')) ? 'border-primary text-primary' : 'border-transparent text-sub hover:text-text hover:border-border'; ?>">
-                用户组管理
-            </a>
-            <a href="index.php?c=admin&a=users"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors <?php echo (isset($_GET['a']) && ($_GET['a'] == 'users' || $_GET['a'] == 'userEdit' || $_GET['a'] == 'userDelete')) ? 'border-primary text-primary' : 'border-transparent text-sub hover:text-text hover:border-border'; ?>">
-                用户管理
-            </a>
-            <a href="index.php?c=admin&a=logs"
-               class="px-4 py-2 text-sm font-medium border-b-2 transition-colors <?php echo (isset($_GET['a']) && $_GET['a'] == 'logs') ? 'border-primary text-primary' : 'border-transparent text-sub hover:text-text hover:border-border'; ?>">
-                管理日志
-            </a>
+            <?php if ($template_adminPermissions['settings']): ?><a href="index.php?c=admin&a=settings" class="pill-nav-item <?php echo $template_adminAction == 'settings' ? 'active' : ''; ?>">站点设置</a><?php endif; ?>
+            <?php if ($template_adminPermissions['forums']): ?><a href="index.php?c=admin&a=forums" class="pill-nav-item <?php echo $template_isForumAdmin ? 'active' : ''; ?>">版块管理</a><?php endif; ?>
+            <?php if ($template_adminPermissions['threads']): ?><a href="index.php?c=admin&a=threads" class="pill-nav-item <?php echo $template_isThreadAdmin ? 'active' : ''; ?>">主题管理</a><?php endif; ?>
+            <?php if ($template_adminPermissions['usergroups']): ?><a href="index.php?c=admin&a=usergroups" class="pill-nav-item <?php echo $template_isUsergroupAdmin ? 'active' : ''; ?>">用户组管理</a><?php endif; ?>
+            <?php if ($template_adminPermissions['users']): ?><a href="index.php?c=admin&a=users" class="pill-nav-item <?php echo $template_isUserAdmin ? 'active' : ''; ?>">用户管理</a><?php endif; ?>
+            <?php if ($template_adminPermissions['logs']): ?><a href="index.php?c=admin&a=logs" class="pill-nav-item <?php echo $template_adminAction == 'logs' ? 'active' : ''; ?>">管理日志</a><?php endif; ?>
         </div>
-    </div>
+    </nav>
 </div>

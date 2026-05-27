@@ -62,7 +62,7 @@ $tables = [
         uid INTEGER PRIMARY KEY AUTOINCREMENT,
         username VARCHAR(50) NOT NULL DEFAULT '',
         gid INTEGER NOT NULL DEFAULT 0,
-        avatar INTEGER NOT NULL DEFAULT 0,
+        avatar VARCHAR(255) NOT NULL DEFAULT '',
         password VARCHAR(255) NOT NULL DEFAULT '',
         auth_secret VARCHAR(50) NOT NULL DEFAULT '',
         auth_enabled INTEGER NOT NULL DEFAULT 0,
@@ -241,7 +241,7 @@ foreach ($tables as $name => $sql) {
 $db->exec("INSERT INTO next_usergroup (gid, group_type, title, credit_lower, json_data) VALUES (1, 'system', '管理员', 0, '{\"can_manage\":1,\"thread_need_approve\":0,\"post_need_approve\":0}')");
 $db->exec("INSERT INTO next_usergroup (gid, group_type, title, credit_lower, json_data) VALUES (2, 'system', '普通会员', 0, '{\"can_manage\":0,\"thread_need_approve\":0,\"post_need_approve\":0}')");
 
-$db->exec("INSERT INTO next_member (uid, username, gid, password, auth_secret, reg_ip, reg_date, status) VALUES (1, 'admin', 1, '" . password_hash('admin123', PASSWORD_DEFAULT) . "', '".md5(uniqid())."', '127.0.0.1', ".time().", 1)");
+$db->exec("INSERT INTO next_member (uid, username, gid, password, auth_secret, reg_ip, reg_date, status) VALUES (1, 'admin', 1, '" . password_hash('admin123', PASSWORD_DEFAULT) . "', '".md5(uniqid())."', '127.0.0.1', ".time().", 0)");
 
 $db->exec("INSERT INTO next_forum (fid, name, status, sort_order, json_data) VALUES (1, '综合讨论区', 1, 1, '{}')");
 $db->exec("INSERT INTO next_forum (fid, name, status, sort_order, json_data) VALUES (2, '技术交流', 1, 2, '{}')");
@@ -250,6 +250,8 @@ $db->exec("INSERT INTO next_forum (fid, name, status, sort_order, json_data) VAL
 
 $db->exec("INSERT INTO next_setting (skey, val) VALUES ('report_forum_fid', '4')");
 $db->exec("INSERT INTO next_setting (skey, val) VALUES ('collapsed_fids', '')");
+$db->exec("INSERT INTO next_setting (skey, val) VALUES ('register_default_gid', '2')");
+$db->exec("INSERT INTO next_setting (skey, val) VALUES ('timezone', 'Asia/Shanghai')");
 $db->exec("INSERT INTO next_setting (skey, val) VALUES ('approve_keywords', '')");
 $db->exec("INSERT INTO next_setting (skey, val) VALUES ('block_keywords', '')");
 $db->exec("INSERT INTO next_setting (skey, val) VALUES ('signin_credit_range', '1,5')");

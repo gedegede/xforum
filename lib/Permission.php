@@ -24,6 +24,19 @@ class Permission {
         return self::hasAdminPrivileges($user);
     }
 
+    public static function hasGroupPermission(string $key): bool {
+        $user = Session::getUser();
+        if (!$user) {
+            return false;
+        }
+
+        if (self::isRootAdmin($user)) {
+            return str_starts_with($key, 'admin_');
+        }
+
+        return UsergroupModel::hasPermission((int)($user['gid'] ?? 0), $key);
+    }
+
     public static function isModerator(?int $fid = null): bool {
         $user = Session::getUser();
         if (!$user) {
@@ -76,16 +89,11 @@ class Permission {
             return false;
         }
 
-        if (self::hasAdminPrivileges($user)) {
+        if (self::hasGroupPermission('admin_thread')) {
             return true;
         }
 
-        $group = UsergroupModel::get($user['gid']);
-        if (!$group) {
-            return false;
-        }
-
-        return ($group['allow_thread'] ?? 0) === 1;
+        return !self::hasGroupPermission('deny_thread') && ForumModel::canGroup($fid, (int)$user['gid'], 'thread');
     }
 
     public static function canReplyThread(int $fid): bool {
@@ -94,16 +102,24 @@ class Permission {
             return false;
         }
 
-        if (self::hasAdminPrivileges($user)) {
+        if (self::hasGroupPermission('admin_thread')) {
             return true;
         }
 
-        $group = UsergroupModel::get($user['gid']);
-        if (!$group) {
+        return !self::hasGroupPermission('deny_reply') && ForumModel::canGroup($fid, (int)$user['gid'], 'reply');
+    }
+
+    public static function canViewForum(int $fid): bool {
+        $user = Session::getUser();
+        if (!$user) {
             return false;
         }
 
-        return ($group['allow_reply'] ?? 0) === 1;
+        if (self::hasGroupPermission('admin_thread') || self::hasGroupPermission('admin_forum')) {
+            return true;
+        }
+
+        return ForumModel::canGroup($fid, (int)$user['gid'], 'view');
     }
 
     public static function canEditThread(array $thread): bool {
@@ -112,8 +128,12 @@ class Permission {
             return false;
         }
 
-        if (self::hasAdminPrivileges($user)) {
+        if (self::hasGroupPermission('admin_thread')) {
             return true;
+        }
+
+        if (self::hasGroupPermission('deny_edit')) {
+            return false;
         }
 
         if ($user['uid'] === $thread['uid']) {
@@ -133,8 +153,12 @@ class Permission {
             return false;
         }
 
-        if (self::hasAdminPrivileges($user)) {
+        if (self::hasGroupPermission('admin_thread')) {
             return true;
+        }
+
+        if (self::hasGroupPermission('deny_edit')) {
+            return false;
         }
 
         if ($user['uid'] === $post['uid']) {
@@ -213,11 +237,27 @@ class Permission {
     }
 
     public static function canDeleteForum(int $fid): bool {
-        return self::isAdmin();
+        return self::hasGroupPermission('admin_forum');
     }
 
     public static function canAccessAdmin(): bool {
         return self::isAdmin();
+    }
+
+    public static function canSearch(): bool {
+        return self::isLoggedIn() && !self::hasGroupPermission('deny_search');
+    }
+
+    public static function canFavorite(): bool {
+        return self::isLoggedIn() && !self::hasGroupPermission('deny_favorite');
+    }
+
+    public static function canRate(): bool {
+        return self::isLoggedIn() && !self::hasGroupPermission('deny_rate');
+    }
+
+    public static function canReport(): bool {
+        return self::isLoggedIn() && !self::hasGroupPermission('deny_report');
     }
 
     public static function canSendPm(): bool {
@@ -226,16 +266,11 @@ class Permission {
             return false;
         }
 
-        if (self::hasAdminPrivileges($user)) {
+        if (self::hasGroupPermission('admin_thread')) {
             return true;
         }
 
-        $group = UsergroupModel::get($user['gid']);
-        if (!$group) {
-            return false;
-        }
-
-        return ($group['allow_pm'] ?? 0) === 1;
+        return !self::hasGroupPermission('deny_pm');
     }
 
     public static function canSendNotification(): bool {
@@ -249,11 +284,28 @@ class Permission {
             }
             Response::redirect('index.php?c=auth&a=login');
         }
+
+        if (self::hasGroupPermission('deny_access')) {
+            if (Response::isAjaxRequest()) {
+                Response::error('无权限访问', 403);
+            }
+            Response::redirect('index.php?c=auth&a=logout');
+        }
     }
 
     public static function requireAdmin(): void {
         self::requireLogin();
         if (!self::isAdmin()) {
+            if (Response::isAjaxRequest()) {
+                Response::error('无权限访问', 403);
+            }
+            Response::redirect('index.php');
+        }
+    }
+
+    public static function requireAdminPermission(string $key): void {
+        self::requireLogin();
+        if (!self::hasGroupPermission($key)) {
             if (Response::isAjaxRequest()) {
                 Response::error('无权限访问', 403);
             }
@@ -289,10 +341,14 @@ class Permission {
             return false;
         }
 
-        if ((int)($user['uid'] ?? 0) === self::ROOT_ADMIN_UID) {
+        if (self::isRootAdmin($user)) {
             return true;
         }
 
         return UsergroupModel::canManage((int)($user['gid'] ?? 0));
+    }
+
+    private static function isRootAdmin(?array $user): bool {
+        return (int)($user['uid'] ?? 0) === self::ROOT_ADMIN_UID;
     }
 }

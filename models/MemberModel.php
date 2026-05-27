@@ -54,6 +54,7 @@ class MemberModel {
         $data['reg_ip'] = $_SERVER['REMOTE_ADDR'];
         $data['reg_date'] = time();
         $data['auth_secret'] = md5(uniqid());
+        $data['json_data'] = '{}';
         return Database::insert(self::TABLE, $data);
     }
 
@@ -117,10 +118,23 @@ class MemberModel {
     }
 
     public static function update(int $uid, array $data): int {
-        $data['uid'] = $uid;
-        $result = Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = :uid");
-        if ($result && isset(self::$memoryCache[$uid])) {
-            unset(self::$memoryCache[$uid]);
+        if (isset($data['username'])) {
+            $existing = self::getByUsername($data['username']);
+            if ($existing && (int)$existing['uid'] !== $uid) {
+                throw new \RuntimeException('用户名已存在');
+            }
+        }
+        if (isset($data['email'])) {
+            $existing = self::getByEmail($data['email']);
+            if ($existing && (int)$existing['uid'] !== $uid) {
+                throw new \RuntimeException('邮箱已被使用');
+            }
+        }
+        
+        $result = Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = :uid", ['uid' => $uid]);
+        unset(self::$memoryCache[$uid]);
+        if (array_key_exists('credit', $data)) {
+            self::syncMemberGroupByCredit($uid);
         }
         return $result;
     }
@@ -136,7 +150,36 @@ class MemberModel {
             $stmt = Database::query("UPDATE " . self::TABLE . " SET credit = credit + :credit WHERE uid = :uid", ['credit' => $credit, 'uid' => $uid]);
         }
         unset(self::$memoryCache[$uid]);
-        return $stmt->rowCount() > 0;
+        $changed = $stmt->rowCount() > 0;
+        if ($changed) {
+            self::syncMemberGroupByCredit($uid);
+        }
+        return $changed;
+    }
+
+    private static function syncMemberGroupByCredit(int $uid): void {
+        $member = self::get($uid);
+        if (!$member) {
+            return;
+        }
+
+        $groups = UsergroupModel::getAll();
+        $currentGid = (int)($member['gid'] ?? 0);
+        $currentGroup = $groups[$currentGid] ?? null;
+        if (($currentGroup['group_type'] ?? '') !== 'member') {
+            return;
+        }
+
+        $targetGroup = UsergroupModel::getMemberGroupByCredit((int)($member['credit'] ?? 0));
+        if (!$targetGroup || (int)$targetGroup['gid'] === (int)$member['gid']) {
+            return;
+        }
+
+        Database::query(
+            "UPDATE " . self::TABLE . " SET gid = :gid WHERE uid = :uid",
+            ['gid' => (int)$targetGroup['gid'], 'uid' => $uid]
+        );
+        unset(self::$memoryCache[$uid]);
     }
 
     public static function updateSigninTime(int $uid, int $time): void {

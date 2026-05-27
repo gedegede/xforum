@@ -69,7 +69,7 @@ final class MarkdownHelper {
             if ($inCodeBlock) {
                 if (preg_match('/^\s*```\s*$/', $line)) {
                     $languageClass = $codeLanguage !== '' ? ' language-' . self::escapeAttribute($codeLanguage) : '';
-                    $html[] = '<pre class="mb-3 p-3 bg-text text-gray-400 font-mono text-sm leading-normal rounded overflow-x-auto"><code class="font-mono' . $languageClass . '">' . htmlspecialchars(implode("\n", $codeLines), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</code></pre>';
+                    $html[] = '<pre class="mb-3 p-3 bg-text text-gray-400 font-mono text-sm leading-normal rounded table-wrap"><code class="font-mono' . $languageClass . '">' . htmlspecialchars(implode("\n", $codeLines), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</code></pre>';
                     $codeLines = [];
                     $codeLanguage = '';
                     $inCodeBlock = false;
@@ -143,7 +143,7 @@ final class MarkdownHelper {
 
         if ($inCodeBlock) {
             $languageClass = $codeLanguage !== '' ? ' language-' . self::escapeAttribute($codeLanguage) : '';
-            $html[] = '<pre class="mb-3 p-3 bg-text text-gray-400 font-mono text-sm leading-normal rounded overflow-x-auto"><code class="font-mono' . $languageClass . '">' . htmlspecialchars(implode("\n", $codeLines), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</code></pre>';
+            $html[] = '<pre class="mb-3 p-3 bg-text text-gray-400 font-mono text-sm leading-normal rounded table-wrap"><code class="font-mono' . $languageClass . '">' . htmlspecialchars(implode("\n", $codeLines), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</code></pre>';
         }
 
         $flushBlocks();
