@@ -13,13 +13,13 @@ use Lib\Request;
 use Models\ForumModel;
 use Models\ThreadModel;
 use Models\MemberModel;
-use Models\PostModel;
 use Models\SettingModel;
 use Models\SessionModel;
 use Models\UsergroupModel;
-use Models\DataModel;
 use Models\CreditModel;
+use Models\AuditModel;
 use Lib\Permission;
+use Lib\ThreadHelper;
 
 class HomeController {
     public static function index(): void {
@@ -89,8 +89,7 @@ class HomeController {
 
         $users = [];
         if (!empty($allThreads)) {
-            $uids = array_unique(array_column($allThreads, 'uid'));
-            $users = MemberModel::getMembersByUids($uids);
+            $users = MemberModel::getMembersByUids(ThreadHelper::collectUserIds($allThreads));
         }
 
         $orderOptions = [
@@ -110,7 +109,6 @@ class HomeController {
                 'fav_count' => (int)($currentUser['fav_num'] ?? 0),
                 'credit' => (int)($currentUser['credit'] ?? 0),
                 'inbox_num' => (int)($currentUser['inbox_num'] ?? 0),
-                'outbox_num' => (int)($currentUser['outbox_num'] ?? 0),
                 'notify_num' => (int)($currentUser['notify_num'] ?? 0),
                 'signed_today' => CreditModel::hasSignedToday((int)$currentUser['uid']),
             ];
@@ -131,11 +129,10 @@ class HomeController {
         if ($currentUser) {
             $canManage = Permission::isAdmin();
             if ($canManage) {
-                $modStats = [
-                    'pending_threads' => ThreadModel::getPendingApproveCount(),
-                    'pending_posts' => PostModel::getPendingApproveCount(),
-                    'pending_reports' => self::getPendingReportCount(),
-                ];
+                $modStats = AuditModel::getPendingStats();
+                if (array_sum($modStats) <= 0) {
+                    $modStats = [];
+                }
             }
         }
 
@@ -172,10 +169,6 @@ class HomeController {
 
     private static function getClientIp(): string {
         return $_SERVER['REMOTE_ADDR'] ?? '';
-    }
-
-    private static function getPendingReportCount(): int {
-        return DataModel::getInt('pending_reports');
     }
 
     private static function getOnlineCount(): int {

@@ -107,8 +107,8 @@
     <!-- Footer -->
     <footer class="hide-mobile mt-1 bg-text text-white/70">
         <?php echo \Models\SettingModel::get('footer_code', ''); ?>
-        <div class="container px-3">
-            <div class="flex flex-wrap justify-between items-center gap-4 pt-6 text-xs">
+        <div class="container p-4 px-3">
+            <div class="flex flex-wrap justify-between items-center gap-4 text-xs">
                 <div class="flex flex-wrap gap-4">
                     <a href="index.php" class="hover:text-white transition-colors">首页</a>
                     <a href="index.php?c=forum&a=index" class="hover:text-white transition-colors">版块</a>

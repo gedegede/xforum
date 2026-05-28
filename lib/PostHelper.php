@@ -35,9 +35,10 @@ class PostHelper {
         $sortOrder = (int)($post['sort_order'] ?? 0);
         $rateNum = (int)($post['rate_num'] ?? 0);
         $isRated = isset($ratedPids[$postPid]) || in_array($postPid, $ratedPids, true);
-        $canEdit = $currentUser ? Permission::canEditPost($post) : false;
         $isPending = $sortOrder < 0;
         $canViewContent = !$isPending || $isModerator;
+        $canEdit = $currentUser ? Permission::canEditPost($post) : false;
+        $canReport = $currentUser && Permission::canReport() && $canViewContent;
         ob_start();
         ?>
 <div class="post-item" id="post-<?php echo $postPid; ?>" data-entry="post" data-pid="<?php echo $postPid; ?>">
@@ -101,17 +102,18 @@ class PostHelper {
                 </svg>
             </a>
             <?php endif; ?>
+            <?php if ($canReport): ?>
+            <button type="button" class="post-action" data-action="report-post" data-pid="<?php echo $postPid; ?>" title="举报">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                    <path d="M4 22V15"></path>
+                </svg>
+            </button>
+            <?php endif; ?>
         </div>
     </div>
     <div class="post-content">
         <?php if ($canViewContent): ?>
-            <?php if ($quotePid > 0 && $quoteUid > 0): ?>
-                <div class="post-quote">
-                    <div class="post-quote-meta">
-                        <span>@<?php echo htmlspecialchars($users[$quoteUid]['username'] ?? '已删除用户'); ?> #<?php echo $quoteFloor; ?>：</span>
-                    </div>
-                </div>
-            <?php endif; ?>
             <?php echo MarkdownHelper::parse((string)$post['message']); ?>
         <?php else: ?>
             <div class="post-pending">

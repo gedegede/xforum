@@ -13,11 +13,11 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>用户组名称</th>
-                        <th>类型</th>
-                        <th>积分下限</th>
-                        <th>操作</th>
+                        <th class="table-nowrap">ID</th>
+                        <th class="table-nowrap">用户组名称</th>
+                        <th class="table-nowrap">类型</th>
+                        <th class="table-nowrap">积分下限</th>
+                        <th class="table-nowrap">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -32,20 +32,20 @@
                         ];
                         ?>
                         <tr>
-                            <td><?php echo $group['gid']; ?></td>
-                            <td>
+                            <td class="table-nowrap"><?php echo $group['gid']; ?></td>
+                            <td class="table-nowrap">
                                 <span class="font-semibold <?php echo $nameClasses[$groupType] ?? 'text-muted'; ?>">
                                     <?php echo htmlspecialchars($group['title']); ?>
                                 </span>
                             </td>
-                            <td>
+                            <td class="table-nowrap">
                                 <?php
                                 $types = ['system' => '系统', 'special' => '特殊', 'member' => '会员'];
                                 echo $types[$groupType] ?? '未知';
                                 ?>
                             </td>
-                            <td><?php echo $groupType === 'member' ? (int)$group['credit_lower'] : '-'; ?></td>
-                            <td>
+                            <td class="table-nowrap"><?php echo $groupType === 'member' ? (int)$group['credit_lower'] : '-'; ?></td>
+                            <td class="table-nowrap">
                                 <a class="btn btn-soft btn-sm" href="index.php?c=admin&a=usergroupEdit&gid=<?php echo $group['gid']; ?>">编辑</a>
                                 <button class="btn btn-soft btn-sm" data-action="delete-group" data-gid="<?php echo $group['gid']; ?>" data-title="<?php echo htmlspecialchars($group['title']); ?>">删除</button>
                             </td>

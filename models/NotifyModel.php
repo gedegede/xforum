@@ -43,7 +43,10 @@ class NotifyModel {
         );
 
         if ($existing) {
-            Database::query("UPDATE " . self::TABLE . " SET from_uid = :from_uid, pid = :pid, dateline = :dateline, message = :message WHERE did = :did",
+            if ((int)($existing['status'] ?? 0) !== 0) {
+                MemberModel::incrementNotifyNum($uid);
+            }
+            Database::query("UPDATE " . self::TABLE . " SET from_uid = :from_uid, pid = :pid, dateline = :dateline, status = 0, message = :message WHERE did = :did",
                 ['from_uid' => $fromUid, 'pid' => $pid, 'dateline' => time(), 'message' => $message, 'did' => $existing['did']]);
             return $existing['did'];
         }

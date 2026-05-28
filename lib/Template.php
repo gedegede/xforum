@@ -50,8 +50,8 @@ class Template {
         return self::injectCsrfFields((string)$content);
     }
 
-    public static function display(string $template): void {
-        echo self::render($template);
+    public static function display(string $template, string $layout = 'layout/base'): void {
+        echo self::render($template, $layout);
     }
 
     public static function clear(): void {

@@ -7,7 +7,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 $config = require ROOT_PATH . '/config/database.php';
-$cfg = $config['connections']['mysql'];
+$cfg = $config;
 
 try {
     $db = new PDO(
@@ -17,7 +17,7 @@ try {
     );
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    $db->exec("CREATE DATABASE IF NOT EXISTS `{$cfg['database']}` DEFAULT CHARACTER SET {$cfg['charset']} COLLATE {$cfg['collation']}");
+    $db->exec("CREATE DATABASE `{$cfg['database']}` DEFAULT CHARACTER SET {$cfg['charset']} COLLATE {$cfg['collation']}");
     $db->exec("USE `{$cfg['database']}`");
 
     $db->exec("SET NAMES {$cfg['charset']} COLLATE {$cfg['collation']}");
@@ -25,19 +25,20 @@ try {
     exit("数据库连接失败: " . $e->getMessage() . "\n");
 }
 
-$dropTables = [
-    'next_rate', 'next_thread_tag', 'next_threadtype', 'next_thread',
-    'next_post', 'next_pm', 'next_notify', 'next_moderator', 'next_mod_log',
-    'next_member', 'next_fav', 'next_credit', 'next_action', 'next_data',
-    'next_setting', 'next_session', 'next_forum', 'next_usergroup'
-];
-
-echo "清理旧表...\n";
-foreach ($dropTables as $name) {
-    $db->exec("DROP TABLE IF EXISTS `{$name}`");
-}
-
 $tables = [
+    'next_audit' => "CREATE TABLE `next_audit` (
+        `did` INTEGER UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+        `tid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `pid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `status` INTEGER NOT NULL DEFAULT 0,
+        `type` VARCHAR(20) NOT NULL DEFAULT '',
+        `dateline` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `json_data` TEXT NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_as_cs",
+    'next_audit_idx_status_did' => "CREATE INDEX `idx_next_audit_status_did` ON `next_audit`(`status`, `did`)",
+    'next_audit_idx_status_type_did' => "CREATE INDEX `idx_next_audit_status_type_did` ON `next_audit`(`status`, `type`, `did`)",
+    'next_audit_idx_tid_pid_type_status' => "CREATE INDEX `idx_next_audit_tid_pid_type_status` ON `next_audit`(`tid`, `pid`, `type`, `status`)",
+
     'next_action' => "CREATE TABLE `next_action` (
         `uid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `action` CHAR(15) NOT NULL DEFAULT '',
@@ -103,7 +104,6 @@ $tables = [
         `thread_num` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `fav_num` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `inbox_num` INTEGER UNSIGNED NOT NULL DEFAULT 0,
-        `outbox_num` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `log_num` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `email` VARCHAR(80) NOT NULL DEFAULT '',
         `email_status` INTEGER UNSIGNED NOT NULL DEFAULT 0,
@@ -151,18 +151,26 @@ $tables = [
     'next_notify_idx_uid_did' => "CREATE INDEX `idx_next_notify_uid_did` ON `next_notify`(`uid`, `did` DESC)",
     'next_notify_idx_uid_tid' => "CREATE INDEX `idx_next_notify_uid_tid` ON `next_notify`(`uid`, `tid`)",
 
+    'next_pm_dialog' => "CREATE TABLE `next_pm_dialog` (
+        `uid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `peer_uid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `last_pmid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `last_time` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `pm_num` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `unread_num` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        PRIMARY KEY (`uid`, `peer_uid`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_as_cs",
+    'next_pm_dialog_idx_uid_last' => "CREATE INDEX `idx_next_pm_dialog_uid_last` ON `next_pm_dialog`(`uid`, `last_pmid`)",
+
     'next_pm' => "CREATE TABLE `next_pm` (
         `pmid` INTEGER UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+        `dialog_key` VARCHAR(50) NOT NULL DEFAULT '',
         `uid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `to_uid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `content` TEXT NOT NULL,
-        `dateline` INTEGER UNSIGNED NOT NULL DEFAULT 0,
-        `status` INTEGER NOT NULL DEFAULT 0,
-        `is_read` INTEGER NOT NULL DEFAULT 0
+        `dateline` INTEGER UNSIGNED NOT NULL DEFAULT 0
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_as_cs",
-    'next_pm_idx_to_uid_pmid' => "CREATE INDEX `idx_next_pm_to_uid_pmid` ON `next_pm`(`to_uid`, `pmid` DESC)",
-    'next_pm_idx_uid_pmid' => "CREATE INDEX `idx_next_pm_uid_pmid` ON `next_pm`(`uid`, `pmid` DESC)",
-    'next_pm_idx_to_uid_is_read' => "CREATE INDEX `idx_next_pm_to_uid_is_read` ON `next_pm`(`to_uid`, `is_read`)",
+    'next_pm_idx_dialog_pmid' => "CREATE INDEX `idx_next_pm_dialog_pmid` ON `next_pm`(`dialog_key`, `pmid`)",
 
     'next_post' => "CREATE TABLE `next_post` (
         `pid` INTEGER UNSIGNED PRIMARY KEY AUTO_INCREMENT,

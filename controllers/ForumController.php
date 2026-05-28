@@ -17,6 +17,7 @@ use Models\MemberModel;
 use Models\ModeratorModel;
 use Models\SettingModel;
 use Lib\Permission;
+use Lib\ThreadHelper;
 
 class ForumController {
     public static function index(int $fid = 0): void {
@@ -27,9 +28,12 @@ class ForumController {
                 $fid = (int)($forum['fid'] ?? 0);
                 return $from === 'create' ? Permission::canPostThread($fid) : Permission::canViewForum($fid);
             }));
+            $lastTids = array_values(array_filter(array_unique(array_map('intval', array_column($forums, 'last_tid')))));
+            $lastThreads = ThreadModel::getThreadsByTids($lastTids);
 
             Template::set('title', $from === 'create' ? '选择版块' : '论坛导航');
             Template::set('forums', $forums);
+            Template::set('lastThreads', $lastThreads);
             Template::set('from', $from);
             Template::set('user', Session::getUser());
             Template::display('forum/list');
@@ -73,8 +77,7 @@ class ForumController {
 
         $users = [];
         if (!empty($threads)) {
-            $uids = array_unique(array_column($threads, 'uid'));
-            $users = MemberModel::getMembersByUids($uids);
+            $users = MemberModel::getMembersByUids(ThreadHelper::collectUserIds($threads));
         }
 
         $orderOptions = [

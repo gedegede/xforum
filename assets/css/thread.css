@@ -1,0 +1,96 @@
+.post-item{
+    padding:var(--space-4);
+    border-top:1px solid var(--border);
+}
+.post-item:first-child{border-top:0}
+.post-item:only-child{border-bottom:0}
+.post-item-header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:var(--space-3);
+    margin-bottom:var(--space-3);
+}
+.post-author{
+    display:flex;
+    align-items:flex-start;
+    gap:var(--space-3);
+}
+.post-author-avatar-link{flex-shrink:0}
+.post-author-main{
+    display:flex;
+    flex-direction:column;
+    gap:var(--space-1);
+}
+.post-author-name-row{
+    display:flex;
+    align-items:center;
+    gap:var(--space-2);
+}
+.post-author-name{
+    color:var(--text);
+    font-weight:600;
+}
+.post-author-name:hover{text-decoration:underline}
+.post-meta{
+    color:var(--muted);
+    font-size:12px;
+}
+.post-actions{
+    display:flex;
+    align-items:center;
+    gap:var(--space-1);
+    color:var(--muted);
+}
+.post-rate{
+    display:flex;
+    align-items:center;
+    gap:var(--space-0-5);
+}
+.post-action{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:var(--space-5);
+    height:28px;
+    padding:0;
+    border:0;
+    border-radius:var(--radius-sm);
+    background:transparent;
+    color:inherit;
+    cursor:pointer;
+    transition:color .15s ease,background-color .15s ease;
+}
+.post-action:hover{
+    background:var(--hover);
+    color:var(--text);
+}
+.post-action.is-active{color:var(--primary)}
+.post-rate-count{
+    color:var(--muted);
+    font-size:11px;
+}
+.post-content{line-height:1.625}
+.post-quote{
+    margin-bottom:var(--space-3);
+    padding:var(--space-3);
+    border-left:3px solid var(--primary);
+    border-top-right-radius:var(--radius);
+    border-bottom-right-radius:var(--radius);
+    background:var(--soft);
+    font-size:12px;
+}
+.post-quote-meta{
+    display:flex;
+    align-items:center;
+    gap:var(--space-2);
+    margin-bottom:var(--space-2);
+    color:var(--muted);
+    font-size:11px;
+}
+.post-pending{
+    padding:var(--space-6) 0;
+    border-radius:var(--radius);
+    background:var(--soft);
+    text-align:center;
+}

@@ -29,36 +29,36 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>用户名</th>
-                        <th>邮箱</th>
-                        <th>用户组</th>
-                        <th>积分</th>
-                        <th>状态</th>
-                        <th>注册时间</th>
-                        <th class="whitespace-nowrap">主题数</th>
-                        <th class="whitespace-nowrap">回帖数</th>
-                        <th class="whitespace-nowrap">操作</th>
+                        <th class="table-nowrap">ID</th>
+                        <th class="table-nowrap">用户名</th>
+                        <th class="table-nowrap">邮箱</th>
+                        <th class="table-nowrap">用户组</th>
+                        <th class="table-nowrap">积分</th>
+                        <th class="table-nowrap">状态</th>
+                        <th class="table-nowrap">注册时间</th>
+                        <th class="table-nowrap">主题数</th>
+                        <th class="table-nowrap">回帖数</th>
+                        <th class="table-nowrap">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (!empty($template_users)): ?>
                     <?php foreach ($template_users as $user): ?>
                         <tr>
-                            <td><?php echo $user['uid']; ?></td>
-                            <td><?php echo htmlspecialchars($user['username']); ?></td>
-                            <td><?php echo htmlspecialchars($user['email']); ?></td>
-                            <td><?php echo htmlspecialchars($template_groups[$user['gid']]['title'] ?? $user['gid']); ?></td>
-                            <td class="whitespace-nowrap"><?php echo (int)($user['credit'] ?? 0); ?></td>
-                            <td>
+                            <td class="table-nowrap"><?php echo $user['uid']; ?></td>
+                            <td class="table-nowrap"><?php echo htmlspecialchars($user['username']); ?></td>
+                            <td class="table-nowrap"><?php echo htmlspecialchars($user['email']); ?></td>
+                            <td class="table-nowrap"><?php echo htmlspecialchars($template_groups[$user['gid']]['title'] ?? $user['gid']); ?></td>
+                            <td class="table-nowrap"><?php echo (int)($user['credit'] ?? 0); ?></td>
+                            <td class="table-nowrap">
                                 <span class="badge <?php echo (int)$user['status'] === -1 ? 'badge-danger' : 'badge-success'; ?>">
                                     <?php echo (int)$user['status'] === -1 ? '禁止' : '正常'; ?>
                                 </span>
                             </td>
-                            <td><?php echo \Lib\Helper::formatTime((int)$user['reg_date']); ?></td>
-                            <td class="whitespace-nowrap"><?php echo $user['thread_num'] ?? 0; ?></td>
-                            <td class="whitespace-nowrap"><?php echo $user['reply_num'] ?? 0; ?></td>
-                            <td class="whitespace-nowrap">
+                            <td class="table-nowrap"><?php echo \Lib\Helper::formatTime((int)$user['reg_date']); ?></td>
+                            <td class="table-nowrap"><?php echo $user['thread_num'] ?? 0; ?></td>
+                            <td class="table-nowrap"><?php echo $user['reply_num'] ?? 0; ?></td>
+                            <td class="table-nowrap">
                                 <button class="btn btn-soft btn-sm" data-action="edit-user" data-uid="<?php echo $user['uid']; ?>">编辑</button>
                                 <button class="btn btn-soft btn-sm" data-action="delete-user" data-uid="<?php echo $user['uid']; ?>" data-username="<?php echo htmlspecialchars($user['username']); ?>">删除</button>
                             </td>

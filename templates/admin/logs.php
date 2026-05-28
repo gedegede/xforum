@@ -9,20 +9,20 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>操作人</th>
+                        <th class="table-nowrap">ID</th>
+                        <th class="table-nowrap">操作人</th>
                         <th>操作内容</th>
-                        <th>时间</th>
+                        <th class="table-nowrap">时间</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (!empty($template_logs)): ?>
                     <?php foreach ($template_logs as $log): ?>
                         <tr>
-                            <td><?php echo $log['did']; ?></td>
-                            <td><?php echo htmlspecialchars($template_users[$log['uid']]['username'] ?? '未知'); ?></td>
+                            <td class="table-nowrap"><?php echo $log['did']; ?></td>
+                            <td class="table-nowrap"><?php echo htmlspecialchars($template_users[$log['uid']]['username'] ?? '未知'); ?></td>
                             <td><?php echo htmlspecialchars($log['message']); ?></td>
-                            <td><?php echo \Lib\Helper::formatTime((int)$log['dateline']); ?></td>
+                            <td class="table-nowrap"><?php echo \Lib\Helper::formatTime((int)$log['dateline']); ?></td>
                         </tr>
                     <?php endforeach; ?>
                     <?php else: ?>

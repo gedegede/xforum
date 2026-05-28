@@ -24,6 +24,7 @@ use Models\RateModel;
 use Models\SettingModel;
 use Models\UsergroupModel;
 use Models\DataModel;
+use Models\AuditModel;
 use Models\SessionModel;
 use Models\CreditModel;
 
@@ -244,7 +245,7 @@ class ThreadController {
                                 'sort_order' => $sortOrder,
                             ]);
 
-                            PostModel::create([
+                            $pid = PostModel::create([
                                 'fid' => $fid,
                                 'tid' => $tid,
                                 'uid' => Session::getUid(),
@@ -253,8 +254,6 @@ class ThreadController {
                                 'sort_order' => $sortOrder,
                             ]);
 
-                            ForumModel::incrementTodayNum($fid);
-
                             $creditUrl = "index.php?c=thread&a=index&tid={$tid}";
                             CreditModel::updateCreditUrl($creditDid, $creditUrl);
                             if (!$needApprove && (int)$creditRule['credit'] > 0) {
@@ -262,10 +261,13 @@ class ThreadController {
                             }
 
                             if ($needApprove) {
+                                AuditModel::create('thread', $tid, 0);
                                 DataModel::updateCount('pending_threads', 1);
                             } else {
                                 MemberModel::incrementThreadNum(Session::getUid());
                                 ForumModel::incrementThreadNum($fid, $tid);
+                                ForumModel::incrementTodayNum($fid);
+                                self::handleAtMentions($message, $tid, $pid);
                             }
 
                             Database::commit();
@@ -453,6 +455,7 @@ class ThreadController {
                     MemberModel::incrementReplyNum(Session::getUid());
                     ForumModel::incrementReplyNum($thread['fid'], $tid);
                 } else {
+                    AuditModel::create('post', $tid, $pid);
                     DataModel::updateCount('pending_posts', 1);
                 }
 
@@ -486,15 +489,17 @@ class ThreadController {
                 exit;
             }
 
-            if ($thread['uid'] != Session::getUid()) {
-                NotifyModel::addNotify($thread['uid'], Session::getUid(), $tid, $pid, '回复了你的主题');
-            }
+            if (!$needApprove) {
+                if ($thread['uid'] != Session::getUid()) {
+                    NotifyModel::addNotify($thread['uid'], Session::getUid(), $tid, $pid, '回复了你的主题');
+                }
 
-            if ($quoteUid > 0 && $quoteUid != Session::getUid() && $quoteUid != $thread['uid']) {
-                NotifyModel::addNotify($quoteUid, Session::getUid(), $tid, $pid, '引用了你的回复');
-            }
+                if ($quoteUid > 0 && $quoteUid != Session::getUid() && $quoteUid != $thread['uid']) {
+                    NotifyModel::addNotify($quoteUid, Session::getUid(), $tid, $pid, '在 ' . ($thread['subject'] ?? '主题') . ' 中引用了你的回复');
+                }
 
-            self::handleAtMentions($message, $tid, $pid);
+                self::handleAtMentions($message, $tid, $pid);
+            }
 
             Session::set('last_post_time_' . $user['uid'], time());
 
@@ -536,6 +541,7 @@ class ThreadController {
                     'success' => true,
                     'message' => '回复成功',
                     'html' => $html,
+                    'pid' => $pid,
                     'postIndex' => $postIndex,
                 ];
 
@@ -556,14 +562,16 @@ class ThreadController {
         Template::display('thread/reply');
     }
 
-    private static function handleAtMentions(string $message, int $tid, int $pid): void {
-        preg_match_all('/@(\w+)/', $message, $matches);
+    public static function handleAtMentions(string $message, int $tid, int $pid, ?int $fromUid = null): void {
+        preg_match_all('/@([^\s@,，:：;；]+)/u', $message, $matches);
+        $fromUid = $fromUid ?? Session::getUid();
 
         if (!empty($matches[1])) {
             foreach ($matches[1] as $username) {
                 $member = MemberModel::getByUsername($username);
-                if ($member && $member['uid'] != Session::getUid()) {
-                    NotifyModel::addNotify($member['uid'], Session::getUid(), $tid, $pid, "@了你");
+                if ($member && (int)$member['uid'] !== $fromUid) {
+                    $thread = ThreadModel::get($tid);
+                    NotifyModel::addNotify((int)$member['uid'], $fromUid, $tid, $pid, '在 ' . ($thread['subject'] ?? '主题') . ' 中@了你');
                 }
             }
         }
@@ -710,6 +718,16 @@ class ThreadController {
                 MemberModel::decrementThreadNum($post['uid']);
                 ForumModel::decrementThreadNum($post['fid']);
             }
+            $closedAudits = AuditModel::finishPendingByThread($tid, -1, Session::getUid());
+            if (!$wasPending && ($closedAudits['thread'] ?? 0) > 0) {
+                DataModel::updateCount('pending_threads', -($closedAudits['thread'] ?? 0));
+            }
+            if (($closedAudits['post'] ?? 0) > 0) {
+                DataModel::updateCount('pending_posts', -($closedAudits['post'] ?? 0));
+            }
+            if (($closedAudits['report'] ?? 0) > 0) {
+                DataModel::updateCount('pending_reports', -($closedAudits['report'] ?? 0));
+            }
             if (Response::isAjaxRequest()) {
                 Response::json(['success' => true, 'message' => '主题已删除', 'redirect' => 'index.php?c=forum&a=index&fid=' . $post['fid']]);
             }
@@ -718,9 +736,14 @@ class ThreadController {
 
         if ($wasPending) {
             DataModel::updateCount('pending_posts', -1);
+            AuditModel::finishPendingByTarget('post', (int)$post['tid'], $pid, -1, Session::getUid());
         } else {
             MemberModel::decrementReplyNum($post['uid']);
             ForumModel::decrementReplyNum($post['fid']);
+        }
+        $closedReports = AuditModel::finishPendingByTarget('report', (int)$post['tid'], $pid, -1, Session::getUid());
+        if ($closedReports > 0) {
+            DataModel::updateCount('pending_reports', -$closedReports);
         }
 
         if (Response::isAjaxRequest()) {
@@ -759,15 +782,11 @@ class ThreadController {
         if (empty($reason)) {
             Response::error('请填写举报理由');
         }
-
-        $reportFid = SettingModel::getReportForumFid();
-        if ($reportFid <= 0) {
-            Response::error('未设置举报版块');
+        if (AuditModel::hasPending('report', (int)$post['tid'], $pid)) {
+            Response::error('已经举报待处理，不需要重复举报');
         }
 
         $thread = ThreadModel::get($post['tid']);
-        $reportSubject = "[举报] " . ($thread['subject'] ?? '未知主题');
-        $reportMessage = "举报链接: index.php?c=thread&a=index&tid={$post['tid']}&pid={$pid}\n\n举报理由: {$reason}\n\n帖子作者ID: {$post['uid']}\n帖子ID: {$pid}";
         $creditRule = CreditModel::getRule(CreditModel::ACTION_THREAD_REPORT);
         $creditMessage = '举报主题：' . ($thread['subject'] ?? '未知主题');
         $creditUrl = "index.php?c=thread&a=index&tid={$post['tid']}&pid={$pid}";
@@ -789,23 +808,11 @@ class ThreadController {
                 }
             }
 
-            $tid = ThreadModel::create([
-                'fid' => $reportFid,
-                'uid' => Session::getUid(),
-                'subject' => $reportSubject,
+            AuditModel::create('report', (int)$post['tid'], $pid, [
+                'report_uid' => Session::getUid(),
+                'report_reason' => $reason,
             ]);
-
-            PostModel::create([
-                'fid' => $reportFid,
-                'tid' => $tid,
-                'uid' => Session::getUid(),
-                'message' => $reportMessage,
-                'is_thread' => 1,
-            ]);
-
             DataModel::updateCount('pending_reports', 1);
-            ForumModel::incrementTodayNum($reportFid);
-            ForumModel::incrementThreadNum($reportFid, $tid);
             if ((int)$creditRule['credit'] > 0) {
                 CreditModel::apply(CreditModel::ACTION_THREAD_REPORT, Session::getUid(), $creditMessage, $creditUrl);
             }
@@ -836,9 +843,11 @@ class ThreadController {
 
         if ($wasPending) {
             DataModel::updateCount('pending_threads', -1);
+            AuditModel::finishPendingByTarget('thread', $tid, 0, 1, Session::getUid());
         }
 
         if ($thread && $wasPending) {
+            $threadPost = PostModel::getThreadPost($tid);
             MemberModel::incrementThreadNum($thread['uid']);
             ForumModel::incrementThreadNum($thread['fid'], $tid);
             ForumModel::incrementTodayNum($thread['fid']);
@@ -849,6 +858,9 @@ class ThreadController {
                     '发布主题：' . ($thread['subject'] ?? ''),
                     "index.php?c=thread&a=index&tid={$tid}"
                 );
+            }
+            if ($threadPost) {
+                self::handleAtMentions((string)$threadPost['message'], $tid, (int)$threadPost['pid'], (int)$thread['uid']);
             }
         }
 
@@ -867,6 +879,7 @@ class ThreadController {
             PostModel::update($pid, ['sort_order' => 0]);
             if ($post['is_thread'] == 0 && $wasPending) {
                 DataModel::updateCount('pending_posts', -1);
+                AuditModel::finishPendingByTarget('post', (int)$post['tid'], $pid, 1, Session::getUid());
                 $thread = ThreadModel::get($post['tid']);
                 if ($thread) {
                     MemberModel::incrementReplyNum($post['uid']);
@@ -880,6 +893,14 @@ class ThreadController {
                             "index.php?c=thread&a=index&tid={$post['tid']}&pid={$pid}"
                         );
                     }
+                    if ((int)$thread['uid'] !== (int)$post['uid']) {
+                        NotifyModel::addNotify((int)$thread['uid'], (int)$post['uid'], (int)$post['tid'], $pid, '回复了你的主题');
+                    }
+                    $quoteUid = (int)($post['quote_uid'] ?? 0);
+                    if ($quoteUid > 0 && $quoteUid !== (int)$post['uid'] && $quoteUid !== (int)$thread['uid']) {
+                        NotifyModel::addNotify($quoteUid, (int)$post['uid'], (int)$post['tid'], $pid, '在 ' . ($thread['subject'] ?? '主题') . ' 中引用了你的回复');
+                    }
+                    self::handleAtMentions((string)$post['message'], (int)$post['tid'], $pid, (int)$post['uid']);
                 }
             }
         }

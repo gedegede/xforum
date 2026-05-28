@@ -243,7 +243,7 @@ class CreditModel {
     }
 
     private static function recordAction(int $uid, string $action, int $amount): void {
-        if ($amount === 0) {
+        if ($amount <= 0) {
             return;
         }
 

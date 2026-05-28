@@ -1,3 +1,11 @@
+<style>
+.metric-grid{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.metric-card{display:flex;flex:1;flex-direction:column;align-items:center;gap:var(--space-1);padding:var(--space-3);border-radius:var(--radius);background:var(--soft);text-align:center;transition:background-color .15s ease,color .15s ease}
+a.metric-card:hover{background:var(--hover)}
+.metric-value{font-size:16px;font-weight:700}
+.metric-label{color:var(--muted);font-size:12px}
+.metric-label-sm{font-size:11px}
+</style>
 <div class="page-grid">
     <!-- Main Content -->
     <div class="main-stack">
@@ -8,15 +16,15 @@
             </div>
             <div class="card-body">
                 <div class="metric-grid">
-                    <a href="index.php?c=admin&a=threads&status=pending" class="metric-card">
+                    <a href="index.php?c=admin&a=audits&filter=thread" class="metric-card">
                         <span class="metric-value"><?php echo $template_modStats['pending_threads'] ?? 0; ?></span>
                         <span class="metric-label">待审核主题</span>
                     </a>
-                    <a href="index.php?c=admin&a=threads&status=pending_posts" class="metric-card">
+                    <a href="index.php?c=admin&a=audits&filter=post" class="metric-card">
                         <span class="metric-value"><?php echo $template_modStats['pending_posts'] ?? 0; ?></span>
                         <span class="metric-label">待审核回帖</span>
                     </a>
-                    <a href="index.php?c=admin&a=threads&fid=<?php echo (int)($template_settings['report_forum_fid'] ?? 0); ?>" class="metric-card">
+                    <a href="index.php?c=admin&a=audits&filter=report" class="metric-card">
                         <span class="metric-value"><?php echo $template_modStats['pending_reports'] ?? 0; ?></span>
                         <span class="metric-label">待处理举报</span>
                     </a>

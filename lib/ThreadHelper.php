@@ -8,6 +8,15 @@ if (!defined('ROOT_PATH')) {
 }
 
 class ThreadHelper {
+    public static function collectUserIds(array $threads): array {
+        $uids = [];
+        foreach ($threads as $thread) {
+            $uids[] = (int)($thread['uid'] ?? 0);
+            $uids[] = (int)($thread['reply_uid'] ?? 0);
+        }
+        return array_values(array_filter(array_unique($uids)));
+    }
+
     public static function renderThread(array $thread, array $users = [], array $forums = [], array $options = []): string {
         $thread += [
             'tid' => 0,
@@ -16,6 +25,7 @@ class ThreadHelper {
             'subject' => '',
             'dateline' => time(),
             'reply_time' => 0,
+            'reply_uid' => 0,
             'view_num' => 0,
             'reply_num' => 0,
         ];
@@ -34,6 +44,9 @@ class ThreadHelper {
         $replyTimeIcon = '<svg class="thread-meta-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5a2 2 0 00-2 2v14l4-4h10a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg>';
         $replyIcon = '<svg class="thread-meta-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h16v10H8l-4 4V5zm4 4v2h8V9H8z"/></svg>';
         $viewIcon = '<svg class="thread-meta-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5a5 5 0 110-10 5 5 0 010 10z"/></svg>';
+        $lastReplyIcon = '<svg class="thread-meta-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>';
+        $replyUid = (int)$thread['reply_uid'];
+        $replyUser = $replyUid > 0 ? ($users[$replyUid] ?? null) : null;
         $badgeClass = $badge['class'] ?? 'badge-primary';
         if (str_contains((string)$badgeClass, 'bg-')) {
             $badgeClass = match ((string)$badgeClass) {
@@ -70,20 +83,15 @@ class ThreadHelper {
 
         <div class="thread-item-meta">
             <span><?php echo $userIcon; ?><?php echo htmlspecialchars($author['username'] ?? '匿名'); ?></span>
-            <span><?php echo $postTimeIcon; ?><?php echo Helper::formatTime((int)$thread['dateline']); ?></span>
-            <?php if (!empty($thread['reply_time']) && (int)$thread['reply_time'] !== (int)$thread['dateline']): ?>
-                <span><?php echo $replyTimeIcon; ?><?php echo Helper::formatTime((int)$thread['reply_time']); ?></span>
-            <?php endif; ?>
             <?php if ($showStats): ?>
-
-                <?php if ($viewNum > 0): ?>
-                    <span><?php echo $viewIcon; ?><?php echo $viewNum; ?></span>
-                <?php endif; ?>
-                
-                <?php if ($replyNum > 0): ?>
-                    <span><?php echo $replyIcon; ?><?php echo $replyNum; ?></span>
-                <?php endif; ?>
-                
+                <span><?php echo $viewIcon; ?><?php echo $viewNum; ?></span>
+                <span><?php echo $replyIcon; ?><?php echo $replyNum; ?></span>
+            <?php endif; ?>
+            <?php if ($replyUid > 0 && !empty($thread['reply_time']) && (int)$thread['reply_time'] !== (int)$thread['dateline']): ?>
+                <span><?php echo $lastReplyIcon; ?><?php echo htmlspecialchars($replyUser['username'] ?? '匿名'); ?></span>
+                <span><?php echo Helper::formatTime((int)$thread['reply_time']); ?></span>
+            <?php else: ?>
+                <span><?php echo $postTimeIcon; ?><?php echo Helper::formatTime((int)$thread['dateline']); ?></span>
             <?php endif; ?>
         </div>
     </div>

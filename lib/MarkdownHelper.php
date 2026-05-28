@@ -206,6 +206,13 @@ final class MarkdownHelper {
             $text = preg_replace($pattern, $replacement, $text) ?? $text;
         }
 
+        $text = preg_replace_callback('/@([^\s@,，:：;；<]+)/u', static function (array $matches) use (&$placeholders): string {
+            $username = html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $key = "\x1A" . count($placeholders) . "\x1A";
+            $placeholders[$key] = '<a class="text-primary hover:underline" href="index.php?c=member&amp;a=profile&amp;username=' . self::escapeAttribute($username) . '">@' . $matches[1] . '</a>';
+            return $key;
+        }, $text) ?? $text;
+
         $text = nl2br($text, false);
 
         return strtr($text, $placeholders);

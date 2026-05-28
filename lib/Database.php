@@ -29,19 +29,13 @@ class Database {
     }
 
     private function connect(): void {
-        $default = $this->config['default'];
-        $connection = $this->config['connections'][$default];
-
-        if ($connection['driver'] === 'sqlite') {
-            $this->connection = new PDO('sqlite:' . $connection['database']);
-        } elseif ($connection['driver'] === 'mysql') {
-            $dsn = "mysql:host={$connection['host']};dbname={$connection['database']};charset={$connection['charset']}";
-            $initCmd = defined('Pdo\Mysql::ATTR_INIT_COMMAND') ? \Pdo\Mysql::ATTR_INIT_COMMAND : PDO::MYSQL_ATTR_INIT_COMMAND;
-            $this->connection = new PDO($dsn, $connection['username'], $connection['password'], [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                $initCmd => "SET NAMES {$connection['charset']}",
-            ]);
-        }
+        $connection = $this->config;
+        $dsn = "mysql:host={$connection['host']};dbname={$connection['database']};charset={$connection['charset']}";
+        $initCmd = defined('Pdo\Mysql::ATTR_INIT_COMMAND') ? \Pdo\Mysql::ATTR_INIT_COMMAND : PDO::MYSQL_ATTR_INIT_COMMAND;
+        $this->connection = new PDO($dsn, $connection['username'], $connection['password'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            $initCmd => "SET NAMES {$connection['charset']}",
+        ]);
 
         $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     }
@@ -70,9 +64,7 @@ class Database {
             ];
 
             if (stripos(trim($sql), 'SELECT') === 0) {
-                $driver = self::getConnection()->getAttribute(PDO::ATTR_DRIVER_NAME);
-                $explainPrefix = $driver === 'mysql' ? 'EXPLAIN ' : 'EXPLAIN QUERY PLAN ';
-                $explainSql = $explainPrefix . $sql;
+                $explainSql = 'EXPLAIN ' . $sql;
                 $explainStmt = self::getConnection()->prepare($explainSql);
                 foreach ($params as $key => $value) {
                     $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
@@ -219,10 +211,6 @@ class Database {
 
     public static function clearQueryLog(): void {
         self::$queryLog = [];
-    }
-
-    public static function getDriverName(): string {
-        return self::getConnection()->getAttribute(PDO::ATTR_DRIVER_NAME);
     }
 
     private static function isDebugEnabled(): bool {

@@ -14,8 +14,8 @@ use Lib\Response;
 use Lib\Request;
 use Models\PmModel;
 use Models\MemberModel;
-use Models\NotifyModel;
 use Models\CreditModel;
+use Models\UsergroupModel;
 use Lib\Permission;
 
 class PmController {
@@ -24,47 +24,25 @@ class PmController {
         Permission::requireLogin();
 
         $page = Request::getInt('page', 1);
-        $messages = PmModel::getInbox(Session::getUid(), $page);
-        $total = PmModel::getInboxCount(Session::getUid());
-
-        PmModel::markAsRead(Session::getUid());
+        $messages = PmModel::getConversations(Session::getUid(), $page);
+        $total = PmModel::getConversationCount(Session::getUid());
 
         $users = [];
         if (!empty($messages)) {
-            $uids = array_unique(array_column($messages, 'uid'));
+            $uids = array_unique(array_column($messages, 'partner_uid'));
             $users = MemberModel::getMembersByUids($uids);
         }
 
-        Template::set('title', '收件箱');
+        Template::set('title', '私信');
         Template::set('messages', $messages);
         Template::set('users', $users);
         Template::set('page', $page);
-        Template::set('pages', (int)ceil($total / 20));
+        Template::set('pages', (int)ceil($total / PmModel::PAGE_SIZE));
         Template::set('user', Session::getUser());
+        Template::set('member', Session::getUser());
+        Template::set('memberGroup', UsergroupModel::get((int)(Session::getUser()['gid'] ?? 0)));
+        Template::set('isSelf', true);
         Template::display('pm/inbox');
-    }
-
-    public static function outbox(): void {
-        Template::clear();
-        Permission::requireLogin();
-
-        $page = Request::getInt('page', 1);
-        $messages = PmModel::getOutbox(Session::getUid(), $page);
-        $total = PmModel::getOutboxCount(Session::getUid());
-
-        $users = [];
-        if (!empty($messages)) {
-            $uids = array_unique(array_column($messages, 'to_uid'));
-            $users = MemberModel::getMembersByUids($uids);
-        }
-
-        Template::set('title', '发件箱');
-        Template::set('messages', $messages);
-        Template::set('users', $users);
-        Template::set('page', $page);
-        Template::set('pages', (int)ceil($total / 20));
-        Template::set('user', Session::getUser());
-        Template::display('pm/outbox');
     }
 
     public static function send(int $toUid = 0): void {
@@ -83,13 +61,15 @@ class PmController {
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $toUid = Request::postInt('to_uid');
+            $username = Request::postString('username');
             $content = Request::postString('content');
+            $receiver = $username !== '' ? MemberModel::getByUsername($username) : null;
+            $toUid = (int)($receiver['uid'] ?? 0);
 
             if ($error !== '') {
                 // 保留无权限错误
             } elseif (!$toUid) {
-                $error = '请选择收件人';
+                $error = '收件人不存在';
             } elseif (empty($content)) {
                 $error = '请输入消息内容';
             } elseif ($toUid == Session::getUid()) {
@@ -102,6 +82,7 @@ class PmController {
                     $creditRule = CreditModel::getRule(CreditModel::ACTION_PM_SEND);
                     $creditMessage = '发送私信给：' . ($receiver['username'] ?? $toUid);
                     $creditDid = 0;
+                    $creditChange = 0;
                     $pmid = 0;
                     $inTransaction = false;
                     try {
@@ -120,17 +101,19 @@ class PmController {
                         }
 
                         $pmid = PmModel::send(Session::getUid(), $toUid, $content);
-                        CreditModel::updateCreditUrl($creditDid, "index.php?c=pm&a=view&pmid={$pmid}");
+                        CreditModel::updateCreditUrl($creditDid, "index.php?c=pm&a=view&uid={$toUid}");
                         if ((int)$creditRule['credit'] > 0) {
                             CreditModel::apply(
                                 CreditModel::ACTION_PM_SEND,
                                 Session::getUid(),
                                 $creditMessage,
-                                "index.php?c=pm&a=view&pmid={$pmid}"
+                                "index.php?c=pm&a=view&uid={$toUid}"
                             );
+                            $creditChange = (int)$creditRule['credit'];
+                        } elseif ((int)$creditRule['credit'] < 0 && $creditDid > 0) {
+                            $creditChange = (int)$creditRule['credit'];
                         }
 
-                        NotifyModel::addPMNotify($toUid, Session::getUid());
                         Database::commit();
                         $inTransaction = false;
                     } catch (\Throwable $e) {
@@ -141,52 +124,103 @@ class PmController {
                     }
 
                     if ($error) {
+                        if (Response::isAjaxRequest()) {
+                            Response::json(['success' => false, 'message' => $error], 400);
+                        }
                         Template::set('title', '发送私信');
                         Template::set('toUid', $toUid);
                         Template::set('receiver', $receiver);
+                        Template::set('username', $username);
                         Template::set('error', $error);
                         Template::set('user', Session::getUser());
+                        Template::set('member', Session::getUser());
+                        Template::set('memberGroup', UsergroupModel::get((int)(Session::getUser()['gid'] ?? 0)));
+                        Template::set('isSelf', true);
                         Template::display('pm/send');
                         return;
                     }
 
-                    Response::redirect('index.php?c=pm&a=outbox');
+                    if (Response::isAjaxRequest()) {
+                        Response::json([
+                            'success' => true,
+                            'message' => [
+                                'pmid' => $pmid,
+                                'uid' => Session::getUid(),
+                                'content' => $content,
+                                'dateline' => time(),
+                            ],
+                            'credit_change' => $creditChange,
+                        ]);
+                    }
+                    Response::redirect('index.php?c=pm&a=view&uid=' . $toUid);
                 }
             }
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $error !== '' && Response::isAjaxRequest()) {
+            Response::json(['success' => false, 'message' => $error], 400);
         }
 
         Template::set('title', '发送私信');
         Template::set('toUid', $toUid);
         Template::set('receiver', $receiver);
+        Template::set('username', $receiver['username'] ?? '');
         Template::set('error', $error);
         Template::set('user', Session::getUser());
+        Template::set('member', Session::getUser());
+        Template::set('memberGroup', UsergroupModel::get((int)(Session::getUser()['gid'] ?? 0)));
+        Template::set('isSelf', true);
         Template::display('pm/send');
     }
 
-    public static function view(int $pmid): void {
+    public static function view(): void {
         Template::clear();
         Permission::requireLogin();
 
-        $message = PmModel::get($pmid);
-        if (!$message) {
+        $partnerUid = Request::getInt('uid');
+        if (!$partnerUid || $partnerUid === Session::getUid()) {
             Response::redirect('index.php?c=pm&a=inbox');
         }
 
-        if ($message['uid'] != Session::getUid() && $message['to_uid'] != Session::getUid()) {
+        $partner = MemberModel::get($partnerUid);
+        if (!$partner) {
             Response::redirect('index.php?c=pm&a=inbox');
         }
 
-        if ((int)$message['to_uid'] === Session::getUid()) {
-            PmModel::markSingleAsRead($pmid, Session::getUid());
-        }
+        $uid = Session::getUid();
+        $page = Request::getInt('page');
+        $dialog = PmModel::getDialog($uid, $partnerUid);
+        $total = (int)($dialog['pm_num'] ?? 0);
+        $pages = max(1, (int)ceil($total / PmModel::PAGE_SIZE));
+        $page = $page > 0 ? min($page, $pages) : $pages;
+        $messages = PmModel::getConversation($uid, $partnerUid, $page);
+        $unreadNum = Request::getInt('unread', (int)($dialog['unread_num'] ?? 0));
+        PmModel::markConversationAsRead(Session::getUid(), $partnerUid);
 
-        $sender = MemberModel::get($message['uid']);
-
-        Template::set('title', '查看私信');
-        Template::set('message', $message);
-        Template::set('sender', $sender);
+        Template::set('title', '私信');
+        Template::set('messages', $messages);
+        Template::set('unreadNum', $unreadNum);
+        Template::set('total', $total);
+        Template::set('page', $page);
+        Template::set('pages', $pages);
+        Template::set('pageSize', PmModel::PAGE_SIZE);
+        Template::set('lastPmid', (int)($dialog['last_pmid'] ?? 0));
+        Template::set('partner', $partner);
         Template::set('user', Session::getUser());
-        Template::display('pm/view');
+        Template::set('member', Session::getUser());
+        Template::set('memberGroup', UsergroupModel::get((int)(Session::getUser()['gid'] ?? 0)));
+        Template::set('isSelf', true);
+        Template::display('pm/view', 'layout/plain');
+    }
+
+    public static function poll(int $uid): void {
+        Permission::requireLogin();
+        $after = Request::getInt('after');
+        $messages = PmModel::getConversationAfter(Session::getUid(), $uid, $after);
+        if (!empty($messages)) {
+            PmModel::markConversationAsRead(Session::getUid(), $uid);
+        }
+        Response::json(['success' => true, 'messages' => $messages]);
     }
 }
 ?>

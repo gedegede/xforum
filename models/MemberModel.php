@@ -296,16 +296,6 @@ class MemberModel {
         Database::query("UPDATE " . self::TABLE . " SET fav_num = CASE WHEN fav_num > 0 THEN fav_num - 1 ELSE 0 END WHERE uid = :uid", ['uid' => $uid]);
     }
     
-    public static function incrementOutboxNum(int $uid): void {
-        if ($uid <= 0) return;
-        Database::query("UPDATE " . self::TABLE . " SET outbox_num = outbox_num + 1 WHERE uid = :uid", ['uid' => $uid]);
-    }
-    
-    public static function decrementOutboxNum(int $uid): void {
-        if ($uid <= 0) return;
-        Database::query("UPDATE " . self::TABLE . " SET outbox_num = CASE WHEN outbox_num > 0 THEN outbox_num - 1 ELSE 0 END WHERE uid = :uid", ['uid' => $uid]);
-    }
-    
     public static function incrementInboxNum(int $uid): void {
         if ($uid <= 0) return;
         Database::query("UPDATE " . self::TABLE . " SET inbox_num = inbox_num + 1 WHERE uid = :uid", ['uid' => $uid]);

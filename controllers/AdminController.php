@@ -13,6 +13,7 @@ use Lib\Response;
 use Lib\Request;
 use Lib\Permission;
 use Lib\Database;
+use Lib\ThreadHelper as ThreadViewHelper;
 use Models\MemberModel;
 use Models\ThreadModel;
 use Models\ForumModel;
@@ -23,6 +24,8 @@ use Models\ModLogModel;
 use Models\ModeratorModel;
 use Models\CreditModel;
 use Models\DataModel;
+use Models\AuditModel;
+use Models\NotifyModel;
 
 class AdminController {
     public static function index(): void {
@@ -35,14 +38,14 @@ class AdminController {
                 opcache_reset();
             }
             self::logAction('cache_opcache_reset', '清空 OPcache 缓存');
-            Response::redirect('index.php?c=admin&a=index');
+            Response::redirect('index.php?c=admin&a=index&success=' . urlencode('OPcache 缓存已清空'));
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && $cacheAction === 'apcu_clear') {
             if (function_exists('apcu_clear_cache')) {
                 apcu_clear_cache();
             }
             self::logAction('cache_apcu_clear', '清空 APCu 缓存');
-            Response::redirect('index.php?c=admin&a=index');
+            Response::redirect('index.php?c=admin&a=index&success=' . urlencode('APCu 缓存已清空'));
         }
 
         $stats = [
@@ -53,6 +56,7 @@ class AdminController {
 
         Template::set('title', '管理后台');
         Template::set('stats', $stats);
+        Template::set('success', Request::getString('success'));
         Template::set('systemInfo', self::getSystemInfo());
         Template::set('user', Session::getUser());
         Template::display('admin/index');
@@ -94,17 +98,11 @@ class AdminController {
     }
 
     private static function getMysqlVersion(): string {
-        if (Database::getDriverName() !== 'mysql') {
-            return '-';
-        }
         $row = Database::fetch('SELECT VERSION() AS version');
         return (string)($row['version'] ?? '');
     }
 
     private static function getDatabaseSize(string $type): string {
-        if (Database::getDriverName() !== 'mysql') {
-            return '-';
-        }
         $column = $type === 'index' ? 'INDEX_LENGTH' : 'DATA_LENGTH';
         $row = Database::fetch("SELECT SUM({$column}) AS size FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()");
         return self::formatBytes((int)($row['size'] ?? 0));
@@ -405,8 +403,7 @@ class AdminController {
 
         $users = [];
         if (!empty($threads)) {
-            $uids = array_unique(array_column($threads, 'uid'));
-            $users = MemberModel::getMembersByUids($uids);
+            $users = MemberModel::getMembersByUids(ThreadViewHelper::collectUserIds($threads));
         }
 
         $forums = ForumModel::getForumsFlat();
@@ -466,6 +463,149 @@ class AdminController {
         }
 
         Response::redirect('index.php?c=admin&a=threads');
+    }
+
+    public static function audits(): void {
+        Template::clear();
+        Permission::requireAdminPermission('admin_thread');
+
+        $filter = Request::getString('filter', 'thread');
+        if (!in_array($filter, ['thread', 'post', 'report', 'done', 'rejected'], true)) {
+            $filter = 'thread';
+        }
+        $audits = AuditModel::getList($filter);
+        $tids = array_values(array_filter(array_unique(array_map('intval', array_column($audits, 'tid')))));
+        $threads = ThreadModel::getThreadsByTids($tids);
+        $users = MemberModel::getMembersByUids(ThreadViewHelper::collectUserIds(array_values($threads)));
+        $posts = [];
+        if ($filter === 'post') {
+            $pids = array_values(array_filter(array_unique(array_map('intval', array_column($audits, 'pid')))));
+            $posts = PostModel::getPostsByPids($pids);
+        }
+        $reportUids = [];
+        foreach ($audits as $audit) {
+            if ($audit['type'] === 'report') {
+                $jsonData = json_decode((string)$audit['json_data'], true) ?: [];
+                $reportUids[] = (int)($jsonData['report_uid'] ?? 0);
+            }
+        }
+        $reportUsers = MemberModel::getMembersByUids($reportUids);
+        $auditUids = [];
+        foreach ($audits as $audit) {
+            $jsonData = json_decode((string)$audit['json_data'], true) ?: [];
+            $auditUids[] = (int)($jsonData['audit_uid'] ?? 0);
+        }
+        $auditUsers = MemberModel::getMembersByUids($auditUids);
+
+        Template::set('title', '内容审核');
+        Template::set('audits', $audits);
+        Template::set('filter', $filter);
+        Template::set('threads', $threads);
+        Template::set('users', $users);
+        Template::set('posts', $posts);
+        Template::set('reportUsers', $reportUsers);
+        Template::set('auditUsers', $auditUsers);
+        Template::set('user', Session::getUser());
+        Template::display('admin/audits');
+    }
+
+    public static function auditView(int $did): void {
+        Permission::requireAdminPermission('admin_thread');
+
+        $audit = AuditModel::get($did);
+        if (!$audit) {
+            Response::json(['success' => false, 'message' => '审核任务不存在'], 404);
+        }
+
+        $content = '';
+        if ($audit['type'] === 'thread') {
+            $post = PostModel::getThreadPost((int)$audit['tid']);
+            $content = (string)($post['message'] ?? '');
+        } elseif ($audit['type'] === 'post') {
+            $post = PostModel::get((int)$audit['pid']);
+            $content = (string)($post['message'] ?? '');
+        } elseif ($audit['type'] === 'report') {
+            $post = PostModel::get((int)$audit['pid']);
+            $content = (string)($post['message'] ?? '');
+        }
+
+        Response::json(['success' => true, 'content' => $content]);
+    }
+
+    public static function auditHandle(int $did): void {
+        Permission::requireAdminPermission('admin_thread');
+        self::requirePost();
+
+        $audit = AuditModel::get($did);
+        $status = Request::postString('status') === 'pass' ? 1 : -1;
+        if (!$audit || (int)$audit['status'] !== 0) {
+            Response::json(['success' => false, 'message' => '审核任务不存在'], 404);
+        }
+
+        $type = (string)$audit['type'];
+        $tid = (int)$audit['tid'];
+        $pid = (int)$audit['pid'];
+
+        if ($type === 'thread') {
+            $thread = ThreadModel::get($tid);
+            ThreadModel::update($tid, ['sort_order' => $status === 1 ? 0 : -2]);
+            if ($status === 1) {
+                PostModel::approveByTid($tid);
+            }
+            DataModel::updateCount('pending_threads', -1);
+            if ($status === 1 && $thread) {
+                $threadPost = PostModel::getThreadPost($tid);
+                MemberModel::incrementThreadNum((int)$thread['uid']);
+                ForumModel::incrementThreadNum((int)$thread['fid'], $tid);
+                ForumModel::incrementTodayNum((int)$thread['fid']);
+                if ((int)CreditModel::getRule(CreditModel::ACTION_THREAD_CREATE)['credit'] > 0) {
+                    CreditModel::apply(
+                        CreditModel::ACTION_THREAD_CREATE,
+                        (int)$thread['uid'],
+                        '发布主题：' . ($thread['subject'] ?? ''),
+                        "index.php?c=thread&a=index&tid={$tid}"
+                    );
+                }
+                if ($threadPost) {
+                    ThreadController::handleAtMentions((string)$threadPost['message'], $tid, (int)$threadPost['pid'], (int)$thread['uid']);
+                }
+            }
+        } elseif ($type === 'post') {
+            PostModel::update($pid, ['sort_order' => $status === 1 ? 0 : -2]);
+            DataModel::updateCount('pending_posts', -1);
+            if ($status === 1) {
+                $post = PostModel::get($pid);
+                if ($post) {
+                    ThreadModel::updateReply((int)$post['tid'], (int)$post['uid']);
+                    MemberModel::incrementReplyNum((int)$post['uid']);
+                    ForumModel::incrementReplyNum((int)$post['fid'], (int)$post['tid']);
+                    ForumModel::incrementTodayNum((int)$post['fid']);
+                    if ((int)CreditModel::getRule(CreditModel::ACTION_THREAD_REPLY)['credit'] > 0) {
+                        $thread = ThreadModel::get((int)$post['tid']);
+                        CreditModel::apply(
+                            CreditModel::ACTION_THREAD_REPLY,
+                            (int)$post['uid'],
+                            '回复主题：' . ($thread['subject'] ?? ''),
+                            "index.php?c=thread&a=index&tid={$post['tid']}&pid={$pid}"
+                        );
+                    }
+                    $thread = $thread ?? ThreadModel::get((int)$post['tid']);
+                    if ($thread && (int)$thread['uid'] !== (int)$post['uid']) {
+                        NotifyModel::addNotify((int)$thread['uid'], (int)$post['uid'], (int)$post['tid'], $pid, '回复了你的主题');
+                    }
+                    $quoteUid = (int)($post['quote_uid'] ?? 0);
+                    if ($thread && $quoteUid > 0 && $quoteUid !== (int)$post['uid'] && $quoteUid !== (int)$thread['uid']) {
+                        NotifyModel::addNotify($quoteUid, (int)$post['uid'], (int)$post['tid'], $pid, '在 ' . ($thread['subject'] ?? '主题') . ' 中引用了你的回复');
+                    }
+                    ThreadController::handleAtMentions((string)$post['message'], (int)$post['tid'], $pid, (int)$post['uid']);
+                }
+            }
+        } elseif ($type === 'report') {
+            DataModel::updateCount('pending_reports', -1);
+        }
+
+        AuditModel::finish($did, $status, Session::getUid());
+        Response::json(['success' => true]);
     }
 
     public static function usergroups(): void {
@@ -768,6 +908,13 @@ class AdminController {
 
         PostModel::deleteByTid($tid);
         ThreadModel::delete($tid);
+        $closedAudits = AuditModel::finishPendingByThread($tid, -1, Session::getUid());
+        if ((int)($thread['sort_order'] ?? 0) >= 0 && ($closedAudits['thread'] ?? 0) > 0) {
+            DataModel::updateCount('pending_threads', -($closedAudits['thread'] ?? 0));
+        }
+        if (($closedAudits['report'] ?? 0) > 0) {
+            DataModel::updateCount('pending_reports', -($closedAudits['report'] ?? 0));
+        }
         self::rebuildMemberContentStats($affectedUids);
         self::rebuildForumStats($affectedFids);
     }

@@ -37,6 +37,23 @@ class PostModel {
         return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = :pid", ['pid' => $pid]);
     }
 
+    public static function getThreadPost(int $tid): ?array {
+        return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE tid = :tid AND is_thread = 1 ORDER BY pid ASC LIMIT 1", ['tid' => $tid]);
+    }
+
+    public static function getPostsByPids(array $pids): array {
+        $pids = array_values(array_filter(array_unique(array_map('intval', $pids))));
+        if (empty($pids)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($pids), '?'));
+        return array_column(Database::fetchAll(
+            "SELECT * FROM " . self::TABLE . " WHERE pid IN ($placeholders)",
+            $pids
+        ), null, 'pid');
+    }
+
     public static function getPostCount(int $tid): int {
         $thread = ThreadModel::get($tid);
         if (!$thread) {

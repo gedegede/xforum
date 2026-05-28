@@ -13,28 +13,28 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>ID</th>
+                        <th class="table-nowrap">ID</th>
                         <th>版块名称</th>
                         <th>上级版块</th>
-                        <th>主题数</th>
-                        <th>状态</th>
-                        <th>操作</th>
+                        <th class="table-nowrap">主题数</th>
+                        <th class="table-nowrap">状态</th>
+                        <th class="table-nowrap">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (!empty($template_forums)): ?>
                     <?php foreach ($template_forums as $forum): ?>
                         <tr>
-                            <td><?php echo $forum['fid']; ?></td>
+                            <td class="table-nowrap"><?php echo $forum['fid']; ?></td>
                             <td><?php echo str_repeat('→ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?></td>
                             <td><?php echo $forum['up_fid'] ? htmlspecialchars($forum['parent_name']) : '无'; ?></td>
-                            <td><?php echo $forum['thread_num']; ?></td>
-                            <td>
+                            <td class="table-nowrap"><?php echo $forum['thread_num']; ?></td>
+                            <td class="table-nowrap">
                                 <span class="badge <?php echo $forum['status'] ? 'badge-success' : 'badge-danger'; ?>">
                                     <?php echo $forum['status'] ? '启用' : '禁用'; ?>
                                 </span>
                             </td>
-                            <td>
+                            <td class="table-nowrap">
                                 <a class="btn btn-soft btn-sm" href="index.php?c=admin&a=forumEdit&fid=<?php echo $forum['fid']; ?>">编辑</a>
                                 <a href="index.php?c=admin&a=moderators&fid=<?php echo $forum['fid']; ?>" class="btn btn-soft btn-sm">版主</a>
                                 <button class="btn btn-danger btn-sm" data-action="delete-forum" data-fid="<?php echo $forum['fid']; ?>" data-name="<?php echo htmlspecialchars($forum['name']); ?>">删除</button>

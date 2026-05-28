@@ -21,11 +21,17 @@ use Models\UsergroupModel;
 use Models\ForumModel;
 use Models\SettingModel;
 use Lib\Permission;
+use Lib\ThreadHelper;
 
 class MemberController {
     public static function profile(): void {
         Template::clear();
         $uid = Request::getInt('uid');
+        $username = Request::getString('username');
+        if (!$uid && $username !== '') {
+            $memberByUsername = MemberModel::getByUsername($username);
+            $uid = (int)($memberByUsername['uid'] ?? 0);
+        }
         if (!$uid) {
             Response::redirect('index.php');
         }
@@ -89,8 +95,7 @@ class MemberController {
         $users = [];
         $forums = [];
         if (!empty($threads)) {
-            $authorUids = array_unique(array_column($threads, 'uid'));
-            $users = MemberModel::getMembersByUids($authorUids);
+            $users = MemberModel::getMembersByUids(ThreadHelper::collectUserIds($threads));
             $fids = array_unique(array_column($threads, 'fid'));
             $forums = ForumModel::getForumsByIds($fids);
         }
@@ -200,6 +205,20 @@ class MemberController {
                     ]);
                     $success = '密码修改成功';
                 }
+            } elseif ($action == 'avatar') {
+                try {
+                    $avatar = self::saveAvatar(Session::getUid());
+                    MemberModel::update(Session::getUid(), ['avatar' => $avatar]);
+                    $success = '头像已更新';
+                    $member = MemberModel::get(Session::getUid());
+                } catch (\RuntimeException $e) {
+                    $error = $e->getMessage();
+                }
+            } elseif ($action == 'delete_avatar') {
+                self::deleteAvatar((string)($member['avatar'] ?? ''));
+                MemberModel::update(Session::getUid(), ['avatar' => '']);
+                $success = '头像已删除';
+                $member = MemberModel::get(Session::getUid());
             } elseif ($action == 'theme') {
                 $theme = Request::postRaw('theme', 'light');
                 if (!in_array($theme, ['light', 'dark'])) {
@@ -226,6 +245,68 @@ class MemberController {
         Template::set('user', Session::getUser());
         Template::set('usernameChangeCredit', CreditModel::getRule(CreditModel::ACTION_USERNAME_CHANGE)['credit'] ?? 0);
         Template::display('member/settings');
+    }
+
+    private static function saveAvatar(int $uid): string {
+        if (!function_exists('imagecreatetruecolor')) {
+            throw new \RuntimeException('GD 扩展未启用');
+        }
+        $file = $_FILES['avatar'] ?? null;
+        if (!$file || (int)($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            throw new \RuntimeException('请选择头像图片');
+        }
+        if ((int)($file['size'] ?? 0) > 2 * 1024 * 1024) {
+            throw new \RuntimeException('头像不能超过2MB');
+        }
+
+        $info = getimagesize((string)$file['tmp_name']);
+        if (!$info) {
+            throw new \RuntimeException('头像图片无效');
+        }
+
+        $source = match ((int)$info[2]) {
+            IMAGETYPE_JPEG => imagecreatefromjpeg((string)$file['tmp_name']),
+            IMAGETYPE_PNG => imagecreatefrompng((string)$file['tmp_name']),
+            IMAGETYPE_GIF => imagecreatefromgif((string)$file['tmp_name']),
+            IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') ? imagecreatefromwebp((string)$file['tmp_name']) : false,
+            default => false,
+        };
+        if (!$source) {
+            throw new \RuntimeException('仅支持 JPG、PNG、GIF、WEBP 图片');
+        }
+
+        $srcWidth = imagesx($source);
+        $srcHeight = imagesy($source);
+        $side = min($srcWidth, $srcHeight);
+        $srcX = intdiv($srcWidth - $side, 2);
+        $srcY = intdiv($srcHeight - $side, 2);
+        $target = imagecreatetruecolor(64, 64);
+        imagealphablending($target, false);
+        imagesavealpha($target, true);
+        imagecopyresampled($target, $source, 0, 0, $srcX, $srcY, 64, 64, $side, $side);
+
+        $dir = 'avatar/' . intdiv($uid, 1000);
+        $fullDir = ROOT_PATH . '/' . $dir;
+        if (!is_dir($fullDir) && !mkdir($fullDir, 0755, true)) {
+            throw new \RuntimeException('头像目录不可写');
+        }
+
+        $path = $dir . '/' . $uid . '.png';
+        if (!imagepng($target, ROOT_PATH . '/' . $path, 9)) {
+            throw new \RuntimeException('头像保存失败');
+        }
+
+        return $path;
+    }
+
+    private static function deleteAvatar(string $avatar): void {
+        if ($avatar === '' || !str_starts_with($avatar, 'avatar/')) {
+            return;
+        }
+        $path = ROOT_PATH . '/' . $avatar;
+        if (is_file($path)) {
+            unlink($path);
+        }
     }
 
     private static function safeRedirectUrl(string $url): string {

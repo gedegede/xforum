@@ -2,6 +2,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const pageData = document.getElementById('thread-page-data');
     const targetPid = pageData ? pageData.dataset.targetPid : '';
     const creditChange = pageData ? Number(pageData.dataset.creditChange || 0) : 0;
+    const reportModal = document.getElementById('report-modal');
+    const reportPidInput = document.getElementById('report-pid');
+    const reportReasonInput = document.getElementById('report-reason');
+    const reportSubmit = document.getElementById('report-submit');
 
     if (targetPid) {
         const targetPost = document.getElementById('post-' + targetPid);
@@ -94,7 +98,63 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
             });
         }
+
+        const reportBtn = e.target.closest('[data-action="report-post"]');
+        if (reportBtn) {
+            if (!reportModal || !reportPidInput || !reportReasonInput) return;
+            reportPidInput.value = reportBtn.dataset.pid || '';
+            reportReasonInput.value = '';
+            reportModal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            reportReasonInput.focus();
+        }
+
+        const closeReportBtn = e.target.closest('[data-action="close-report"]');
+        if (closeReportBtn) {
+            closeReportModal();
+        }
     });
+
+    if (reportModal) {
+        reportModal.addEventListener('click', function(e) {
+            if (e.target === reportModal) closeReportModal();
+        });
+    }
+
+    if (reportSubmit) {
+        reportSubmit.addEventListener('click', function() {
+            const pid = reportPidInput ? reportPidInput.value : '';
+            const reason = reportReasonInput ? reportReasonInput.value.trim() : '';
+            if (!pid || !reason) {
+                showMessageModal('提示', '请填写举报理由');
+                return;
+            }
+            const form = new FormData();
+            form.append('reason', reason);
+            form.append('csrf_token', window.getCsrfToken ? window.getCsrfToken() : '');
+            fetch('index.php?c=thread&a=report&pid=' + pid, {
+                method: 'POST',
+                headers: {'X-Requested-With': 'XMLHttpRequest'},
+                body: form
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        closeReportModal();
+                        window.showTip ? window.showTip(data.message || '举报已提交', 'success') : showMessageModal('提示', data.message || '举报已提交');
+                    } else {
+                        showMessageModal('提示', data.message || '举报失败');
+                    }
+                })
+                .catch(() => showMessageModal('提示', '网络错误，请重试'));
+        });
+    }
+
+    function closeReportModal() {
+        if (!reportModal) return;
+        reportModal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
 
     document.addEventListener('click', function(e) {
         const quoteBtn = e.target.closest('[data-action="quote"]');
@@ -125,6 +185,10 @@ document.addEventListener('DOMContentLoaded', function() {
         quoteUidInput.value = uid;
         if (replyTitle) replyTitle.textContent = '引用回复 #' + floor;
         if (cancelQuoteBtn) cancelQuoteBtn.classList.remove('hidden');
+        const mention = '@' + username + ' #' + floor + ' ';
+        if (!messageInput.value.trim().startsWith(mention.trim())) {
+            messageInput.value = mention + messageInput.value.replace(new RegExp('^@' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\s+#\\d+)?\\s*'), '');
+        }
         messageInput.placeholder = '回复 @' + username + '...';
         messageInput.focus();
         messageInput.scrollIntoView({
@@ -165,7 +229,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        addReplyToPage(data.html);
+                        addReplyToPage(data.html, data.pid);
                         messageInput.value = '';
                         clearQuoteReply();
                         updateReplyCount();
@@ -194,17 +258,18 @@ document.addEventListener('DOMContentLoaded', function() {
         showMessageModal('提示', message);
     }
 
-    function addReplyToPage(html) {
+    function addReplyToPage(html, pid) {
         const replySection = document.getElementById('reply-section');
         if (!replySection) return;
         replySection.insertAdjacentHTML('beforebegin', html);
 
-        const existingPosts = document.querySelectorAll('[data-entry="post"]');
-        const newPost = existingPosts[existingPosts.length - 1];
+        const newPost = pid ? document.getElementById('post-' + pid) : replySection.previousElementSibling;
         if (newPost) {
-            newPost.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
+            requestAnimationFrame(function() {
+                newPost.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
             });
 
             newPost.classList.add('animate-highlight');

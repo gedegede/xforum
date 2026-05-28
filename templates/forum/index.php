@@ -1,3 +1,5 @@
+<link rel="stylesheet" href="assets/css/forum.css">
+
 <div class="page-grid">
     <!-- Main Content -->
     <div class="main-stack">

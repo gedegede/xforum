@@ -27,26 +27,33 @@
         <h2 class="font-semibold">系统信息</h2>
     </div>
     <div class="card-body">
+        <?php if (!empty($template_success)): ?>
+            <div class="alert alert-success"><?php echo htmlspecialchars($template_success); ?></div>
+        <?php endif; ?>
         <div class="table-wrap">
             <table class="table">
                 <tbody>
                     <?php foreach ($template_systemInfo as $label => $value): ?>
                         <tr>
-                            <th><?php echo htmlspecialchars($label); ?></th>
+                            <th class="table-nowrap"><?php echo htmlspecialchars($label); ?></th>
                             <td>
-                                <?php echo htmlspecialchars((string)$value); ?>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span><?php echo htmlspecialchars((string)$value); ?></span>
+                                    <div class="flex items-center justify-end gap-2">
                                 <?php if ($label === 'OPcache' && str_starts_with((string)$value, '已启用')): ?>
-                                    <form method="post" action="index.php?c=admin&a=index" class="inline">
+                                    <form method="post" action="index.php?c=admin&a=index">
                                         <input type="hidden" name="cache_action" value="opcache_reset">
-                                        <button type="submit" class="text-primary ml-2">[清空缓存]</button>
+                                        <button type="submit" class="btn btn-soft btn-sm">清空缓存</button>
                                     </form>
                                 <?php endif; ?>
                                 <?php if ($label === 'APCu' && str_starts_with((string)$value, '已启用')): ?>
-                                    <form method="post" action="index.php?c=admin&a=index" class="inline">
+                                    <form method="post" action="index.php?c=admin&a=index">
                                         <input type="hidden" name="cache_action" value="apcu_clear">
-                                        <button type="submit" class="text-primary ml-2">[清空缓存]</button>
+                                        <button type="submit" class="btn btn-soft btn-sm">清空缓存</button>
                                     </form>
                                 <?php endif; ?>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>

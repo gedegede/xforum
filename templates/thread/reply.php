@@ -1,3 +1,7 @@
+<style>
+.summary-box{margin-bottom:var(--space-4);padding:var(--space-4);border:1px solid var(--border);border-radius:var(--radius);background:var(--soft)}
+.summary-row{display:flex;align-items:center;gap:var(--space-3)}
+</style>
 <div class="card">
     <div class="card-header-col">
         <div class="flex items-center gap-2 text-sm text-muted">

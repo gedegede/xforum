@@ -1,13 +1,21 @@
 <?php $template_isSelf = true; ?>
 <?php include __DIR__ . '/_profile_header.php'; ?>
 <?php include __DIR__ . '/_profile_nav.php'; ?>
+<style>
+.tabs{display:flex;flex-wrap:wrap;gap:var(--space-1);padding:var(--space-1);border-radius:var(--radius);background:var(--soft)}
+.tab{flex:1;min-width:168px;padding:var(--space-2) var(--space-4);border:0;border-radius:var(--radius);background:transparent;color:var(--sub);font-size:12px;font-weight:500;text-align:center;cursor:pointer;transition:color .15s ease,background-color .15s ease,box-shadow .15s ease}
+.tab:hover{background:var(--hover);color:var(--text)}
+.tab.active{background:var(--panel);color:var(--primary);font-weight:600;box-shadow:var(--shadow-sm)}
+.avatar-file-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.avatar-upload-box{display:flex;flex-direction:column;gap:var(--space-1);max-width:500px;padding:var(--space-4);border:1px dashed var(--border);border-radius:var(--radius);background:var(--panel);cursor:pointer;transition:border-color .15s ease,background-color .15s ease}
+.avatar-upload-box:hover{border-color:var(--primary);background:var(--hover)}
+.avatar-upload-title{color:var(--text);font-size:14px;font-weight:600}
+.avatar-upload-desc{color:var(--muted);font-size:12px}
+.member-logout-link{padding:0;border:0;background:transparent;color:var(--danger);font-size:14px;cursor:pointer}
+.member-logout-link:hover{text-decoration:underline}
+</style>
 
 <div class="card card-clip">
-    <div class="card-header" data-profile-only>
-        <div>
-            <h2 class="font-semibold">个人设置</h2>
-        </div>
-    </div>
 
     <div class="card-body">
         <?php if (!empty($template_error)): ?>
@@ -25,6 +33,7 @@
 
         <div class="tabs mb-4">
             <button type="button" class="tab active" data-tab="profile">基本信息</button>
+            <button type="button" class="tab" data-tab="avatar">上传头像</button>
             <button type="button" class="tab" data-tab="password">修改密码</button>
             <button type="button" class="tab" data-tab="theme">主题设置</button>
         </div>
@@ -58,6 +67,42 @@
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">保存修改</button>
             </div>
+        </form>
+
+        <form method="post" enctype="multipart/form-data" class="mb-4 hidden" id="avatar-form">
+            <input type="hidden" name="action" value="avatar">
+            <div class="form-section">
+                <div class="form-section-title">上传头像</div>
+                <div class="form-group">
+                    <div class="flex items-center gap-4">
+                        <div class="avatar avatar-xl text-primary">
+                            <?php if (!empty($template_member['avatar'])): ?>
+                                <img src="<?php echo htmlspecialchars($template_member['avatar']); ?>" alt="" class="w-full h-full object-cover">
+                            <?php else: ?>
+                                <?php echo \Lib\Helper::getAvatarInitial($template_member['username']); ?>
+                            <?php endif; ?>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <label class="text-sm text-muted" for="member_avatar">头像图片</label>
+                            <p class="text-xs text-muted mt-0.5">上传后压缩为 64x64 PNG，小于 2MB。</p>
+                        </div>
+                    </div>
+                    <label class="avatar-upload-box" for="member_avatar">
+                        <span class="avatar-upload-title">选择头像图片</span>
+                        <span class="avatar-upload-desc" id="avatar-file-name">JPG / PNG / GIF / WEBP</span>
+                    </label>
+                    <input type="file" id="member_avatar" name="avatar" class="avatar-file-input" accept="image/jpeg,image/png,image/gif,image/webp" required>
+                </div>
+            </div>
+            <div class="form-actions">
+                <?php if (!empty($template_member['avatar'])): ?>
+                    <button type="submit" form="avatar-delete-form" class="btn btn-soft">删除头像</button>
+                <?php endif; ?>
+                <button type="submit" class="btn btn-primary">上传头像</button>
+            </div>
+        </form>
+        <form method="post" class="hidden" id="avatar-delete-form">
+            <input type="hidden" name="action" value="delete_avatar">
         </form>
 
         <form method="post" class="mb-4 hidden" id="password-form">
@@ -138,12 +183,9 @@
 
         <div class="form-section mt-6" data-profile-only>
             <div class="form-section-title">安全操作</div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <div class="text-sm text-text">退出登录</div>
-                    <div class="text-xs text-muted mt-0.5">安全退出当前账号</div>
-                </div>
-                <button type="button" onclick="doLogout()" class="btn btn-danger">退出登录</button>
+            <div>
+                <button type="button" onclick="doLogout()" class="member-logout-link">退出登录</button>
+                <div class="text-xs text-muted mt-0.5">安全退出当前账号</div>
             </div>
         </div>
     </div>
@@ -159,22 +201,36 @@ function doLogout() {
 document.addEventListener('DOMContentLoaded', function() {
     const tabs = document.querySelectorAll('[data-tab]');
     const forms = document.querySelectorAll('form[id$="-form"]');
+    const avatarInput = document.getElementById('member_avatar');
+    const avatarFileName = document.getElementById('avatar-file-name');
+
+    function setActiveTab(tabName) {
+        const target = document.querySelector('[data-tab="' + tabName + '"]') ? tabName : 'profile';
+        tabs.forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.tab === target);
+        });
+        forms.forEach(form => {
+            form.classList.toggle('hidden', form.id !== target + '-form');
+        });
+        document.querySelectorAll('[data-profile-only]').forEach(item => {
+            item.classList.toggle('hidden', target !== 'profile');
+        });
+    }
+
+    setActiveTab((window.location.hash || '#profile').slice(1));
 
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
-            tabs.forEach(t => {
-                t.classList.remove('active');
-            });
-            this.classList.add('active');
-
-            const tabName = this.dataset.tab;
-            forms.forEach(form => {
-                form.classList.toggle('hidden', form.id !== tabName + '-form');
-            });
-            document.querySelectorAll('[data-profile-only]').forEach(item => {
-                item.classList.toggle('hidden', tabName !== 'profile');
-            });
+            const tabName = this.dataset.tab || 'profile';
+            history.replaceState(null, '', '#' + tabName);
+            setActiveTab(tabName);
         });
     });
+
+    if (avatarInput && avatarFileName) {
+        avatarInput.addEventListener('change', function() {
+            avatarFileName.textContent = this.files && this.files[0] ? this.files[0].name : 'JPG / PNG / GIF / WEBP';
+        });
+    }
 });
 </script>

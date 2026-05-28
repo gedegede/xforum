@@ -124,9 +124,6 @@ class Helper {
 
     private static function addPageParam(string $url, int $page): string {
         $separator = strpos($url, '?') !== false ? '&' : '?';
-        if ($page == 1) {
-            return preg_replace('/([?&])page=\d+/', '$1', rtrim($url, '?'));
-        }
         if (strpos($url, 'page=') !== false) {
             return preg_replace('/([?&])page=\d+/', '$1page=' . $page, $url);
         }

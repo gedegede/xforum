@@ -1,3 +1,6 @@
+<?php include __DIR__ . '/../member/_profile_header.php'; ?>
+<?php include __DIR__ . '/../member/_profile_nav.php'; ?>
+
 <div class="max-w-xl mx-auto card">
     <div class="card-header">
         <h2 class="font-semibold">发送私信</h2>
@@ -8,25 +11,9 @@
         <?php endif; ?>
 
         <form method="post">
-            <input type="hidden" name="to_uid" value="<?php echo intval($template_toUid); ?>">
-
             <div class="form-field">
-                <label class="form-label">收件人</label>
-                <?php if (!empty($template_receiver)): ?>
-                    <div class="flex items-center gap-3">
-                        <div class="avatar avatar-md text-primary">
-                            <?php echo \Lib\Helper::getAvatarInitial($template_receiver['username']); ?>
-                        </div>
-                        <span class="font-semibold"><?php echo htmlspecialchars($template_receiver['username']); ?></span>
-                    </div>
-                <?php else: ?>
-                    <select name="to_uid" class="form-control" required>
-                        <option value="">请选择收件人</option>
-                        <?php foreach ($template_members as $m): ?>
-                            <option value="<?php echo $m['uid']; ?>"><?php echo htmlspecialchars($m['username']); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                <?php endif; ?>
+                <label class="form-label" for="username">收件人用户名</label>
+                <input type="text" id="username" name="username" class="form-control" value="<?php echo htmlspecialchars($template_username ?? ''); ?>" required>
             </div>
 
             <div class="form-field form-field-lg">

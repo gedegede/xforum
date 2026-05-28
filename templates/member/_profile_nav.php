@@ -3,6 +3,8 @@ $template_profileNavType = $template_type ?? '';
 $template_isMemberProfile = isset($_GET['c'], $_GET['a']) && $_GET['c'] == 'member' && $_GET['a'] == 'profile';
 $template_isMemberSettings = isset($_GET['c'], $_GET['a']) && $_GET['c'] == 'member' && $_GET['a'] == 'settings';
 $template_isAdminSection = isset($_GET['c']) && $_GET['c'] == 'admin';
+$template_isNotify = isset($_GET['c']) && $_GET['c'] == 'notify';
+$template_isPm = isset($_GET['c']) && $_GET['c'] == 'pm';
 $template_canAccessAdmin = \Lib\Permission::isAdmin();
 ?>
 <div class="card card-lg my-4 card-clip">
@@ -21,13 +23,20 @@ $template_canAccessAdmin = \Lib\Permission::isAdmin();
             <?php if (!empty($template_isSelf)): ?>
                 <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=credits"
                    class="pill-nav-item <?php echo ($template_isMemberProfile && $template_profileNavType == 'credits') ? 'active' : ''; ?>">
-                    <span>我的金币</span>
+                    <span>金币</span>
                     <span class="pill-nav-count"><?php echo (int)($template_member['credit'] ?? 0); ?></span>
                 </a>
                 <a href="index.php?c=member&a=profile&uid=<?php echo $template_member['uid']; ?>&type=favorites"
                    class="pill-nav-item <?php echo ($template_isMemberProfile && $template_profileNavType == 'favorites') ? 'active' : ''; ?>">
-                    <span>我的收藏</span>
-                    <span class="pill-nav-count"><?php echo (int)($template_member['fav_num'] ?? 0); ?></span>
+                    <span>收藏</span>
+                </a>
+                <a href="index.php?c=notify&a=index"
+                   class="pill-nav-item <?php echo $template_isNotify ? 'active' : ''; ?>">
+                    <span>通知</span>
+                </a>
+                <a href="index.php?c=pm&a=inbox"
+                   class="pill-nav-item <?php echo $template_isPm ? 'active' : ''; ?>">
+                    <span>私信</span>
                 </a>
                 <a href="index.php?c=member&a=settings"
                    class="pill-nav-item <?php echo $template_isMemberSettings ? 'active' : ''; ?>">

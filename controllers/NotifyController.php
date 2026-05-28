@@ -14,6 +14,7 @@ use Lib\Request;
 use Models\NotifyModel;
 use Models\MemberModel;
 use Models\ThreadModel;
+use Models\UsergroupModel;
 use Lib\Permission;
 
 class NotifyController {
@@ -48,7 +49,11 @@ class NotifyController {
         Template::set('page', $page);
         Template::set('pages', (int)ceil($total / 20));
         Template::set('user', Session::getUser());
+        Template::set('member', Session::getUser());
+        Template::set('memberGroup', UsergroupModel::get((int)(Session::getUser()['gid'] ?? 0)));
+        Template::set('isSelf', true);
         Template::display('notify/index');
     }
+
 }
 ?>

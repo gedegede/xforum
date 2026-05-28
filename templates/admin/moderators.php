@@ -13,10 +13,10 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>用户名</th>
-                        <th>排序</th>
-                        <th>任职结束日期</th>
-                        <th>操作</th>
+                        <th class="table-nowrap">用户名</th>
+                        <th class="table-nowrap">排序</th>
+                        <th class="table-nowrap">任职结束日期</th>
+                        <th class="table-nowrap">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -24,10 +24,10 @@
                     <?php foreach ($template_moderators as $moderator): ?>
                         <?php $user = $template_users[$moderator['uid']] ?? null; ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($user['username'] ?? '未知用户'); ?></td>
-                            <td><?php echo $moderator['sort_order']; ?></td>
-                            <td><?php echo $moderator['end_date'] ? \Lib\Helper::formatTime((int)$moderator['end_date']) : '永久'; ?></td>
-                            <td>
+                            <td class="table-nowrap"><?php echo htmlspecialchars($user['username'] ?? '未知用户'); ?></td>
+                            <td class="table-nowrap"><?php echo $moderator['sort_order']; ?></td>
+                            <td class="table-nowrap"><?php echo $moderator['end_date'] ? \Lib\Helper::formatTime((int)$moderator['end_date']) : '永久'; ?></td>
+                            <td class="table-nowrap">
                                 <button class="btn btn-soft btn-sm" data-action="edit-moderator"
                                     data-uid="<?php echo $moderator['uid']; ?>"
                                     data-fid="<?php echo $moderator['fid']; ?>"

@@ -56,28 +56,28 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th><input type="checkbox" id="select-all"></th>
-                            <th>ID</th>
+                            <th class="table-nowrap"><input type="checkbox" id="select-all"></th>
+                            <th class="table-nowrap">ID</th>
                             <th>标题</th>
-                            <th class="whitespace-nowrap">版块</th>
-                            <th class="whitespace-nowrap">作者</th>
-                            <th class="whitespace-nowrap">回复/浏览</th>
-                            <th class="whitespace-nowrap">时间</th>
-                            <th class="whitespace-nowrap">操作</th>
+                            <th class="table-nowrap">版块</th>
+                            <th class="table-nowrap">作者</th>
+                            <th class="table-nowrap">回复/浏览</th>
+                            <th class="table-nowrap">时间</th>
+                            <th class="table-nowrap">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php if (!empty($template_threads)): ?>
                     <?php foreach ($template_threads as $thread): ?>
                         <tr>
-                            <td><input type="checkbox" name="tids[]" value="<?php echo $thread['tid']; ?>"></td>
-                            <td><?php echo $thread['tid']; ?></td>
+                            <td class="table-nowrap"><input type="checkbox" name="tids[]" value="<?php echo $thread['tid']; ?>"></td>
+                            <td class="table-nowrap"><?php echo $thread['tid']; ?></td>
                             <td><a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" target="_blank" class="text-primary hover:underline"><?php echo htmlspecialchars($thread['subject']); ?></a></td>
-                            <td class="whitespace-nowrap"><?php echo htmlspecialchars($forumNames[$thread['fid']] ?? $thread['fid']); ?></td>
-                            <td class="whitespace-nowrap"><?php echo htmlspecialchars($template_users[$thread['uid']]['username'] ?? '已删除用户'); ?></td>
-                            <td class="whitespace-nowrap"><?php echo $thread['reply_num']; ?>/<?php echo $thread['view_num']; ?></td>
-                            <td class="whitespace-nowrap"><?php echo \Lib\Helper::formatTime((int)$thread['dateline']); ?></td>
-                            <td class="whitespace-nowrap">
+                            <td class="table-nowrap"><?php echo htmlspecialchars($forumNames[$thread['fid']] ?? $thread['fid']); ?></td>
+                            <td class="table-nowrap"><?php echo htmlspecialchars($template_users[$thread['uid']]['username'] ?? '已删除用户'); ?></td>
+                            <td class="table-nowrap"><?php echo $thread['reply_num']; ?>/<?php echo $thread['view_num']; ?></td>
+                            <td class="table-nowrap"><?php echo \Lib\Helper::formatTime((int)$thread['dateline']); ?></td>
+                            <td class="table-nowrap">
                                 <button class="btn btn-soft btn-sm" data-action="delete-thread" data-tid="<?php echo $thread['tid']; ?>" data-title="<?php echo htmlspecialchars($thread['subject']); ?>">删除</button>
                             </td>
                         </tr>

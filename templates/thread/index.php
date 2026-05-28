@@ -1,3 +1,5 @@
+<link rel="stylesheet" href="assets/css/thread.css">
+
 <div class="page-grid">
     <!-- Main Content -->
     <div class="main-stack">
@@ -113,6 +115,23 @@
         </div>
     </aside>
     <?php endif; ?>
+</div>
+
+<div id="report-modal" class="modal hidden">
+    <div class="modal-panel">
+        <div class="modal-header">
+            <h3 class="font-semibold">举报回帖</h3>
+            <button type="button" class="modal-close" data-action="close-report">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="report-pid">
+            <textarea id="report-reason" class="form-control" rows="5" placeholder="请输入举报理由"></textarea>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-soft" data-action="close-report">取消</button>
+            <button type="button" class="btn btn-primary" id="report-submit">提交举报</button>
+        </div>
+    </div>
 </div>
 
 <div id="thread-page-data" data-target-pid="<?php echo (int)($template_targetPid ?? 0); ?>" data-credit-change="<?php echo (int)($template_creditChange ?? 0); ?>" hidden></div>

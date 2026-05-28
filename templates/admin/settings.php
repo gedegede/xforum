@@ -367,23 +367,6 @@
                     </div>
                 </div>
 
-                <div class="setting-row">
-                    <div class="setting-copy">
-                        <label class="setting-label" for="setting_report_forum_fid">举报版块</label>
-                        <p class="setting-help">用户举报的内容将自动发布到该版块。</p>
-                    </div>
-                    <div class="setting-control">
-                        <select id="setting_report_forum_fid" name="setting_report_forum_fid" class="form-control w-full">
-                            <option value="0">请选择版块</option>
-                            <?php foreach ($template_forums as $forum): ?>
-                            <option value="<?php echo $forum['fid']; ?>" <?php echo (int)($template_settings['report_forum_fid'] ?? 0) === $forum['fid'] ? 'selected' : ''; ?>>
-                                <?php echo str_repeat('→ ', $forum['depth'] ?? 0) . htmlspecialchars($forum['name']); ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-
                 <div class="setting-row setting-row-last">
                     <div class="setting-copy">
                         <label class="setting-label">折叠版块</label>
