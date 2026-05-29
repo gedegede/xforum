@@ -236,6 +236,16 @@ class Permission {
         return self::isModeratorOfForum($user['uid'], $fid);
     }
 
+    public static function canAuditForum(int $fid): bool {
+        $user = Session::getUser();
+        if (!$user) {
+            return false;
+        }
+
+        return self::hasGroupPermission('admin_thread')
+            || self::isModeratorOfForum((int)$user['uid'], $fid);
+    }
+
     public static function canEditForum(int $fid): bool {
         return self::canManageForum($fid);
     }
@@ -258,6 +268,16 @@ class Permission {
 
     public static function canRate(): bool {
         return self::isLoggedIn() && !self::hasGroupPermission('deny_rate');
+    }
+
+    public static function canCreditPost(array $post): bool {
+        $user = Session::getUser();
+        if (!$user || (int)($post['fid'] ?? 0) <= 0) {
+            return false;
+        }
+
+        return self::hasGroupPermission('admin_thread')
+            || self::isModeratorOfForum((int)$user['uid'], (int)$post['fid']);
     }
 
     public static function canReport(): bool {

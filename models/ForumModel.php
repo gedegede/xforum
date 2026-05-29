@@ -238,11 +238,16 @@ class ForumModel {
             'SELECT COALESCE(SUM(reply_num), 0) AS reply_num, COALESCE(MAX(tid), 0) AS last_tid FROM ' . ThreadModel::TABLE . ' WHERE fid = :fid AND sort_order >= 0',
             ['fid' => $fid]
         );
+        $todayTime = strtotime(date('Y-m-d'));
+        $todayThreads = Database::count(ThreadModel::TABLE, 'fid = :fid AND sort_order >= 0 AND dateline >= :today_time', ['fid' => $fid, 'today_time' => $todayTime]);
+        $todayReplies = Database::count(PostModel::TABLE, 'fid = :fid AND is_thread = 0 AND sort_order >= 0 AND dateline >= :today_time', ['fid' => $fid, 'today_time' => $todayTime]);
 
         Database::update(self::TABLE, [
             'thread_num' => $threadCount,
             'reply_num' => (int)($replyRow['reply_num'] ?? 0),
             'last_tid' => (int)($replyRow['last_tid'] ?? 0),
+            'today_num' => $todayThreads + $todayReplies,
+            'today_time' => $todayTime,
         ], self::PRIMARY_KEY . ' = :fid', ['fid' => $fid]);
         CacheHelper::deleteCache(self::TABLE);
     }

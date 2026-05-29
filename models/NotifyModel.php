@@ -18,7 +18,7 @@ class NotifyModel {
 
     public static function getNotifies(int $uid, int $page = 1): array {
         $offset = ($page - 1) * 20;
-        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY did DESC LIMIT 20 OFFSET :offset", ['uid' => $uid, 'offset' => $offset]);
+        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY dateline DESC LIMIT 20 OFFSET :offset", ['uid' => $uid, 'offset' => $offset]);
     }
 
     public static function getNotifyCount(int $uid): int {

@@ -12,13 +12,15 @@ use Lib\CacheHelper;
 
 class AuditModel {
     const TABLE = 'next_audit';
+    const ARCHIVE_TABLE = 'next_audit_archive';
     private const STATS_CACHE_KEY = 'audit_pending_stats';
 
-    public static function create(string $type, int $tid, int $pid = 0, array $jsonData = []): int {
+    public static function create(string $type, int $tid, int $pid = 0, array $jsonData = [], int $fid = 0, int $uid = 0): int {
         $did = Database::insert(self::TABLE, [
+            'fid' => $fid,
+            'uid' => $uid,
             'tid' => $tid,
             'pid' => $pid,
-            'status' => 0,
             'type' => $type,
             'dateline' => time(),
             'json_data' => json_encode($jsonData, JSON_UNESCAPED_UNICODE),
@@ -31,40 +33,69 @@ class AuditModel {
         return Database::fetch("SELECT * FROM " . self::TABLE . " WHERE did = :did", ['did' => $did]);
     }
 
+    public static function getArchive(int $did): ?array {
+        return Database::fetch("SELECT * FROM " . self::ARCHIVE_TABLE . " WHERE did = :did", ['did' => $did]);
+    }
+
     public static function getList(string $filter, int $limit = 50): array {
-        $where = 'status = 0';
         $params = ['limit' => $limit];
         if ($filter === 'thread' || $filter === 'post' || $filter === 'report') {
-            $where .= ' AND type = :type';
             $params['type'] = $filter;
+            return Database::fetchAll(
+                "SELECT *, 0 AS audit_status FROM " . self::TABLE . " WHERE type = :type ORDER BY did DESC LIMIT :limit",
+                $params
+            );
         } elseif ($filter === 'done') {
-            $where = 'status = 1';
+            return Database::fetchAll(
+                "SELECT * FROM " . self::ARCHIVE_TABLE . " WHERE status = 1 ORDER BY did DESC LIMIT :limit",
+                $params
+            );
         } elseif ($filter === 'rejected') {
-            $where = 'status = -1';
+            return Database::fetchAll(
+                "SELECT * FROM " . self::ARCHIVE_TABLE . " WHERE status = -1 ORDER BY did DESC LIMIT :limit",
+                $params
+            );
         }
 
         return Database::fetchAll(
-            "SELECT * FROM " . self::TABLE . " WHERE {$where} ORDER BY did DESC LIMIT :limit",
+            "SELECT *, 0 AS audit_status FROM " . self::TABLE . " ORDER BY did DESC LIMIT :limit",
             $params
         );
     }
 
     public static function countPending(): int {
-        return Database::count(self::TABLE, 'status = 0');
+        return Database::count(self::TABLE);
     }
 
     public static function hasPending(string $type, int $tid, int $pid = 0): bool {
         return Database::count(
             self::TABLE,
-            'tid = :tid AND pid = :pid AND type = :type AND status = 0',
+            'tid = :tid AND pid = :pid AND type = :type',
             ['type' => $type, 'tid' => $tid, 'pid' => $pid]
         ) > 0;
     }
 
+    public static function getPendingThreadTidsByFid(int $fid, int $limit = 50): array {
+        $rows = Database::fetchAll(
+            "SELECT tid FROM " . self::TABLE . " WHERE fid = :fid AND type = 'thread' ORDER BY did DESC LIMIT :limit",
+            ['fid' => $fid, 'limit' => $limit]
+        );
+
+        return array_values(array_filter(array_unique(array_map('intval', array_column($rows, 'tid')))));
+    }
+
+    public static function hasPendingByUid(string $type, int $uid): bool {
+        if ($uid <= 0) {
+            return false;
+        }
+
+        return Database::count(self::TABLE, 'uid = :uid AND type = :type', ['type' => $type, 'uid' => $uid]) > 0;
+    }
+
     public static function finishPendingByTarget(string $type, int $tid, int $pid, int $status, int $uid): int {
         $audits = Database::fetchAll(
-            "SELECT did FROM " . self::TABLE . " WHERE tid = :tid AND pid = :pid AND type = :type AND status = 0",
-            ['type' => $type, 'tid' => $tid, 'pid' => $pid]
+            "SELECT did FROM " . self::TABLE . " WHERE tid = :tid AND pid = :pid AND type = :type",
+            ['tid' => $tid, 'pid' => $pid, 'type' => $type]
         );
         foreach ($audits as $audit) {
             self::finish((int)$audit['did'], $status, $uid);
@@ -74,7 +105,7 @@ class AuditModel {
 
     public static function finishPendingByThread(int $tid, int $status, int $uid): array {
         $audits = Database::fetchAll(
-            "SELECT did, type FROM " . self::TABLE . " WHERE tid = :tid AND status = 0",
+            "SELECT did, type FROM " . self::TABLE . " WHERE tid = :tid",
             ['tid' => $tid]
         );
         $counts = ['thread' => 0, 'post' => 0, 'report' => 0];
@@ -99,7 +130,7 @@ class AuditModel {
         }
 
         $rows = Database::fetchAll(
-            "SELECT type, COUNT(*) AS total FROM " . self::TABLE . " WHERE status = 0 GROUP BY type"
+            "SELECT type, COUNT(*) AS total FROM " . self::TABLE . " GROUP BY type"
         );
         $stats = ['pending_threads' => 0, 'pending_posts' => 0, 'pending_reports' => 0];
         foreach ($rows as $row) {
@@ -132,6 +163,10 @@ class AuditModel {
 
     public static function finish(int $did, int $status, int $uid): void {
         $audit = self::get($did);
+        if (!$audit) {
+            return;
+        }
+
         $jsonData = json_decode((string)($audit['json_data'] ?? '{}'), true);
         if (!is_array($jsonData)) {
             $jsonData = [];
@@ -140,12 +175,18 @@ class AuditModel {
         $jsonData['audit_status'] = $status;
         $jsonData['audit_time'] = time();
 
-        Database::update(self::TABLE, [
+        Database::insert(self::ARCHIVE_TABLE, [
+            'did' => (int)$audit['did'],
+            'fid' => (int)$audit['fid'],
+            'uid' => (int)$audit['uid'],
+            'tid' => (int)$audit['tid'],
+            'pid' => (int)$audit['pid'],
             'status' => $status,
+            'type' => (string)$audit['type'],
+            'dateline' => (int)$audit['dateline'],
             'json_data' => json_encode($jsonData, JSON_UNESCAPED_UNICODE),
-        ], 'did = :did', ['did' => $did]);
-        if ((int)($audit['status'] ?? 0) === 0) {
-            self::updatePendingStats((string)$audit['type'], -1);
-        }
+        ]);
+        Database::delete(self::TABLE, 'did = :did', ['did' => $did]);
+        self::updatePendingStats((string)$audit['type'], -1);
     }
 }

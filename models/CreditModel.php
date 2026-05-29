@@ -152,6 +152,24 @@ class CreditModel {
         );
     }
 
+    public static function changeByModerator(int $uid, int $credit, string $message, string $url = ''): int {
+        if ($uid <= 0 || $credit === 0) {
+            return 0;
+        }
+
+        if (!MemberModel::adjustCredit($uid, $credit)) {
+            return 0;
+        }
+
+        return Database::insert(self::TABLE_CREDIT, [
+            'uid' => $uid,
+            'credit' => $credit,
+            'dateline' => time(),
+            'message' => $message,
+            'url' => $url,
+        ]);
+    }
+
     public static function signin(int $uid): array {
         if ($uid <= 0) {
             return ['success' => false, 'message' => '请先登录', 'credit' => 0];

@@ -1,5 +1,14 @@
 <?php include '_menu.php'; ?>
 
+<style>
+.user-filter{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+.user-filter-field{display:flex;flex-direction:column;gap:4px;min-width:150px}
+.user-filter-field-wide{min-width:220px;flex:1}
+.user-filter-label{color:var(--muted);font-size:12px;font-weight:600;white-space:nowrap}
+.user-filter-control{height:var(--control-height);width:100%;max-width:none}
+.user-filter-actions{display:flex;gap:8px;height:var(--control-height)}
+</style>
+
 <div class="card card-clip">
     <div class="card-header">
         <h2 class="font-semibold">用户管理</h2>
@@ -8,12 +17,12 @@
         <?php if (!empty($template_success)): ?>
             <div class="alert alert-success"><?php echo htmlspecialchars($template_success); ?></div>
         <?php endif; ?>
-        <form method="get" class="mb-4">
+        <form method="get" action="index.php" class="user-filter mb-4">
             <input type="hidden" name="c" value="admin">
             <input type="hidden" name="a" value="users">
-            <div class="flex gap-2 flex-wrap">
-                <input type="text" name="keyword" class="form-control" placeholder="搜索用户名或邮箱..." value="<?php echo htmlspecialchars($template_keyword); ?>">
-                <select name="gid" class="form-control w-auto">
+            <label class="user-filter-field">
+                <span class="user-filter-label">用户组</span>
+                <select name="gid" class="form-control user-filter-control">
                     <option value="0">全部用户组</option>
                     <?php foreach ($template_groups as $group): ?>
                         <option value="<?php echo $group['gid']; ?>" <?php echo $template_gid == $group['gid'] ? 'selected' : ''; ?>>
@@ -21,7 +30,26 @@
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </label>
+            <label class="user-filter-field">
+                <span class="user-filter-label">用户名</span>
+                <input type="text" name="keyword" class="form-control user-filter-control" placeholder="用户名" value="<?php echo htmlspecialchars($template_keyword); ?>">
+            </label>
+            <label class="user-filter-field user-filter-field-wide">
+                <span class="user-filter-label">邮箱</span>
+                <input type="text" name="email" class="form-control user-filter-control" placeholder="邮箱关键词" value="<?php echo htmlspecialchars($template_email); ?>">
+            </label>
+            <label class="user-filter-field">
+                <span class="user-filter-label">注册IP</span>
+                <input type="text" name="reg_ip" class="form-control user-filter-control" placeholder="192.168.*" value="<?php echo htmlspecialchars($template_regIp); ?>">
+            </label>
+            <label class="user-filter-field">
+                <span class="user-filter-label">最后访问IP</span>
+                <input type="text" name="last_ip" class="form-control user-filter-control" placeholder="192.168.*" value="<?php echo htmlspecialchars($template_lastIp); ?>">
+            </label>
+            <div class="user-filter-actions">
                 <button type="submit" class="btn btn-primary">搜索</button>
+                <a href="index.php?c=admin&a=users" class="btn btn-soft">重置</a>
             </div>
         </form>
 
@@ -75,7 +103,7 @@
 
         <?php if ($template_pages > 1): ?>
             <div class="mt-4">
-                <?php echo \Lib\Helper::renderPagination($template_page, $template_pages, 'index.php?c=admin&a=users&keyword=' . urlencode($template_keyword) . '&gid=' . $template_gid); ?>
+                <?php echo \Lib\Helper::renderPagination($template_page, $template_pages, 'index.php?c=admin&a=users&gid=' . (int)$template_gid . '&keyword=' . urlencode($template_keyword) . '&email=' . urlencode($template_email) . '&reg_ip=' . urlencode($template_regIp) . '&last_ip=' . urlencode($template_lastIp)); ?>
             </div>
         <?php endif; ?>
     </div>

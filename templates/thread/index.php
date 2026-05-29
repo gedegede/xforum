@@ -32,6 +32,18 @@
                                     <span id="fav-text-mobile"><?php echo $template_isFavorited ? '已收藏' : '收藏'; ?></span>
                                 </button>
                             <?php endif; ?>
+                            <?php if (\Lib\Permission::canDeleteThread($template_thread)): ?>
+                                <button type="button" class="badge badge-soft border-0 cursor-pointer thread-delete-btn" data-action="delete-post" data-pid="<?php echo (int)($template_posts[0]['pid'] ?? 0); ?>" title="删除主题" aria-label="删除主题">
+                                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 6h18"></path>
+                                        <path d="M8 6V4h8v2"></path>
+                                        <path d="M6 6l1 14h10l1-14"></path>
+                                        <path d="M10 11v5"></path>
+                                        <path d="M14 11v5"></path>
+                                    </svg>
+                                    <span>删除</span>
+                                </button>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -42,7 +54,7 @@
                 <?php foreach ($template_posts as $index => $post): ?>
                     <?php $floor = (int)($post['_floor'] ?? (($template_page - 1) * 20 + $index + 1)); ?>
                     <?php $isAuthor = $post['uid'] == $template_thread['uid']; ?>
-                    <?php echo Lib\PostHelper::renderPost($post, $template_users, $floor, $isAuthor, $template_user ?? null, $template_isModerator ?? false, $template_ratedPids ?? []); ?>
+                    <?php echo Lib\PostHelper::renderPost($post, $template_users, $floor, $isAuthor, $template_user ?? null, $template_isModerator ?? false, $template_ratedPids ?? [], (int)$template_page); ?>
                 <?php endforeach; ?>
 
                 <!-- Reply Section Anchor -->
@@ -115,6 +127,32 @@
         </div>
     </aside>
     <?php endif; ?>
+</div>
+
+<div id="credit-post-modal" class="modal hidden">
+    <div class="modal-panel">
+        <div class="modal-header">
+            <h3 class="font-semibold">帖子评分</h3>
+            <button type="button" class="modal-close" data-action="close-credit-post">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="credit-modal-grid">
+                <input type="hidden" id="credit-post-pid">
+                <div class="form-field">
+                    <label for="credit-post-amount" class="form-label">金币数量</label>
+                    <input type="number" id="credit-post-amount" class="form-control" step="1" placeholder="正数增加，负数减少">
+                </div>
+                <div class="form-field">
+                    <label for="credit-post-reason" class="form-label">评分理由</label>
+                    <textarea id="credit-post-reason" class="form-control" rows="4" placeholder="请输入评分理由"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-soft" data-action="close-credit-post">取消</button>
+            <button type="button" class="btn btn-primary" id="credit-post-submit">提交评分</button>
+        </div>
+    </div>
 </div>
 
 <div id="report-modal" class="modal hidden">

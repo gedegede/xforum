@@ -12,6 +12,7 @@ use Lib\SettingsMiddleware;
 use Lib\CsrfHelper;
 use Models\SessionModel;
 use Models\SettingModel;
+use Models\MemberModel;
 
 Autoloader::register();
 
@@ -41,6 +42,7 @@ if (Permission::isLoggedIn()) {
         $uid = $user['uid'];
         $gid = $user['gid'];
         $invisible = $user['invisible'];
+        MemberModel::touchVisit((int)$uid, $_SERVER['REMOTE_ADDR'] ?? '');
     }
 }
 

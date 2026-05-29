@@ -16,6 +16,7 @@ use Models\ThreadModel;
 use Models\MemberModel;
 use Models\ModeratorModel;
 use Models\SettingModel;
+use Models\AuditModel;
 use Lib\Permission;
 use Lib\ThreadHelper;
 
@@ -72,12 +73,14 @@ class ForumController {
         
         $threadsPerPage = (int)SettingModel::get('threads_per_page', '20');
         $threads = ThreadModel::getThreads($fid, $page, $order, $keyword, $threadsPerPage);
+        $canAuditForum = Permission::canAuditForum($fid);
+        $pendingThreads = $canAuditForum ? self::getPendingThreads($fid, $threadsPerPage) : [];
         $total = empty($keyword) ? (int)($forum['thread_num'] ?? 0) : ThreadModel::getThreadCount($fid, $keyword);
         $pages = (int)ceil($total / $threadsPerPage);
 
         $users = [];
-        if (!empty($threads)) {
-            $users = MemberModel::getMembersByUids(ThreadHelper::collectUserIds($threads));
+        if (!empty($threads) || !empty($pendingThreads)) {
+            $users = MemberModel::getMembersByUids(ThreadHelper::collectUserIds(array_merge($threads, $pendingThreads)));
         }
 
         $orderOptions = [
@@ -105,6 +108,8 @@ class ForumController {
             return Permission::canViewForum((int)($subForum['fid'] ?? 0));
         })));
         Template::set('threads', $threads);
+        Template::set('pendingThreads', $pendingThreads);
+        Template::set('canAuditForum', $canAuditForum);
         Template::set('users', $users);
         Template::set('page', $page);
         Template::set('pages', $pages);
@@ -141,6 +146,26 @@ class ForumController {
 
     private static function getClientIp(): string {
         return $_SERVER['REMOTE_ADDR'] ?? '';
+    }
+
+    private static function getPendingThreads(int $fid, int $limit): array {
+        $tids = AuditModel::getPendingThreadTidsByFid($fid, $limit);
+        if (empty($tids)) {
+            return [];
+        }
+
+        $threads = ThreadModel::getPendingThreadsByTids($tids);
+        $result = [];
+        foreach ($tids as $tid) {
+            $thread = $threads[$tid] ?? null;
+            if ($thread && (int)($thread['fid'] ?? 0) === $fid && (int)($thread['sort_order'] ?? 0) === -1) {
+                $result[] = $thread;
+                if (count($result) >= $limit) {
+                    break;
+                }
+            }
+        }
+        return $result;
     }
 }
 ?>

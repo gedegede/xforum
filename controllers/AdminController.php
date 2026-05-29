@@ -376,14 +376,19 @@ class AdminController {
         $page = Request::getInt('page', 1);
         $fid = Request::getInt('fid');
         $keyword = Request::getString('keyword');
-        $searchType = Request::getString('search_type', 'title');
+        $author = Request::getString('author');
 
         $searchValid = true;
         $uid = 0;
-        
-        if ($keyword) {
-            if ($searchType == 'username') {
-                $member = MemberModel::getByUsername($keyword);
+
+        if ($author !== '') {
+            if (ctype_digit($author)) {
+                $uid = (int)$author;
+                if (!MemberModel::get($uid)) {
+                    $searchValid = false;
+                }
+            } else {
+                $member = MemberModel::getByUsername($author);
                 if ($member) {
                     $uid = (int)$member['uid'];
                 } else {
@@ -396,9 +401,8 @@ class AdminController {
         $total = 0;
         
         if ($searchValid) {
-            $subjectKeyword = $searchType == 'username' ? '' : $keyword;
-            $threads = ThreadModel::search($page, 'tid', $fid, $uid, $subjectKeyword);
-            $total = ThreadModel::searchCount($fid, $uid, $subjectKeyword);
+            $threads = ThreadModel::search($page, 'tid', $fid, $uid, $keyword);
+            $total = ThreadModel::searchCount($fid, $uid, $keyword);
         }
 
         $users = [];
@@ -414,7 +418,7 @@ class AdminController {
         Template::set('forums', $forums);
         Template::set('fid', $fid);
         Template::set('keyword', $keyword);
-        Template::set('searchType', $searchType);
+        Template::set('author', $author);
         Template::set('page', $page);
         Template::set('pages', (int)ceil($total / 20));
         Template::set('user', Session::getUser());
@@ -425,8 +429,6 @@ class AdminController {
         Permission::requireAdminPermission('admin_thread');
         self::requirePost();
         self::deleteThreadWithCounters($tid);
-
-        self::logAction('delete_thread', "删除主题: tid=$tid");
 
         Response::redirect('index.php?c=admin&a=threads');
     }
@@ -453,7 +455,14 @@ class AdminController {
                     if ($thread) {
                         $affectedFids[] = (int)$thread['fid'];
                         ThreadModel::update((int)$tid, ['fid' => $fid]);
-                        Database::update(PostModel::TABLE, ['fid' => $fid], 'tid = :tid', ['tid' => (int)$tid]);
+                        PostModel::updateFidByTid((int)$tid, $fid);
+                        self::logAction(
+                            'thread_move',
+                            '转移主题: ' . ($thread['subject'] ?? '') . " (TID: {$tid}, FID: {$thread['fid']}->{$fid})",
+                            (int)$tid,
+                            0,
+                            (int)($thread['uid'] ?? 0)
+                        );
                     }
                 }
                 self::rebuildForumStats($affectedFids);
@@ -469,11 +478,12 @@ class AdminController {
         Template::clear();
         Permission::requireAdminPermission('admin_thread');
 
-        $filter = Request::getString('filter', 'thread');
-        if (!in_array($filter, ['thread', 'post', 'report', 'done', 'rejected'], true)) {
-            $filter = 'thread';
+        $filter = Request::getString('filter', 'all');
+        if (!in_array($filter, ['all', 'thread', 'post', 'report', 'done', 'rejected'], true)) {
+            $filter = 'all';
         }
         $audits = AuditModel::getList($filter);
+        $pendingStats = AuditModel::getPendingStats();
         $tids = array_values(array_filter(array_unique(array_map('intval', array_column($audits, 'tid')))));
         $threads = ThreadModel::getThreadsByTids($tids);
         $users = MemberModel::getMembersByUids(ThreadViewHelper::collectUserIds(array_values($threads)));
@@ -500,6 +510,7 @@ class AdminController {
         Template::set('title', '内容审核');
         Template::set('audits', $audits);
         Template::set('filter', $filter);
+        Template::set('pendingStats', $pendingStats);
         Template::set('threads', $threads);
         Template::set('users', $users);
         Template::set('posts', $posts);
@@ -512,7 +523,7 @@ class AdminController {
     public static function auditView(int $did): void {
         Permission::requireAdminPermission('admin_thread');
 
-        $audit = AuditModel::get($did);
+        $audit = AuditModel::get($did) ?? AuditModel::getArchive($did);
         if (!$audit) {
             Response::json(['success' => false, 'message' => '审核任务不存在'], 404);
         }
@@ -538,7 +549,7 @@ class AdminController {
 
         $audit = AuditModel::get($did);
         $status = Request::postString('status') === 'pass' ? 1 : -1;
-        if (!$audit || (int)$audit['status'] !== 0) {
+        if (!$audit) {
             Response::json(['success' => false, 'message' => '审核任务不存在'], 404);
         }
 
@@ -569,6 +580,16 @@ class AdminController {
                 if ($threadPost) {
                     ThreadController::handleAtMentions((string)$threadPost['message'], $tid, (int)$threadPost['pid'], (int)$thread['uid']);
                 }
+            }
+            if ($thread) {
+                $threadPost = $threadPost ?? PostModel::getThreadPost($tid);
+                self::logAction(
+                    $status === 1 ? 'thread_approve' : 'thread_reject',
+                    ($status === 1 ? '通过主题: ' : '拒绝主题: ') . ($thread['subject'] ?? '') . " (TID: {$tid})",
+                    $tid,
+                    (int)($threadPost['pid'] ?? 0),
+                    (int)($thread['uid'] ?? 0)
+                );
             }
         } elseif ($type === 'post') {
             PostModel::update($pid, ['sort_order' => $status === 1 ? 0 : -2]);
@@ -722,9 +743,12 @@ class AdminController {
         $page = Request::getInt('page', 1);
         $keyword = Request::getString('keyword');
         $gid = Request::getInt('gid');
+        $email = Request::getString('email');
+        $regIp = Request::getString('reg_ip');
+        $lastIp = Request::getString('last_ip');
 
-        $users = MemberModel::search($keyword, $gid, $page);
-        $total = MemberModel::searchCount($keyword, $gid);
+        $users = MemberModel::search($keyword, $gid, $page, $email, $regIp, $lastIp);
+        $total = MemberModel::searchCount($keyword, $gid, $email, $regIp, $lastIp);
         $groups = UsergroupModel::getAll();
 
         Template::set('title', '用户管理');
@@ -732,6 +756,9 @@ class AdminController {
         Template::set('groups', $groups);
         Template::set('keyword', $keyword);
         Template::set('gid', $gid);
+        Template::set('email', $email);
+        Template::set('regIp', $regIp);
+        Template::set('lastIp', $lastIp);
         Template::set('page', $page);
         Template::set('pages', (int)ceil($total / 20));
         Template::set('success', Request::getString('success'));
@@ -804,7 +831,7 @@ class AdminController {
                         throw new \RuntimeException('更新失败：用户不存在');
                     }
                 }
-                self::logAction('user_edit', "编辑用户: {$member['username']} (UID: {$uid})");
+                self::logAction('user_edit', "编辑用户: {$member['username']} (UID: {$uid})", 0, 0, $uid);
                 if (Response::isAjaxRequest()) {
                     Response::json(['success' => true, 'message' => '用户已更新']);
                 }
@@ -831,7 +858,7 @@ class AdminController {
         $member = MemberModel::get($uid);
         if ($member) {
             MemberModel::delete($uid);
-            self::logAction('user_delete', "删除用户: {$member['username']} (UID: {$uid})");
+            self::logAction('user_delete', "删除用户: {$member['username']} (UID: {$uid})", 0, 0, $uid, json_encode($member, JSON_UNESCAPED_UNICODE));
         }
         Response::redirect('index.php?c=admin&a=users&success=' . urlencode('用户已删除'));
     }
@@ -841,8 +868,18 @@ class AdminController {
         Permission::requireAdminPermission('admin_log');
 
         $page = Request::getInt('page', 1);
-        $logs = ModLogModel::getLogs($page);
-        $total = ModLogModel::getCount();
+        $tid = Request::getInt('tid');
+        $authorid = Request::getInt('authorid');
+        $message = Request::getString('message');
+        $operator = Request::getString('operator');
+        $action = Request::getString('action_type');
+        $actionLabels = self::getModLogActionLabels();
+        if ($action !== '' && !isset($actionLabels[$action])) {
+            $action = '';
+        }
+        $operatorUid = self::resolveOperatorUid($operator);
+        $logs = ModLogModel::getLogs($page, $tid, $message, $operatorUid, $action, $authorid);
+        $total = ModLogModel::getCount($tid, $message, $operatorUid, $action, $authorid);
 
         $users = [];
         if (!empty($logs)) {
@@ -853,14 +890,255 @@ class AdminController {
         Template::set('title', '管理日志');
         Template::set('logs', $logs);
         Template::set('users', $users);
+        Template::set('tid', $tid);
+        Template::set('authorid', $authorid);
+        Template::set('message', $message);
+        Template::set('operator', $operator);
+        Template::set('actionType', $action);
+        Template::set('actionLabels', $actionLabels);
         Template::set('page', $page);
         Template::set('pages', (int)ceil($total / 20));
         Template::set('user', Session::getUser());
         Template::display('admin/logs');
     }
 
-    private static function logAction(string $action, string $message): void {
-        ModLogModel::addLog(Session::getUid(), $action, $message);
+    public static function restorePost(int $did): void {
+        Permission::requireAdminPermission('admin_log');
+        self::requirePost();
+
+        $log = ModLogModel::get($did);
+        if ($log && ($log['action'] ?? '') === 'user_delete') {
+            self::restoreUserFromLog($log);
+            return;
+        }
+        if ($log && ($log['action'] ?? '') === 'thread_delete') {
+            self::restoreThreadFromLog($log);
+            return;
+        }
+        if ($log && in_array(($log['action'] ?? ''), ['thread_edit', 'post_edit'], true)) {
+            self::restorePostEditFromLog($log);
+            return;
+        }
+        if (!$log || ($log['action'] ?? '') !== 'post_delete' || (string)($log['archive_data'] ?? '') === '') {
+            Response::error('存档不存在');
+        }
+
+        $tid = (int)$log['tid'];
+        $pid = (int)$log['pid'];
+        $thread = ThreadModel::get($tid);
+        if (!$thread) {
+            Response::error('主题不存在');
+        }
+        if (PostModel::get($pid)) {
+            Response::error('回帖已存在');
+        }
+
+        $post = json_decode((string)$log['archive_data'], true);
+        if (!is_array($post) || empty($post['pid'])) {
+            Response::error('存档数据不完整');
+        }
+        $uid = (int)($post['uid'] ?? $log['authorid']);
+
+        Database::beginTransaction();
+        try {
+            PostModel::restore([
+                'pid' => $pid,
+                'fid' => (int)$thread['fid'],
+                'tid' => $tid,
+                'is_thread' => 0,
+                'uid' => $uid,
+                'dateline' => (int)($post['dateline'] ?? 0),
+                'edited' => (int)($post['edited'] ?? 0),
+                'report_time' => (int)($post['report_time'] ?? 0),
+                'message' => (string)($post['message'] ?? ''),
+                'credit_log' => (string)($post['credit_log'] ?? '[]'),
+                'ip' => (string)($post['ip'] ?? ''),
+                'rate_num' => (int)($post['rate_num'] ?? 0),
+                'sort_order' => 0,
+                'reply_num' => (int)($post['reply_num'] ?? 0),
+                'quote_pid' => (int)($post['quote_pid'] ?? 0),
+                'quote_uid' => (int)($post['quote_uid'] ?? 0),
+                'quote_floor' => (int)($post['quote_floor'] ?? 0),
+            ]);
+            ThreadModel::rebuildReplyStats($tid);
+            MemberModel::incrementReplyNum($uid);
+            ForumModel::rebuildStats((int)$thread['fid']);
+            self::logAction('post_restore', "还原回帖: TID: {$tid}, PID: {$pid}", $tid, $pid, $uid);
+            Database::commit();
+        } catch (\Throwable $e) {
+            Database::rollBack();
+            Response::error('还原失败');
+        }
+
+        Response::json(['success' => true, 'message' => '已还原']);
+    }
+
+    private static function restorePostEditFromLog(array $log): void {
+        $post = json_decode((string)($log['archive_data'] ?? ''), true);
+        if (!is_array($post) || empty($post['pid'])) {
+            Response::error('存档数据不完整');
+        }
+        $pid = (int)$post['pid'];
+        $current = PostModel::get($pid);
+        if (!$current) {
+            Response::error('帖子不存在');
+        }
+        try {
+            PostModel::update($pid, [
+                'message' => (string)($post['message'] ?? ''),
+                'edited' => (int)($post['edited'] ?? 0),
+            ]);
+            self::logAction(
+                ($log['action'] ?? '') === 'thread_edit' ? 'thread_edit_restore' : 'post_edit_restore',
+                "还原编辑内容: TID: {$post['tid']}, PID: {$pid}",
+                (int)($post['tid'] ?? 0),
+                $pid,
+                (int)($post['uid'] ?? 0)
+            );
+        } catch (\Throwable $e) {
+            Response::error('还原失败');
+        }
+        Response::json(['success' => true, 'message' => '已还原']);
+    }
+
+    private static function restoreUserFromLog(array $log): void {
+        $member = json_decode((string)($log['archive_data'] ?? ''), true);
+        if (!is_array($member) || empty($member['uid'])) {
+            Response::error('存档数据不完整');
+        }
+        $uid = (int)$member['uid'];
+        if (MemberModel::get($uid)) {
+            Response::error('用户已存在');
+        }
+        try {
+            MemberModel::restore([
+                'uid' => $uid,
+                'username' => (string)($member['username'] ?? ''),
+                'gid' => (int)($member['gid'] ?? 0),
+                'avatar' => (string)($member['avatar'] ?? ''),
+                'password' => (string)($member['password'] ?? ''),
+                'auth_secret' => (string)($member['auth_secret'] ?? ''),
+                'auth_enabled' => (int)($member['auth_enabled'] ?? 0),
+                'notify_num' => (int)($member['notify_num'] ?? 0),
+                'credit' => (int)($member['credit'] ?? 0),
+                'reg_ip' => (string)($member['reg_ip'] ?? ''),
+                'reg_date' => (int)($member['reg_date'] ?? 0),
+                'last_ip' => (string)($member['last_ip'] ?? ''),
+                'last_visit' => (int)($member['last_visit'] ?? 0),
+                'reply_time' => (int)($member['reply_time'] ?? 0),
+                'reply_num' => (int)($member['reply_num'] ?? 0),
+                'thread_num' => (int)($member['thread_num'] ?? 0),
+                'fav_num' => (int)($member['fav_num'] ?? 0),
+                'inbox_num' => (int)($member['inbox_num'] ?? 0),
+                'log_num' => (int)($member['log_num'] ?? 0),
+                'email' => (string)($member['email'] ?? ''),
+                'email_status' => (int)($member['email_status'] ?? 0),
+                'signin_time' => (int)($member['signin_time'] ?? 0),
+                'invisible' => (int)($member['invisible'] ?? 0),
+                'timeoffset' => (string)($member['timeoffset'] ?? ''),
+                'search_time' => (int)($member['search_time'] ?? 0),
+                'status' => (int)($member['status'] ?? 0),
+                'json_data' => (string)($member['json_data'] ?? '{}'),
+            ]);
+            self::logAction('user_restore', "还原用户: {$member['username']} (UID: {$uid})", 0, 0, $uid);
+        } catch (\Throwable $e) {
+            Response::error('还原失败');
+        }
+        Response::json(['success' => true, 'message' => '已还原']);
+    }
+
+    private static function restoreThreadFromLog(array $log): void {
+        $thread = json_decode((string)($log['archive_data'] ?? ''), true);
+        if (!is_array($thread) || empty($thread['tid'])) {
+            Response::error('存档数据不完整');
+        }
+        $tid = (int)$thread['tid'];
+        if (ThreadModel::get($tid)) {
+            Response::error('主题已存在');
+        }
+        Database::beginTransaction();
+        try {
+            ThreadModel::restore([
+                'tid' => $tid,
+                'fid' => (int)($thread['fid'] ?? 0),
+                'pid' => (int)($thread['pid'] ?? 0),
+                'typeid' => (int)($thread['typeid'] ?? 0),
+                'read_perm' => (int)($thread['read_perm'] ?? 0),
+                'uid' => (int)($thread['uid'] ?? 0),
+                'pm_uid' => (int)($thread['pm_uid'] ?? 0),
+                'subject' => (string)($thread['subject'] ?? ''),
+                'hash' => (string)($thread['hash'] ?? ''),
+                'dateline' => (int)($thread['dateline'] ?? 0),
+                'sort_order' => (int)($thread['sort_order'] ?? 0),
+                'highlight' => (int)($thread['highlight'] ?? 0),
+                'digest' => (int)($thread['digest'] ?? 0),
+                'closed' => (int)($thread['closed'] ?? 0),
+                'reply_time' => (int)($thread['reply_time'] ?? 0),
+                'reply_uid' => (int)($thread['reply_uid'] ?? 0),
+                'reply_num' => (int)($thread['reply_num'] ?? 0),
+                'view_num' => (int)($thread['view_num'] ?? 0),
+                'fav_num' => (int)($thread['fav_num'] ?? 0),
+                'log_num' => (int)($thread['log_num'] ?? 0),
+            ]);
+            ThreadModel::rebuildReplyStats($tid);
+            MemberModel::incrementThreadNum((int)($thread['uid'] ?? 0));
+            ForumModel::rebuildStats((int)($thread['fid'] ?? 0));
+            self::logAction('thread_restore', '还原主题: ' . (string)($thread['subject'] ?? '') . " (TID: {$tid})", $tid, 0, (int)($thread['uid'] ?? 0));
+            Database::commit();
+        } catch (\Throwable $e) {
+            Database::rollBack();
+            Response::error('还原失败');
+        }
+        Response::json(['success' => true, 'message' => '已还原']);
+    }
+
+    private static function logAction(string $action, string $message, int $tid = 0, int $pid = 0, int $authorid = 0, string $archiveData = ''): void {
+        ModLogModel::addLog(Session::getUid(), $action, $message, $tid, $pid, $authorid, $archiveData);
+    }
+
+    private static function resolveOperatorUid(string $operator): int {
+        if ($operator === '') {
+            return 0;
+        }
+        if (ctype_digit($operator)) {
+            return (int)$operator;
+        }
+        $member = MemberModel::getByUsername($operator);
+        return (int)($member['uid'] ?? 0);
+    }
+
+    private static function getModLogActionLabels(): array {
+        return [
+            'thread_delete' => '删除主题',
+            'thread_restore' => '还原主题',
+            'thread_move' => '转移主题',
+            'thread_edit' => '编辑主题',
+            'thread_edit_restore' => '还原主题编辑',
+            'thread_approve' => '通过主题',
+            'thread_reject' => '拒绝主题',
+            'post_delete' => '删除回帖',
+            'post_restore' => '还原回帖',
+            'post_edit' => '编辑回帖',
+            'post_edit_restore' => '还原回帖编辑',
+            'post_credit' => '帖子评分',
+            'user_delete' => '删除用户',
+            'user_restore' => '还原用户',
+            'user_edit' => '编辑用户',
+            'forum_add' => '添加版块',
+            'forum_edit' => '编辑版块',
+            'forum_delete' => '删除版块',
+            'settings_update' => '保存设置',
+            'usergroup_add' => '添加用户组',
+            'usergroup_edit' => '编辑用户组',
+            'usergroup_delete' => '删除用户组',
+            'moderator_add' => '添加版主',
+            'moderator_edit' => '编辑版主',
+            'moderator_delete' => '删除版主',
+            'batch_delete_thread' => '批量删除主题',
+            'batch_move_thread' => '批量转移主题',
+            'cache_opcache_reset' => '清空 OPcache',
+            'cache_apcu_clear' => '清空 APCu',
+        ];
     }
 
     private static function requirePost(): void {
@@ -888,35 +1166,30 @@ class AdminController {
             return;
         }
 
-        $posts = Database::fetchAll(
-            'SELECT uid, fid, is_thread, sort_order FROM ' . PostModel::TABLE . ' WHERE tid = :tid',
-            ['tid' => $tid]
-        );
-        $affectedUids = [(int)$thread['uid']];
-        $affectedFids = [(int)$thread['fid']];
-
-        if ((int)($thread['sort_order'] ?? 0) < 0) {
-            DataModel::updateCount('pending_threads', -1);
-        }
-        foreach ($posts as $post) {
-            $affectedUids[] = (int)$post['uid'];
-            $affectedFids[] = (int)$post['fid'];
-            if ((int)($post['is_thread'] ?? 0) === 0 && (int)($post['sort_order'] ?? 0) < 0) {
-                DataModel::updateCount('pending_posts', -1);
-            }
-        }
-
-        PostModel::deleteByTid($tid);
         ThreadModel::delete($tid);
+        self::closeThreadAudits($tid);
+        self::rebuildForumStats([(int)$thread['fid']]);
+        self::logAction(
+            'thread_delete',
+            '删除主题: ' . ($thread['subject'] ?? '') . " (TID: {$tid})",
+            $tid,
+            0,
+            (int)($thread['uid'] ?? 0),
+            json_encode($thread, JSON_UNESCAPED_UNICODE)
+        );
+    }
+
+    private static function closeThreadAudits(int $tid): void {
         $closedAudits = AuditModel::finishPendingByThread($tid, -1, Session::getUid());
-        if ((int)($thread['sort_order'] ?? 0) >= 0 && ($closedAudits['thread'] ?? 0) > 0) {
+        if (($closedAudits['thread'] ?? 0) > 0) {
             DataModel::updateCount('pending_threads', -($closedAudits['thread'] ?? 0));
+        }
+        if (($closedAudits['post'] ?? 0) > 0) {
+            DataModel::updateCount('pending_posts', -($closedAudits['post'] ?? 0));
         }
         if (($closedAudits['report'] ?? 0) > 0) {
             DataModel::updateCount('pending_reports', -($closedAudits['report'] ?? 0));
         }
-        self::rebuildMemberContentStats($affectedUids);
-        self::rebuildForumStats($affectedFids);
     }
 
     private static function rebuildMemberContentStats(array $uids): void {
@@ -986,7 +1259,7 @@ class AdminController {
                         'sort_order' => $sortOrder,
                         'end_date' => $endDateTs,
                     ]);
-                    self::logAction('moderator_add', "添加版主: uid={$member['uid']}, fid=$fid");
+                    self::logAction('moderator_add', "添加版主: uid={$member['uid']}, fid=$fid", 0, 0, (int)$member['uid']);
                 }
             }
             Response::redirect('index.php?c=admin&a=moderators&fid=' . $fid);
@@ -1014,7 +1287,7 @@ class AdminController {
                     'sort_order' => $sortOrder,
                     'end_date' => $endDateTs,
                 ]);
-                self::logAction('moderator_edit', "编辑版主: uid=$uid, fid=$fid");
+                self::logAction('moderator_edit', "编辑版主: uid=$uid, fid=$fid", 0, 0, $uid);
             }
             Response::redirect('index.php?c=admin&a=moderators&fid=' . $fid);
         }
@@ -1031,7 +1304,7 @@ class AdminController {
 
         if ($fid && $uid) {
             ModeratorModel::delete($uid, $fid);
-            self::logAction('moderator_delete', "删除版主: uid=$uid, fid=$fid");
+            self::logAction('moderator_delete', "删除版主: uid=$uid, fid=$fid", 0, 0, $uid);
         }
 
         Response::redirect('index.php?c=admin&a=moderators&fid=' . $fid);

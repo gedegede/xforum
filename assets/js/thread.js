@@ -6,6 +6,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const reportPidInput = document.getElementById('report-pid');
     const reportReasonInput = document.getElementById('report-reason');
     const reportSubmit = document.getElementById('report-submit');
+    const creditPostModal = document.getElementById('credit-post-modal');
+    const creditPostPidInput = document.getElementById('credit-post-pid');
+    const creditPostAmountInput = document.getElementById('credit-post-amount');
+    const creditPostReasonInput = document.getElementById('credit-post-reason');
+    const creditPostSubmit = document.getElementById('credit-post-submit');
 
     if (targetPid) {
         const targetPost = document.getElementById('post-' + targetPid);
@@ -70,14 +75,22 @@ document.addEventListener('DOMContentLoaded', function() {
         const deleteBtn = e.target.closest('[data-action="delete-post"]');
         if (deleteBtn) {
             const pid = deleteBtn.dataset.pid;
-            showConfirmModal('确认删除', '确定要删除这条回复吗？', function() {
+            const isThreadDelete = deleteBtn.classList.contains('thread-delete-btn');
+            showConfirmModal('确认删除', isThreadDelete ? '确定要删除该主题吗？' : '确定要删除这条回复吗？', function() {
                 fetch('index.php?c=thread&a=deletePost&pid=' + pid, {
                         method: 'POST',
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest'
                         }
                     })
-                    .then(response => response.json())
+                    .then(response => response.text())
+                    .then(text => {
+                        try {
+                            return JSON.parse(text);
+                        } catch (error) {
+                            return {success: false, message: text.replace(/<[^>]+>/g, '').trim() || '删除失败，请重试'};
+                        }
+                    })
                     .then(data => {
                         if (data.success) {
                             const postEl = document.getElementById('post-' + pid);
@@ -99,6 +112,27 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
+        const creditPostBtn = e.target.closest('[data-action="credit-post"]');
+        if (creditPostBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!creditPostModal || !creditPostPidInput || !creditPostAmountInput || !creditPostReasonInput) {
+                showMessageModal('提示', '评分弹窗加载失败');
+                return;
+            }
+            creditPostPidInput.value = creditPostBtn.dataset.pid || '';
+            creditPostAmountInput.value = '';
+            creditPostReasonInput.value = '';
+            creditPostModal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            creditPostAmountInput.focus();
+        }
+
+        const closeCreditPostBtn = e.target.closest('[data-action="close-credit-post"]');
+        if (closeCreditPostBtn) {
+            closeCreditPostModal();
+        }
+
         const reportBtn = e.target.closest('[data-action="report-post"]');
         if (reportBtn) {
             if (!reportModal || !reportPidInput || !reportReasonInput) return;
@@ -118,6 +152,51 @@ document.addEventListener('DOMContentLoaded', function() {
     if (reportModal) {
         reportModal.addEventListener('click', function(e) {
             if (e.target === reportModal) closeReportModal();
+        });
+    }
+
+    if (creditPostModal) {
+        creditPostModal.addEventListener('click', function(e) {
+            if (e.target === creditPostModal) closeCreditPostModal();
+        });
+    }
+
+    if (creditPostSubmit) {
+        creditPostSubmit.addEventListener('click', function() {
+            const pid = creditPostPidInput ? creditPostPidInput.value : '';
+            const amount = creditPostAmountInput ? Number(creditPostAmountInput.value || 0) : 0;
+            const reason = creditPostReasonInput ? creditPostReasonInput.value.trim() : '';
+            if (!pid || !amount) {
+                showMessageModal('提示', '请填写金币数量');
+                return;
+            }
+            if (!reason) {
+                showMessageModal('提示', '请填写评分理由');
+                return;
+            }
+
+            const form = new FormData();
+            form.append('credit', String(amount));
+            form.append('reason', reason);
+            form.append('csrf_token', window.getCsrfToken ? window.getCsrfToken() : '');
+            creditPostSubmit.disabled = true;
+            fetch('index.php?c=thread&a=creditPost&pid=' + pid, {
+                method: 'POST',
+                headers: {'X-Requested-With': 'XMLHttpRequest'},
+                body: form
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        showMessageModal('提示', data.message || '评分失败');
+                    }
+                })
+                .catch(() => showMessageModal('提示', '网络错误，请重试'))
+                .finally(() => {
+                    creditPostSubmit.disabled = false;
+                });
         });
     }
 
@@ -153,6 +232,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function closeReportModal() {
         if (!reportModal) return;
         reportModal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function closeCreditPostModal() {
+        if (!creditPostModal) return;
+        creditPostModal.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
     }
 

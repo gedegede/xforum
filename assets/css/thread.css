@@ -39,8 +39,16 @@
 .post-actions{
     display:flex;
     align-items:center;
+    flex-wrap:wrap;
+    justify-content:flex-end;
     gap:var(--space-1);
     color:var(--muted);
+}
+.post-audit-actions{
+    display:flex;
+    align-items:center;
+    gap:var(--space-1);
+    margin-right:var(--space-1);
 }
 .post-rate{
     display:flex;
@@ -66,9 +74,72 @@
     color:var(--text);
 }
 .post-action.is-active{color:var(--primary)}
+.post-credit-action-icon circle{
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2;
+}
 .post-rate-count{
     color:var(--muted);
     font-size:11px;
+}
+.post-credit-log{
+    display:flex;
+    flex-direction:column;
+    gap:var(--space-1);
+    margin-bottom:var(--space-3);
+    padding:var(--space-2);
+    border-radius:var(--radius);
+    background:color-mix(in srgb,var(--soft) 55%,transparent);
+}
+.post-credit-log-item{
+    display:flex;
+    align-items:center;
+    gap:var(--space-2);
+    padding:var(--space-1) var(--space-2);
+    border-radius:var(--radius-sm);
+    background:transparent;
+    font-size:12px;
+}
+.post-credit-log-coin{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:40px;
+    height:22px;
+    border-radius:999px;
+    background:color-mix(in srgb,var(--success-light) 62%,transparent);
+    color:var(--success);
+    font-weight:700;
+}
+.post-credit-log-item.is-minus .post-credit-log-coin{
+    background:color-mix(in srgb,var(--danger-light) 62%,transparent);
+    color:var(--danger);
+}
+.post-credit-log-main{
+    display:flex;
+    flex:1;
+    min-width:0;
+    flex-wrap:wrap;
+    gap:var(--space-1);
+    color:var(--text);
+}
+.post-credit-log-user{font-weight:600}
+.post-credit-log-time{
+    flex-shrink:0;
+    color:var(--muted);
+    opacity:.8;
+}
+.credit-modal-grid{
+    display:grid;
+    gap:var(--space-4);
+}
+.thread-delete-btn{
+    color:var(--muted);
+}
+.thread-delete-btn:hover{
+    background:var(--danger-light);
+    color:var(--danger);
 }
 .post-content{line-height:1.625}
 .post-quote{

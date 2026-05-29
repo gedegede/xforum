@@ -1,15 +1,25 @@
 <?php include '_menu.php'; ?>
 
+<style>
+.thread-filter{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+.thread-filter-field{display:flex;flex-direction:column;gap:4px;min-width:150px}
+.thread-filter-field-wide{min-width:220px;flex:1}
+.thread-filter-label{color:var(--muted);font-size:12px;font-weight:600;white-space:nowrap}
+.thread-filter-control{height:var(--control-height);width:100%}
+.thread-filter-actions{display:flex;gap:8px;height:var(--control-height)}
+</style>
+
 <div class="card card-clip">
     <div class="card-header">
         <h2 class="font-semibold">主题管理</h2>
     </div>
     <div class="card-body">
-        <form method="get" class="mb-4">
+        <form method="get" action="index.php" class="thread-filter mb-4">
             <input type="hidden" name="c" value="admin">
             <input type="hidden" name="a" value="threads">
-            <div class="flex gap-2 flex-wrap">
-                <select name="fid" class="form-control w-auto">
+            <label class="thread-filter-field">
+                <span class="thread-filter-label">版块</span>
+                <select name="fid" class="form-input thread-filter-control">
                     <option value="0">全部版块</option>
                     <?php foreach ($template_forums as $forum): ?>
                         <option value="<?php echo $forum['fid']; ?>" <?php echo $template_fid == $forum['fid'] ? 'selected' : ''; ?>>
@@ -17,12 +27,18 @@
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <select name="search_type" class="form-control w-auto">
-                    <option value="title" <?php echo (!isset($template_searchType) || $template_searchType == 'title') ? 'selected' : ''; ?>>标题</option>
-                    <option value="username" <?php echo isset($template_searchType) && $template_searchType == 'username' ? 'selected' : ''; ?>>用户名</option>
-                </select>
-                <input type="text" name="keyword" class="flex-1 min-w-50 form-control" placeholder="输入关键词" value="<?php echo htmlspecialchars($template_keyword); ?>">
+            </label>
+            <label class="thread-filter-field">
+                <span class="thread-filter-label">发帖者</span>
+                <input type="text" name="author" value="<?php echo htmlspecialchars($template_author); ?>" placeholder="UID/用户名" class="form-input thread-filter-control">
+            </label>
+            <label class="thread-filter-field thread-filter-field-wide">
+                <span class="thread-filter-label">标题关键词</span>
+                <input type="text" name="keyword" value="<?php echo htmlspecialchars($template_keyword); ?>" placeholder="关键词" class="form-input thread-filter-control">
+            </label>
+            <div class="thread-filter-actions">
                 <button type="submit" class="btn btn-primary">搜索</button>
+                <a href="index.php?c=admin&a=threads" class="btn btn-soft">重置</a>
             </div>
         </form>
 
@@ -93,7 +109,7 @@
 
             <?php if ($template_pages > 1): ?>
                 <div class="mt-4">
-                    <?php echo \Lib\Helper::renderPagination($template_page, $template_pages, 'index.php?c=admin&a=threads&fid=' . $template_fid . '&keyword=' . urlencode($template_keyword)); ?>
+                    <?php echo \Lib\Helper::renderPagination($template_page, $template_pages, 'index.php?c=admin&a=threads&fid=' . (int)$template_fid . '&author=' . urlencode($template_author) . '&keyword=' . urlencode($template_keyword)); ?>
                 </div>
             <?php endif; ?>
         </form>

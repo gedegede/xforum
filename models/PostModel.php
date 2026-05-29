@@ -21,7 +21,8 @@ class PostModel {
             "SELECT * FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid ASC LIMIT :limit OFFSET :offset",
             ['tid' => $tid],
             static function (array $post) use ($includePending): bool {
-                return $includePending || (int)($post['sort_order'] ?? 0) >= 0;
+                $sortOrder = (int)($post['sort_order'] ?? 0);
+                return $sortOrder >= 0 || ($includePending && $sortOrder === -1);
             },
             $page,
             $pageSize,
@@ -54,7 +55,11 @@ class PostModel {
         ), null, 'pid');
     }
 
-    public static function getPostCount(int $tid): int {
+    public static function getPostCount(int $tid, bool $includePending = false): int {
+        if ($includePending) {
+            return Database::count(self::TABLE, 'tid = :tid AND sort_order >= -1', ['tid' => $tid]);
+        }
+
         $thread = ThreadModel::get($tid);
         if (!$thread) {
             return 0;
@@ -83,11 +88,21 @@ class PostModel {
     public static function create(array $data): int {
         $data['dateline'] = time();
         $data['ip'] = $_SERVER['REMOTE_ADDR'];
+        $data['credit_log'] = $data['credit_log'] ?? '[]';
+        return Database::insert(self::TABLE, $data);
+    }
+
+    public static function restore(array $data): int {
+        $data['credit_log'] = $data['credit_log'] ?? '[]';
         return Database::insert(self::TABLE, $data);
     }
 
     public static function deleteByTid(int $tid): void {
         Database::query("DELETE FROM " . self::TABLE . " WHERE tid = :tid", ['tid' => $tid]);
+    }
+
+    public static function updateFidByTid(int $tid, int $fid): int {
+        return Database::update(self::TABLE, ['fid' => $fid], 'tid = :tid', ['tid' => $tid]);
     }
 
     public static function approveByTid(int $tid): void {
@@ -139,6 +154,31 @@ class PostModel {
     public static function decrementRateNum(int $pid): void {
         if ($pid <= 0) return;
         Database::query("UPDATE " . self::TABLE . " SET rate_num = CASE WHEN rate_num > 0 THEN rate_num - 1 ELSE 0 END WHERE pid = :pid", ['pid' => $pid]);
+    }
+
+    public static function addCreditLog(int $pid, array $log): void {
+        if ($pid <= 0) {
+            return;
+        }
+
+        $post = Database::fetch(
+            "SELECT credit_log FROM " . self::TABLE . " WHERE " . self::PRIMARY_KEY . " = :pid FOR UPDATE",
+            ['pid' => $pid]
+        );
+        if (!$post) {
+            return;
+        }
+
+        $logs = json_decode((string)($post['credit_log'] ?? '[]'), true);
+        if (!is_array($logs)) {
+            $logs = [];
+        }
+        $logs[] = $log;
+
+        Database::query(
+            "UPDATE " . self::TABLE . " SET credit_log = :credit_log WHERE pid = :pid",
+            ['credit_log' => json_encode($logs, JSON_UNESCAPED_UNICODE), 'pid' => $pid]
+        );
     }
 
     public static function delete(int $pid): int {

@@ -28,6 +28,23 @@ try {
 $tables = [
     'next_audit' => "CREATE TABLE `next_audit` (
         `did` INTEGER UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+        `fid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `uid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `tid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `pid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `type` VARCHAR(20) NOT NULL DEFAULT '',
+        `dateline` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `json_data` TEXT NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_as_cs",
+    'next_audit_idx_type_did' => "CREATE INDEX `idx_next_audit_type_did` ON `next_audit`(`type`, `did`)",
+    'next_audit_idx_fid_type_did' => "CREATE INDEX `idx_next_audit_fid_type_did` ON `next_audit`(`fid`, `type`, `did`)",
+    'next_audit_idx_uid_type' => "CREATE INDEX `idx_next_audit_uid_type` ON `next_audit`(`uid`, `type`)",
+    'next_audit_idx_tid_pid_type' => "CREATE INDEX `idx_next_audit_tid_pid_type` ON `next_audit`(`tid`, `pid`, `type`)",
+
+    'next_audit_archive' => "CREATE TABLE `next_audit_archive` (
+        `did` INTEGER UNSIGNED PRIMARY KEY,
+        `fid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `uid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `tid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `pid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `status` INTEGER NOT NULL DEFAULT 0,
@@ -35,9 +52,7 @@ $tables = [
         `dateline` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `json_data` TEXT NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_as_cs",
-    'next_audit_idx_status_did' => "CREATE INDEX `idx_next_audit_status_did` ON `next_audit`(`status`, `did`)",
-    'next_audit_idx_status_type_did' => "CREATE INDEX `idx_next_audit_status_type_did` ON `next_audit`(`status`, `type`, `did`)",
-    'next_audit_idx_tid_pid_type_status' => "CREATE INDEX `idx_next_audit_tid_pid_type_status` ON `next_audit`(`tid`, `pid`, `type`, `status`)",
+    'next_audit_archive_idx_status_did' => "CREATE INDEX `idx_next_audit_archive_status_did` ON `next_audit_archive`(`status`, `did`)",
 
     'next_action' => "CREATE TABLE `next_action` (
         `uid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
@@ -123,9 +138,10 @@ $tables = [
         `tid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `pid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `uid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
-        `from_uid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `authorid` INTEGER UNSIGNED NOT NULL DEFAULT 0,
+        `action` VARCHAR(50) NOT NULL DEFAULT '',
         `message` TEXT NOT NULL,
-        `post_message` TEXT NOT NULL,
+        `archive_data` LONGTEXT NOT NULL,
         `dateline` INTEGER UNSIGNED NOT NULL DEFAULT 0
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_as_cs",
 
@@ -148,7 +164,7 @@ $tables = [
         `status` INTEGER NOT NULL DEFAULT 0,
         `message` VARCHAR(255) NOT NULL DEFAULT ''
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_as_cs",
-    'next_notify_idx_uid_did' => "CREATE INDEX `idx_next_notify_uid_did` ON `next_notify`(`uid`, `did` DESC)",
+    'next_notify_idx_uid_dateline' => "CREATE INDEX `idx_next_notify_uid_dateline` ON `next_notify`(`uid`, `dateline` DESC)",
     'next_notify_idx_uid_tid' => "CREATE INDEX `idx_next_notify_uid_tid` ON `next_notify`(`uid`, `tid`)",
 
     'next_pm_dialog' => "CREATE TABLE `next_pm_dialog` (
@@ -181,7 +197,8 @@ $tables = [
         `dateline` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `edited` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `report_time` INTEGER UNSIGNED NOT NULL DEFAULT 0,
-        `message` TEXT NOT NULL,
+        `message` LONGTEXT NOT NULL,
+        `credit_log` TEXT NOT NULL,
         `ip` VARCHAR(50) NOT NULL DEFAULT '',
         `rate_num` INTEGER UNSIGNED NOT NULL DEFAULT 0,
         `sort_order` INTEGER NOT NULL DEFAULT 0,

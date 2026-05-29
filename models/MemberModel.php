@@ -58,44 +58,35 @@ class MemberModel {
         return Database::insert(self::TABLE, $data);
     }
 
-    public static function search(string $keyword = '', int $gid = 0, int $page = 1): array {
+    public static function restore(array $data): int {
+        unset(self::$memoryCache[(int)($data['uid'] ?? 0)]);
+        return Database::insert(self::TABLE, $data);
+    }
+
+    public static function search(string $keyword = '', int $gid = 0, int $page = 1, string $email = '', string $regIp = '', string $lastIp = ''): array {
         [$sql, $params] = self::buildIndexedListQuery($gid);
 
         return Database::fetchFilteredPage(
             $sql,
             $params,
-            static function (array $member) use ($keyword, $gid): bool {
-                if ($gid > 0 && (int)$member['gid'] !== $gid) {
-                    return false;
-                }
-                return $keyword === ''
-                    || stripos((string)$member['username'], $keyword) !== false
-                    || stripos((string)$member['email'], $keyword) !== false;
-            },
+            static fn(array $member): bool => self::matchesSearchFilters($member, $keyword, $gid, $email, $regIp, $lastIp),
             $page,
             self::PAGE_SIZE,
             self::FILTER_BATCH_SIZE
         );
     }
 
-    public static function searchCount(string $keyword = '', int $gid = 0): int {
-        if ($keyword === '' && $gid === 0) {
+    public static function searchCount(string $keyword = '', int $gid = 0, string $email = '', string $regIp = '', string $lastIp = ''): int {
+        if ($keyword === '' && $gid === 0 && $email === '' && $regIp === '' && $lastIp === '') {
             return self::count();
         }
 
-        [$sql, $params] = self::buildIndexedListQuery($gid, 'uid, username, email, gid');
+        [$sql, $params] = self::buildIndexedListQuery($gid, 'uid, username, email, gid, reg_ip, last_ip');
 
         return Database::countFiltered(
             $sql,
             $params,
-            static function (array $member) use ($keyword, $gid): bool {
-                if ($gid > 0 && (int)$member['gid'] !== $gid) {
-                    return false;
-                }
-                return $keyword === ''
-                    || stripos((string)$member['username'], $keyword) !== false
-                    || stripos((string)$member['email'], $keyword) !== false;
-            }
+            static fn(array $member): bool => self::matchesSearchFilters($member, $keyword, $gid, $email, $regIp, $lastIp)
         );
     }
 
@@ -115,6 +106,34 @@ class MemberModel {
             "SELECT {$columns} FROM " . self::TABLE . " ORDER BY uid DESC LIMIT :limit OFFSET :offset",
             [],
         ];
+    }
+
+    private static function matchesSearchFilters(array $member, string $keyword, int $gid, string $email, string $regIp, string $lastIp): bool {
+        if ($gid > 0 && (int)$member['gid'] !== $gid) {
+            return false;
+        }
+        if ($keyword !== '' && stripos((string)$member['username'], $keyword) === false) {
+            return false;
+        }
+        if ($email !== '' && stripos((string)$member['email'], $email) === false) {
+            return false;
+        }
+        if ($regIp !== '' && !self::matchWildcard((string)$member['reg_ip'], $regIp)) {
+            return false;
+        }
+        if ($lastIp !== '' && !self::matchWildcard((string)$member['last_ip'], $lastIp)) {
+            return false;
+        }
+        return true;
+    }
+
+    private static function matchWildcard(string $value, string $pattern): bool {
+        if (strpos($pattern, '*') === false) {
+            return $value === $pattern;
+        }
+
+        $regex = '/^' . str_replace('\*', '.*', preg_quote($pattern, '/')) . '$/';
+        return preg_match($regex, $value) === 1;
     }
 
     public static function update(int $uid, array $data): int {
@@ -139,6 +158,28 @@ class MemberModel {
         return $result;
     }
 
+    public static function touchVisit(int $uid, string $ip): void {
+        if ($uid <= 0 || $ip === '') {
+            return;
+        }
+
+        $member = self::get($uid);
+        if (!$member) {
+            return;
+        }
+
+        $now = time();
+        if ((string)($member['last_ip'] ?? '') === $ip && $now - (int)($member['last_visit'] ?? 0) < 60) {
+            return;
+        }
+
+        Database::update(self::TABLE, [
+            'last_ip' => $ip,
+            'last_visit' => $now,
+        ], self::PRIMARY_KEY . ' = :uid', ['uid' => $uid]);
+        unset(self::$memoryCache[$uid]);
+    }
+
     public static function changeCredit(int $uid, int $credit): bool {
         if ($uid <= 0 || $credit === 0) return false;
         if ($credit < 0) {
@@ -149,6 +190,23 @@ class MemberModel {
         } else {
             $stmt = Database::query("UPDATE " . self::TABLE . " SET credit = credit + :credit WHERE uid = :uid", ['credit' => $credit, 'uid' => $uid]);
         }
+        unset(self::$memoryCache[$uid]);
+        $changed = $stmt->rowCount() > 0;
+        if ($changed) {
+            self::syncMemberGroupByCredit($uid);
+        }
+        return $changed;
+    }
+
+    public static function adjustCredit(int $uid, int $credit): bool {
+        if ($uid <= 0 || $credit === 0) {
+            return false;
+        }
+
+        $stmt = Database::query(
+            "UPDATE " . self::TABLE . " SET credit = credit + :credit WHERE uid = :uid",
+            ['credit' => $credit, 'uid' => $uid]
+        );
         unset(self::$memoryCache[$uid]);
         $changed = $stmt->rowCount() > 0;
         if ($changed) {

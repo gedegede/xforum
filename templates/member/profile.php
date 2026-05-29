@@ -1,6 +1,11 @@
 <?php include __DIR__ . '/_profile_header.php'; ?>
 <?php include __DIR__ . '/_profile_nav.php'; ?>
 
+<style>
+.credit-coin{position:relative;display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 30% 24%,#fff4b8 0,#ffd66d 35%,#d99a19 72%,#9b6510 100%);border:2px solid #f6c24a;box-shadow:inset 0 2px 3px rgba(255,255,255,.65),inset 0 -4px 6px rgba(114,71,7,.28),0 2px 8px rgba(116,76,15,.18);color:#6b4200;font-size:12px;font-weight:800;letter-spacing:-.4px;line-height:1;white-space:nowrap}
+.credit-coin::after{content:"";position:absolute;inset:6px;border:1px solid rgba(130,82,8,.28);border-radius:50%}
+.credit-coin-negative{background:radial-gradient(circle at 30% 24%,#ffe4e6 0,#fb7185 42%,#be123c 100%);border-color:#fb7185;color:#fff}
+</style>
 
 <div class="card card-clip">
     <div class="card-header">
@@ -124,7 +129,7 @@
                         <?php $creditUrl = trim((string)($credit['url'] ?? '')); ?>
                         <<?php echo $creditUrl !== '' ? 'a href="' . htmlspecialchars($creditUrl) . '"' : 'div'; ?> class="list-link">
                             <div class="w-16 flex-shrink-0">
-                                <span class="badge badge-credit w-full justify-center <?php echo $creditValue >= 0 ? 'badge-success' : 'badge-danger'; ?>">
+                                <span class="credit-coin <?php echo $creditValue < 0 ? 'credit-coin-negative' : ''; ?>">
                                     <?php echo $creditValue > 0 ? '+' . $creditValue : $creditValue; ?>
                                 </span>
                             </div>

@@ -98,6 +98,12 @@ class ThreadModel {
         return $tid;
     }
 
+    public static function restore(array $data): int {
+        unset(self::$memoryCache[(int)($data['tid'] ?? 0)]);
+        self::deleteApcuCache(self::homeNoticeCacheKey());
+        return Database::insert(self::TABLE, $data);
+    }
+
     public static function update(int $tid, array $data): int {
         unset(self::$memoryCache[$tid]);
         $data['tid'] = $tid;
@@ -116,6 +122,17 @@ class ThreadModel {
     public static function updateReply(int $tid, int $uid): void {
         unset(self::$memoryCache[$tid]);
         Database::query("UPDATE " . self::TABLE . " SET reply_time = :time, reply_uid = :uid, reply_num = reply_num + 1 WHERE tid = :tid", ['time' => time(), 'uid' => $uid, 'tid' => $tid]);
+    }
+
+    public static function rebuildReplyStats(int $tid): void {
+        unset(self::$memoryCache[$tid]);
+        $lastPost = PostModel::getLastPostByTid($tid);
+        $replyNum = Database::count(PostModel::TABLE, 'tid = :tid AND is_thread = 0 AND sort_order >= 0', ['tid' => $tid]);
+        Database::update(self::TABLE, [
+            'reply_num' => $replyNum,
+            'reply_uid' => (int)($lastPost['uid'] ?? 0),
+            'reply_time' => (int)($lastPost['dateline'] ?? time()),
+        ], self::PRIMARY_KEY . " = :tid", ['tid' => $tid]);
     }
 
     public static function incrementView(int $tid): void {
@@ -265,6 +282,21 @@ class ThreadModel {
 
     public static function getPendingApproveCount(): int {
         return DataModel::getInt('pending_threads');
+    }
+
+    public static function getPendingThreadsByTids(array $tids): array {
+        $tids = array_values(array_filter(array_unique(array_map('intval', $tids))));
+        if (empty($tids)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($tids), '?'));
+        $threads = Database::fetchAll(
+            "SELECT * FROM " . self::TABLE . " WHERE tid IN ($placeholders)",
+            $tids
+        );
+
+        return array_column(ViewCounter::applyPendingToThreads($threads), null, 'tid');
     }
 
     public static function getThreadsByTids(array $tids): array {
