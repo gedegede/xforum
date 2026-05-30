@@ -17,6 +17,22 @@ class ThreadHelper {
         return array_values(array_filter(array_unique($uids)));
     }
 
+    public static function maskUnauthorizedSubjects(array $threads): array {
+        foreach ($threads as $key => $thread) {
+            if (is_array($thread)) {
+                $threads[$key] = self::maskUnauthorizedSubject($thread);
+            }
+        }
+        return $threads;
+    }
+
+    public static function maskUnauthorizedSubject(array $thread): array {
+        if (!Permission::canViewForum((int)($thread['fid'] ?? 0))) {
+            $thread['subject'] = '无权浏览';
+        }
+        return $thread;
+    }
+
     public static function renderThread(array $thread, array $users = [], array $forums = [], array $options = []): string {
         $thread += [
             'tid' => 0,
@@ -29,6 +45,7 @@ class ThreadHelper {
             'view_num' => 0,
             'reply_num' => 0,
         ];
+        $thread = self::maskUnauthorizedSubject($thread);
 
         $author = $users[$thread['uid']] ?? null;
         $forum = $forums[$thread['fid']] ?? null;
@@ -84,8 +101,12 @@ class ThreadHelper {
         <div class="thread-item-meta">
             <span><?php echo $userIcon; ?><?php echo htmlspecialchars($author['username'] ?? '匿名'); ?></span>
             <?php if ($showStats): ?>
-                <span><?php echo $viewIcon; ?><?php echo $viewNum; ?></span>
-                <span><?php echo $replyIcon; ?><?php echo $replyNum; ?></span>
+                <?php if ($viewNum > 0): ?>
+                    <span><?php echo $viewIcon; ?><?php echo $viewNum; ?></span>
+                <?php endif; ?>
+                <?php if ($replyNum > 0): ?>
+                    <span><?php echo $replyIcon; ?><?php echo $replyNum; ?></span>
+                <?php endif; ?>
             <?php endif; ?>
             <?php if ($replyUid > 0 && !empty($thread['reply_time']) && (int)$thread['reply_time'] !== (int)$thread['dateline']): ?>
                 <span><?php echo $lastReplyIcon; ?><?php echo htmlspecialchars($replyUser['username'] ?? '匿名'); ?></span>

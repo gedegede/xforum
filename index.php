@@ -29,10 +29,6 @@ SettingsMiddleware::check();
 
 ViewCounter::flushIfDue();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    CsrfHelper::check();
-}
-
 $uid = 0;
 $gid = 0;
 $invisible = 0;
@@ -58,6 +54,10 @@ if (!preg_match('/^[A-Za-z0-9_]+$/', $controller)) {
 }
 if (!preg_match('/^[A-Za-z0-9_]+$/', $action)) {
     $action = 'index';
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !($controller === 'miniapp' && $action === 'csrf')) {
+    CsrfHelper::check();
 }
 
 $controllerClass = 'Controllers\\' . ucfirst($controller) . 'Controller';

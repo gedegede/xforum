@@ -16,10 +16,21 @@
     </div>
 
     <div class="pm-chat-body" id="pm-chat-body" data-current-uid="<?php echo (int)$template_user['uid']; ?>" data-partner-uid="<?php echo (int)$template_partner['uid']; ?>" data-last-pmid="<?php echo (int)($template_lastPmid ?? ($template_lastMessage['pmid'] ?? 0)); ?>" data-page="<?php echo (int)$template_page; ?>" data-pages="<?php echo (int)$template_pages; ?>">
-        <?php $template_unreadStart = max(0, (int)($template_total ?? 0) - (int)($template_unreadNum ?? 0)); ?>
+        <?php
+        $template_unreadRemain = max(0, (int)($template_unreadNum ?? 0));
+        $template_unreadPids = [];
+        for ($i = count($template_messages) - 1; $i >= 0 && $template_unreadRemain > 0; $i--) {
+            $template_message = $template_messages[$i];
+            if ((int)$template_message['uid'] === (int)$template_user['uid']) {
+                continue;
+            }
+            $template_unreadPids[(int)$template_message['pmid']] = true;
+            $template_unreadRemain--;
+        }
+        ?>
         <?php foreach ($template_messages as $index => $message): ?>
             <?php $isMine = (int)$message['uid'] === (int)$template_user['uid']; ?>
-            <?php $isUnread = !$isMine && ($template_offset + $index) >= $template_unreadStart; ?>
+            <?php $isUnread = isset($template_unreadPids[(int)$message['pmid']]); ?>
             <div class="pm-bubble-row <?php echo $isMine ? 'is-mine' : ''; ?> <?php echo $isUnread ? 'is-unread' : ''; ?>" data-pmid="<?php echo (int)$message['pmid']; ?>">
                 <div class="pm-bubble">
                     <?php if ($isUnread): ?><span class="pm-unread-dot"></span><?php endif; ?>

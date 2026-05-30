@@ -259,8 +259,8 @@ class MemberModel {
             return;
         }
 
-        $threadCount = Database::count(ThreadModel::TABLE, 'uid = :uid AND sort_order >= 0', ['uid' => $uid]);
-        $replyCount = Database::count(PostModel::TABLE, 'uid = :uid AND is_thread = 0 AND sort_order >= 0', ['uid' => $uid]);
+        $threadCount = Database::count(ThreadModel::TABLE, 'uid = :uid', ['uid' => $uid]);
+        $replyCount = count(PostModel::getUserReplyRows($uid));
         Database::update(self::TABLE, [
             'thread_num' => $threadCount,
             'reply_num' => $replyCount,
@@ -327,21 +327,37 @@ class MemberModel {
     public static function incrementThreadNum(int $uid): void {
         if ($uid <= 0) return;
         Database::query("UPDATE " . self::TABLE . " SET thread_num = thread_num + 1 WHERE uid = :uid", ['uid' => $uid]);
+        unset(self::$memoryCache[$uid]);
     }
     
     public static function decrementThreadNum(int $uid): void {
         if ($uid <= 0) return;
         Database::query("UPDATE " . self::TABLE . " SET thread_num = CASE WHEN thread_num > 0 THEN thread_num - 1 ELSE 0 END WHERE uid = :uid", ['uid' => $uid]);
+        unset(self::$memoryCache[$uid]);
     }
     
     public static function incrementReplyNum(int $uid): void {
         if ($uid <= 0) return;
         Database::query("UPDATE " . self::TABLE . " SET reply_num = reply_num + 1 WHERE uid = :uid", ['uid' => $uid]);
+        unset(self::$memoryCache[$uid]);
+    }
+
+    public static function incrementReplyNumBy(int $uid, int $amount): void {
+        if ($uid <= 0 || $amount <= 0) return;
+        Database::query(
+            "UPDATE " . self::TABLE . " SET reply_num = reply_num + :amount WHERE uid = :uid",
+            ['uid' => $uid, 'amount' => $amount]
+        );
+        unset(self::$memoryCache[$uid]);
     }
     
-    public static function decrementReplyNum(int $uid): void {
-        if ($uid <= 0) return;
-        Database::query("UPDATE " . self::TABLE . " SET reply_num = CASE WHEN reply_num > 0 THEN reply_num - 1 ELSE 0 END WHERE uid = :uid", ['uid' => $uid]);
+    public static function decrementReplyNum(int $uid, int $amount = 1): void {
+        if ($uid <= 0 || $amount <= 0) return;
+        Database::query(
+            "UPDATE " . self::TABLE . " SET reply_num = CASE WHEN reply_num > :amount_check THEN reply_num - :amount_dec ELSE 0 END WHERE uid = :uid",
+            ['uid' => $uid, 'amount_check' => $amount, 'amount_dec' => $amount]
+        );
+        unset(self::$memoryCache[$uid]);
     }
     
     public static function incrementFavNum(int $uid): void {
@@ -357,11 +373,19 @@ class MemberModel {
     public static function incrementInboxNum(int $uid): void {
         if ($uid <= 0) return;
         Database::query("UPDATE " . self::TABLE . " SET inbox_num = inbox_num + 1 WHERE uid = :uid", ['uid' => $uid]);
+        unset(self::$memoryCache[$uid]);
     }
     
     public static function decrementInboxNum(int $uid): void {
         if ($uid <= 0) return;
         Database::query("UPDATE " . self::TABLE . " SET inbox_num = CASE WHEN inbox_num > 0 THEN inbox_num - 1 ELSE 0 END WHERE uid = :uid", ['uid' => $uid]);
+        unset(self::$memoryCache[$uid]);
+    }
+
+    public static function setInboxNum(int $uid, int $num): void {
+        if ($uid <= 0) return;
+        Database::query("UPDATE " . self::TABLE . " SET inbox_num = :num WHERE uid = :uid", ['num' => max(0, $num), 'uid' => $uid]);
+        unset(self::$memoryCache[$uid]);
     }
     
     public static function incrementNotifyNum(int $uid): void {
@@ -382,6 +406,7 @@ class MemberModel {
     public static function resetInboxNum(int $uid): void {
         if ($uid <= 0) return;
         Database::query("UPDATE " . self::TABLE . " SET inbox_num = 0 WHERE uid = :uid", ['uid' => $uid]);
+        unset(self::$memoryCache[$uid]);
     }
 }
 ?>

@@ -10,8 +10,15 @@
                 </svg>
             </div>
             <h3 class="text-xl font-semibold mb-2"><?php echo htmlspecialchars($template_message); ?></h3>
-            <p class="text-muted mb-6">您的主题已提交，等待管理员审核后会显示在论坛中。</p>
-            <a href="index.php" class="btn btn-primary">返回首页</a>
+            <?php $template_pendingType = (string)($template_type ?? 'thread'); ?>
+            <p class="text-muted mb-6">
+                <?php echo $template_pendingType === 'post' ? '您的回帖已提交，等待管理员审核后会显示在主题中。' : '您的主题已提交，等待管理员审核后会显示在论坛中。'; ?>
+            </p>
+            <?php if ($template_pendingType === 'post' && !empty($template_thread['tid'])): ?>
+                <a href="index.php?c=thread&a=index&tid=<?php echo (int)$template_thread['tid']; ?>" class="btn btn-primary">返回主题</a>
+            <?php else: ?>
+                <a href="index.php" class="btn btn-primary">返回首页</a>
+            <?php endif; ?>
         </div>
     </div>
 </div>

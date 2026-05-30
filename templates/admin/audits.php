@@ -27,22 +27,33 @@
             <div class="list-stack" id="audit-list">
                 <?php foreach ($template_audits as $audit): ?>
                     <?php
+                    $auditType = (string)$audit['type'];
                     $thread = $template_threads[(int)$audit['tid']] ?? null;
                     $jsonData = json_decode((string)$audit['json_data'], true) ?: [];
                     $reportUser = $template_reportUsers[(int)($jsonData['report_uid'] ?? 0)] ?? null;
-                    $title = $thread['subject'] ?? '未知主题';
-                    $author = $thread ? ($template_users[(int)$thread['uid']] ?? null) : null;
-                    $auditUser = $template_auditUsers[(int)($jsonData['audit_uid'] ?? 0)] ?? null;
                     $post = $template_posts[(int)$audit['pid']] ?? null;
+                    $title = $thread['subject'] ?? ($jsonData['subject'] ?? ('已发布内容 #' . (int)$audit['did']));
+                    if ($auditType === 'thread') {
+                        $title = $jsonData['subject'] ?? $title;
+                    }
+                    $authorUid = (int)($jsonData['uid'] ?? $audit['uid'] ?? ($post['uid'] ?? ($thread['uid'] ?? 0)));
+                    $author = $template_users[$authorUid] ?? null;
+                    $auditUser = $template_auditUsers[(int)($jsonData['audit_uid'] ?? 0)] ?? null;
                     $auditStatus = (int)($audit['audit_status'] ?? $audit['status'] ?? 0);
-                    $auditTypeLabel = ['report' => '举报', 'thread' => '主题', 'post' => '回帖'][$audit['type']] ?? $audit['type'];
-                    $threadUrl = 'index.php?c=thread&a=index&tid=' . (int)$audit['tid'] . ((int)$audit['pid'] !== 0 ? '&pid=' . (int)$audit['pid'] : '');
+                    $auditTypeLabel = ['report' => '举报', 'thread' => '主题', 'post' => '回帖'][$auditType] ?? $auditType;
+                    $threadTid = (int)($thread['tid'] ?? $audit['tid'] ?? 0);
+                    $threadUrl = $threadTid > 0 ? 'index.php?c=thread&a=index&tid=' . $threadTid . ((int)$audit['pid'] !== 0 ? '&pid=' . (int)$audit['pid'] : '') : '';
+                    $postPreview = $auditType === 'post' ? (string)($jsonData['message'] ?? ($post['message'] ?? '')) : '';
                     ?>
                     <div class="audit-item list-link" data-did="<?php echo (int)$audit['did']; ?>">
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 mb-1">
                                 <span class="badge badge-xs badge-primary"><?php echo htmlspecialchars($auditTypeLabel); ?></span>
+                                <?php if ($threadUrl !== ''): ?>
                                 <a href="<?php echo htmlspecialchars($threadUrl); ?>" target="_blank" class="font-semibold truncate text-primary"><?php echo htmlspecialchars($title); ?></a>
+                                <?php else: ?>
+                                <span class="font-semibold truncate"><?php echo htmlspecialchars($title); ?></span>
+                                <?php endif; ?>
                             </div>
                             <div class="thread-item-meta mb-1">
                                 <span>
@@ -51,16 +62,16 @@
                                 </span>
                                 <span>
                                     <svg class="thread-meta-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3h10l4 4v14H5V3zm9 1.5V8h3.5L14 4.5zM8 11h8v2H8v-2zm0 4h8v2H8v-2z"/></svg>
-                                    <?php echo $thread ? \Lib\Helper::formatTime((int)$thread['dateline']) : '-'; ?>
+                                    <?php echo \Lib\Helper::formatTime((int)$audit['dateline']); ?>
                                 </span>
                             </div>
-                            <?php if ($audit['type'] === 'report'): ?>
+                            <?php if ($auditType === 'report'): ?>
                                 <div class="text-xs text-muted mb-1">
                                     举报人：<?php echo htmlspecialchars($reportUser['username'] ?? '未知用户'); ?> · 举报理由：<?php echo htmlspecialchars((string)($jsonData['report_reason'] ?? '')); ?>
                                 </div>
                             <?php endif; ?>
-                            <?php if ($audit['type'] === 'post' && $post): ?>
-                                <div class="text-sm text-muted mb-1"><?php echo nl2br(htmlspecialchars((string)$post['message'])); ?></div>
+                            <?php if ($auditType === 'post' && $postPreview !== ''): ?>
+                                <div class="text-sm text-muted mb-1"><?php echo nl2br(htmlspecialchars($postPreview)); ?></div>
                             <?php endif; ?>
                             <?php if ($auditStatus !== 0): ?>
                                 <div class="text-xs text-muted mb-1">

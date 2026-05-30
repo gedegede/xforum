@@ -30,7 +30,7 @@ class HomeController {
         
         $order = Request::getString('order', 'reply_time');
         $orderMap = ['tid', 'reply_time', 'dateline', 'reply_num', 'view_num'];
-        if (!in_array($order, $orderMap)) {
+        if (!in_array($order, $orderMap, true)) {
             $order = 'reply_time';
         }
         
@@ -57,17 +57,9 @@ class HomeController {
         }
         
         $collapsedFids = SettingModel::getCollapsedFids();
-        $viewableForumIds = array_map(
-            static fn(array $forum): int => (int)$forum['fid'],
-            array_values(array_filter(ForumModel::getForumsFlat(), static function(array $forum): bool {
-                return Permission::canViewForum((int)($forum['fid'] ?? 0));
-            }))
-        );
         
         $threadsPerPage = (int)SettingModel::get('threads_per_page', '20');
-        $allThreads = ThreadModel::getHomeThreadsWithFilter($page, $order, $keyword, $threadsPerPage, $viewableForumIds);
-        $total = ThreadModel::getHomeThreadCount($keyword, $viewableForumIds);
-        $pages = (int)ceil($total / $threadsPerPage);
+        $allThreads = ThreadModel::getHomeThreadsWithFilter($page, $order, $keyword, $threadsPerPage);
         $forums = [];
         if (!empty($allThreads)) {
             $fids = array_unique(array_map('intval', array_column($allThreads, 'fid')));
@@ -79,13 +71,17 @@ class HomeController {
         $collapsedTotal = 0;
         
         foreach ($allThreads as $thread) {
-            if (!empty($collapsedFids) && in_array($thread['fid'], $collapsedFids)) {
+            $thread = ThreadHelper::maskUnauthorizedSubject($thread);
+            $fid = (int)($thread['fid'] ?? 0);
+            if (!empty($collapsedFids) && in_array($fid, $collapsedFids, true)) {
                 $collapsedThreads[] = $thread;
                 $collapsedTotal++;
             } else {
                 $threads[] = $thread;
             }
         }
+        $total = ThreadModel::getHomeThreadCount($keyword);
+        $pages = (int)ceil($total / $threadsPerPage);
 
         $users = [];
         if (!empty($allThreads)) {
@@ -96,7 +92,7 @@ class HomeController {
             ['value' => 'reply_time', 'label' => '最后回复'],
             ['value' => 'tid', 'label' => '最新发布'],
             ['value' => 'reply_num', 'label' => '回复数'],
-            ['value' => 'view_num', 'label' => '查看数']
+            ['value' => 'view_num', 'label' => '查看数'],
         ];
 
         $userStats = [];
@@ -116,11 +112,11 @@ class HomeController {
         }
 
         $noticeFid = (int)SettingModel::get('notice_forum_fid', '0');
-        $noticeThreads = Permission::canViewForum($noticeFid) ? ThreadModel::getHomeNoticeThreads($noticeFid, 5) : [];
+        $noticeThreads = ThreadHelper::maskUnauthorizedSubjects(ThreadModel::getHomeNoticeThreads($noticeFid, 5));
 
         $onlineCount = self::getOnlineCount();
 
-        $hotForums = array_values(array_filter(ForumModel::getHotForums(10), static function(array $forum): bool {
+        $hotForums = array_values(array_filter(ForumModel::getHotForums(5), static function(array $forum): bool {
             return Permission::canViewForum((int)($forum['fid'] ?? 0));
         }));
 

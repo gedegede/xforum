@@ -83,12 +83,12 @@ class PmModel {
         );
     }
 
-    public static function markConversationAsRead(int $uid, int $partnerUid): void {
+    public static function markConversationAsRead(int $uid, int $partnerUid): int {
         Database::query(
             "UPDATE " . self::TABLE_DIALOG . " SET unread_num = 0 WHERE uid = :uid AND peer_uid = :peer_uid",
             ['uid' => $uid, 'peer_uid' => $partnerUid]
         );
-        self::syncInboxNum($uid);
+        return self::syncInboxNum($uid);
     }
 
     private static function dialogKey(int $uid, int $toUid): string {
@@ -112,12 +112,14 @@ class PmModel {
         );
     }
 
-    private static function syncInboxNum(int $uid): void {
+    private static function syncInboxNum(int $uid): int {
         $unread = Database::fetch(
             "SELECT COALESCE(SUM(unread_num), 0) AS total FROM " . self::TABLE_DIALOG . " WHERE uid = :uid",
             ['uid' => $uid]
         );
-        Database::query("UPDATE " . MemberModel::TABLE . " SET inbox_num = :num WHERE uid = :uid", ['num' => (int)($unread['total'] ?? 0), 'uid' => $uid]);
+        $total = (int)($unread['total'] ?? 0);
+        MemberModel::setInboxNum($uid, $total);
+        return $total;
     }
 }
 ?>

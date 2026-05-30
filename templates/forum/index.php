@@ -111,37 +111,6 @@
                 <div class="alert alert-danger"><?php echo htmlspecialchars($template_searchError); ?></div>
             <?php endif; ?>
 
-            <?php if (!empty($template_pendingThreads)): ?>
-                <div class="forum-pending-section">
-                    <div class="forum-pending-header">
-                        <span class="font-semibold">待审核主题</span>
-                        <span class="badge badge-warning"><?php echo count($template_pendingThreads); ?></span>
-                    </div>
-                    <div class="forum-pending-list">
-                        <?php foreach ($template_pendingThreads as $pendingThread): ?>
-                            <?php $pendingUid = (int)($pendingThread['uid'] ?? 0); ?>
-                            <div class="forum-pending-item">
-                                <div class="forum-pending-main">
-                                    <div class="forum-pending-title-row">
-                                        <a href="index.php?c=thread&a=index&tid=<?php echo (int)$pendingThread['tid']; ?>" class="forum-pending-title"><?php echo htmlspecialchars($pendingThread['subject']); ?></a>
-                                        <span class="badge badge-xs badge-warning">待审核</span>
-                                        <div class="forum-pending-actions">
-                                            <a href="index.php?c=thread&a=auditThread&tid=<?php echo (int)$pendingThread['tid']; ?>&status=reject" class="btn btn-soft btn-sm" data-post-link="1">拒绝</a>
-                                            <a href="index.php?c=thread&a=auditThread&tid=<?php echo (int)$pendingThread['tid']; ?>&status=pass" class="btn btn-primary btn-sm" data-post-link="1">通过</a>
-                                            <a href="index.php?c=thread&a=auditThread&tid=<?php echo (int)$pendingThread['tid']; ?>&status=delete" class="btn btn-danger btn-sm" data-post-link="1">删除</a>
-                                        </div>
-                                    </div>
-                                    <div class="thread-item-meta">
-                                        <span><?php echo htmlspecialchars($template_users[$pendingUid]['username'] ?? '匿名'); ?></span>
-                                        <span><?php echo \Lib\Helper::formatTime((int)$pendingThread['dateline']); ?></span>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-
             <!-- Thread List -->
             <?php if ($template_threads): ?>
                 <div class="list-stack">

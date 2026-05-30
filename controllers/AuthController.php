@@ -71,6 +71,17 @@ class AuthController {
                         
                         SessionModel::updateOnline($member['uid'], $member['gid'], 0);
                         
+                        if (Response::isAjaxRequest()) {
+                            Response::json([
+                                'success' => true,
+                                'message' => '登录成功',
+                                'user' => [
+                                    'uid' => (int)$member['uid'],
+                                    'username' => (string)$member['username'],
+                                ],
+                            ]);
+                        }
+
                         Response::redirect('index.php');
                     }
                 } else {
@@ -82,6 +93,10 @@ class AuthController {
             }
             
             Session::set('last_login_attempt_' . $ip, time());
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && Response::isAjaxRequest()) {
+            Response::error($error ?: '登录失败', 400);
         }
 
         Template::set('title', '登录');

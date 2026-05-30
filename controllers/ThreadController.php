@@ -14,6 +14,7 @@ use Lib\Response;
 use Lib\Request;
 use Lib\PostHelper;
 use Lib\Permission;
+use Lib\ThreadHelper;
 use Models\ThreadModel;
 use Models\PostModel;
 use Models\ForumModel;
@@ -24,7 +25,6 @@ use Models\FavModel;
 use Models\RateModel;
 use Models\SettingModel;
 use Models\UsergroupModel;
-use Models\DataModel;
 use Models\AuditModel;
 use Models\SessionModel;
 use Models\CreditModel;
@@ -44,8 +44,7 @@ class ThreadController {
         $fid = (int)$thread['fid'];
         $forum = ForumModel::get($fid);
         $canAuditForum = Permission::canAuditForum($fid);
-        $threadSortOrder = (int)($thread['sort_order'] ?? 0);
-        if (!Permission::canViewForum($fid) || ($threadSortOrder < 0 && ($threadSortOrder !== -1 || !$canAuditForum))) {
+        if (!Permission::canViewForum($fid)) {
             Response::redirect('index.php');
         }
 
@@ -87,13 +86,19 @@ class ThreadController {
         
         $users = MemberModel::getMembersByUids($uids);
 
-        $isFavorited = Session::isLoggedIn() && FavModel::isFavorite(Session::getUid(), $tid);
-        $ratedPids = Session::isLoggedIn()
-            ? RateModel::getRatedPids(Session::getUid(), array_column($posts, 'pid'))
-            : [];
+        $isFavorited = false;
+        if (Session::isLoggedIn() && (int)($thread['fav_num'] ?? 0) > 0) {
+            $isFavorited = FavModel::isFavorite(Session::getUid(), $tid);
+        }
+        $ratePids = self::collectRatePids($posts);
+        $ratedPids = [];
+        if (Session::isLoggedIn() && !empty($ratePids)) {
+            $ratedPids = RateModel::getRatedPids(Session::getUid(), $ratePids);
+        }
 
-        Template::set('title', $thread['subject']);
-        Template::set('thread', $thread);
+        $displayThread = ThreadHelper::maskUnauthorizedSubject($thread);
+        Template::set('title', $displayThread['subject']);
+        Template::set('thread', $displayThread);
         Template::set('forum', $forum);
         Template::set('posts', $posts);
         Template::set('users', $users);
@@ -105,7 +110,7 @@ class ThreadController {
         Template::set('ratedPids', $ratedPids);
         Template::set('isModerator', $canAuditForum);
         Template::set('canAuditForum', $canAuditForum);
-        Template::set('hotThreads', ThreadModel::getHotThreadsByFid($fid, 5, $tid));
+        Template::set('hotThreads', ThreadHelper::maskUnauthorizedSubjects(ThreadModel::getHotThreadsByFid($fid, 5, $tid)));
 
         $creditChange = Session::get('credit_change');
         if ($creditChange) {
@@ -153,6 +158,16 @@ class ThreadController {
         });
 
         return array_column($indexedPosts, 'post');
+    }
+
+    private static function collectRatePids(array $posts): array {
+        $pids = [];
+        foreach ($posts as $post) {
+            if ((int)($post['rate_num'] ?? 0) > 0) {
+                $pids[] = (int)($post['pid'] ?? 0);
+            }
+        }
+        return array_values(array_filter(array_unique($pids)));
     }
 
     public static function create(?int $fid = null): void {
@@ -222,10 +237,10 @@ class ThreadController {
                         }
                     }
 
-                    $sortOrder = $needApprove ? -1 : 0;
-                    $creditRule = CreditModel::getRule(CreditModel::ACTION_THREAD_CREATE);
-                    $creditDid = 0;
-                    $actualCredit = 0;
+                    $creditChange = 0;
+                    $tid = 0;
+                    $pid = 0;
+                    $auditDid = 0;
                     $inTransaction = false;
 
                     if (!$error) {
@@ -233,47 +248,30 @@ class ThreadController {
                             Database::beginTransaction();
                             $inTransaction = true;
 
-                            if ((int)$creditRule['credit'] < 0) {
-                                $creditDid = CreditModel::applyWithId(
-                                    CreditModel::ACTION_THREAD_CREATE,
-                                    Session::getUid(),
-                                    '发布主题：' . $subject
-                                );
-                                if ($creditDid === 0) {
-                                    throw new \RuntimeException(CreditModel::getInsufficientMessage(CreditModel::ACTION_THREAD_CREATE));
-                                }
-                            }
-
-                            $tid = ThreadModel::create([
-                                'fid' => $fid,
-                                'uid' => Session::getUid(),
-                                'subject' => $subject,
-                                'sort_order' => $sortOrder,
-                            ]);
-
-                            $pid = PostModel::create([
-                                'fid' => $fid,
-                                'tid' => $tid,
-                                'uid' => Session::getUid(),
-                                'message' => $message,
-                                'is_thread' => 1,
-                                'sort_order' => $sortOrder,
-                            ]);
-
-                            $creditUrl = "index.php?c=thread&a=index&tid={$tid}";
-                            CreditModel::updateCreditUrl($creditDid, $creditUrl);
-                            if (!$needApprove && (int)$creditRule['credit'] > 0) {
-                                $actualCredit = CreditModel::apply(CreditModel::ACTION_THREAD_CREATE, Session::getUid(), '发布主题：' . $subject, $creditUrl);
-                            }
-
                             if ($needApprove) {
-                                AuditModel::create('thread', $tid, 0, [], $fid, Session::getUid());
-                                DataModel::updateCount('pending_threads', 1);
+                                $auditDid = AuditModel::create('thread', 0, 0, [
+                                    'fid' => $fid,
+                                    'uid' => Session::getUid(),
+                                    'subject' => $subject,
+                                    'message' => $message,
+                                    'ip' => self::getClientIp(),
+                                ], $fid, Session::getUid());
                             } else {
-                                MemberModel::incrementThreadNum(Session::getUid());
-                                ForumModel::incrementThreadNum($fid, $tid);
-                                ForumModel::incrementTodayNum($fid);
-                                self::handleAtMentions($message, $tid, $pid);
+                                $published = self::publishThreadContent([
+                                    'fid' => $fid,
+                                    'uid' => Session::getUid(),
+                                    'subject' => $subject,
+                                    'message' => $message,
+                                    'ip' => self::getClientIp(),
+                                ]);
+                                $tid = (int)$published['tid'];
+                                $pid = (int)$published['pid'];
+                                $creditChange = (int)($published['credit_change'] ?? 0);
+                            }
+
+                            Session::set('last_post_time_' . $user['uid'], time());
+                            if ($tid > 0) {
+                                SessionModel::updateOnline($user['uid'], $user['gid'], $user['invisible'], $fid, $tid);
                             }
 
                             Database::commit();
@@ -286,6 +284,14 @@ class ThreadController {
                         }
 
                         if (!$error && $needApprove) {
+                            if (Response::isAjaxRequest()) {
+                                Response::json([
+                                    'success' => true,
+                                    'message' => '主题已提交，等待审核',
+                                    'pending' => true,
+                                    'did' => $auditDid,
+                                ]);
+                            }
                             Template::set('title', '发布成功');
                             Template::set('message', '主题已提交，等待审核');
                             Template::set('user', Session::getUser());
@@ -294,12 +300,18 @@ class ThreadController {
                         }
 
                         if (!$error) {
-                            Session::set('last_post_time_' . $user['uid'], time());
-                            
-                            SessionModel::updateOnline($user['uid'], $user['gid'], $user['invisible'], $fid, $tid);
+                            if ($creditChange !== 0) {
+                                Session::set('credit_change', $creditChange);
+                            }
 
-                            if ($actualCredit > 0) {
-                                Session::set('credit_change', (int)$creditRule['credit']);
+                            if (Response::isAjaxRequest()) {
+                                Response::json([
+                                    'success' => true,
+                                    'message' => '发布成功',
+                                    'tid' => $tid,
+                                    'pid' => $pid,
+                                    'credit_change' => $creditChange,
+                                ]);
                             }
 
                             Response::redirect("index.php?c=thread&a=index&tid={$tid}");
@@ -307,6 +319,10 @@ class ThreadController {
                     }
                 }
             }
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && Response::isAjaxRequest() && $error !== '') {
+            Response::error($error, 400);
         }
 
         Template::set('title', '发布新帖');
@@ -410,14 +426,10 @@ class ThreadController {
                 }
             }
 
-            $sortOrder = $needApprove ? -1 : 0;
-            $creditRule = CreditModel::getRule(CreditModel::ACTION_THREAD_REPLY);
-            $creditDid = 0;
-
             $quoteFloor = 0;
             if ($quotePid > 0 && $quoteUid > 0) {
                 $quotePost = PostModel::get($quotePid);
-                if ($quotePost && $quotePost['tid'] == $tid) {
+                if ($quotePost && (int)$quotePost['tid'] === $tid) {
                     $quoteFloor = PostModel::getPostFloor($quotePid);
                 } else {
                     $quotePid = 0;
@@ -426,56 +438,40 @@ class ThreadController {
             }
 
             $pid = 0;
+            $auditDid = 0;
             $errorMsg = '';
             $inTransaction = false;
-            $creditDid = 0;
+            $creditChange = 0;
             try {
                 Database::beginTransaction();
                 $inTransaction = true;
 
-                if ((int)$creditRule['credit'] < 0) {
-                $creditDid = CreditModel::applyWithId(
-                    CreditModel::ACTION_THREAD_REPLY,
-                    Session::getUid(),
-                    '回复主题：' . ($thread['subject'] ?? ''),
-                    "index.php?c=thread&a=index&tid={$tid}"
-                );
-                    if ($creditDid === 0) {
-                        throw new \RuntimeException(CreditModel::getInsufficientMessage(CreditModel::ACTION_THREAD_REPLY));
-                    }
-                }
-
-                $pid = PostModel::create([
-                    'fid' => $thread['fid'],
-                    'tid' => $tid,
-                    'uid' => Session::getUid(),
-                    'message' => $message,
-                    'is_thread' => 0,
-                    'quote_pid' => $quotePid,
-                    'quote_uid' => $quoteUid,
-                    'quote_floor' => $quoteFloor,
-                    'sort_order' => $sortOrder,
-                ]);
-                CreditModel::updateCreditUrl($creditDid, "index.php?c=thread&a=index&tid={$tid}&pid={$pid}");
-
-                if (!$needApprove) {
-                    ForumModel::incrementTodayNum($thread['fid']);
-                    ThreadModel::updateReply($tid, Session::getUid());
-                    MemberModel::incrementReplyNum(Session::getUid());
-                    ForumModel::incrementReplyNum($thread['fid'], $tid);
+                if ($needApprove) {
+                    $auditDid = AuditModel::create('post', $tid, 0, [
+                        'fid' => (int)$thread['fid'],
+                        'tid' => $tid,
+                        'uid' => Session::getUid(),
+                        'message' => $message,
+                        'quote_pid' => $quotePid,
+                        'quote_uid' => $quoteUid,
+                        'quote_floor' => $quoteFloor,
+                        'ip' => self::getClientIp(),
+                    ], (int)$thread['fid'], Session::getUid());
                 } else {
-                    AuditModel::create('post', $tid, $pid, [], (int)$thread['fid'], Session::getUid());
-                    DataModel::updateCount('pending_posts', 1);
+                    $published = self::publishReplyContent($thread, [
+                        'tid' => $tid,
+                        'uid' => Session::getUid(),
+                        'message' => $message,
+                        'quote_pid' => $quotePid,
+                        'quote_uid' => $quoteUid,
+                        'quote_floor' => $quoteFloor,
+                        'ip' => self::getClientIp(),
+                    ]);
+                    $pid = (int)$published['pid'];
+                    $creditChange = (int)($published['credit_change'] ?? 0);
                 }
 
-                if (!$needApprove && (int)$creditRule['credit'] > 0) {
-                    $creditDid = CreditModel::apply(
-                        CreditModel::ACTION_THREAD_REPLY,
-                        Session::getUid(),
-                        '回复主题：' . ($thread['subject'] ?? ''),
-                        "index.php?c=thread&a=index&tid={$tid}&pid={$pid}"
-                    );
-                }
+                Session::set('last_post_time_' . $user['uid'], time());
 
                 Database::commit();
                 $inTransaction = false;
@@ -498,25 +494,29 @@ class ThreadController {
                 exit;
             }
 
-            if (!$needApprove) {
-                if ($thread['uid'] != Session::getUid()) {
-                    NotifyModel::addNotify($thread['uid'], Session::getUid(), $tid, $pid, '回复了你的主题');
+            if ($needApprove) {
+                if (Response::isAjaxRequest()) {
+                    Response::json([
+                        'success' => true,
+                        'message' => '回复已提交，等待审核',
+                        'pending' => true,
+                        'did' => $auditDid,
+                    ]);
                 }
-
-                if ($quoteUid > 0 && $quoteUid != Session::getUid() && $quoteUid != $thread['uid']) {
-                    NotifyModel::addNotify($quoteUid, Session::getUid(), $tid, $pid, '在 ' . ($thread['subject'] ?? '主题') . ' 中引用了你的回复');
-                }
-
-                self::handleAtMentions($message, $tid, $pid);
+                Template::set('title', '回复成功');
+                Template::set('message', '回复已提交，等待审核');
+                Template::set('type', 'post');
+                Template::set('thread', $thread);
+                Template::set('user', Session::getUser());
+                Template::display('thread/pending');
+                exit;
             }
-
-            Session::set('last_post_time_' . $user['uid'], time());
 
             SessionModel::updateOnline($user['uid'], $user['gid'], $user['invisible'], $thread['fid'], $tid);
 
             if (Response::isAjaxRequest()) {
                 $currentUser = Session::getUser();
-                $postIndex = (int)($thread['reply_num'] ?? 0) + 2;
+                $postIndex = (int)($thread['reply_num'] ?? 0) + 1;
 
                 $newPost = [
                     'pid' => $pid,
@@ -529,7 +529,6 @@ class ThreadController {
                     'quote_pid' => $quotePid,
                     'quote_uid' => $quoteUid,
                     'quote_floor' => $quoteFloor,
-                    'sort_order' => $sortOrder,
                 ];
 
                 $users = [
@@ -543,7 +542,7 @@ class ThreadController {
                     }
                 }
 
-                $isMod = Permission::isModerator($thread['fid']);
+                $isMod = Permission::isModerator((int)$thread['fid']);
                 $html = PostHelper::renderPost($newPost, $users, $postIndex, false, $currentUser, $isMod);
 
                 $response = [
@@ -554,8 +553,8 @@ class ThreadController {
                     'postIndex' => $postIndex,
                 ];
 
-                if ($creditDid > 0) {
-                    $response['credit_change'] = (int)$creditRule['credit'];
+                if ($creditChange !== 0) {
+                    $response['credit_change'] = $creditChange;
                 }
 
                 Response::json($response);
@@ -574,14 +573,18 @@ class ThreadController {
     public static function handleAtMentions(string $message, int $tid, int $pid, ?int $fromUid = null): void {
         preg_match_all('/@([^\s@,，:：;；]+)/u', $message, $matches);
         $fromUid = $fromUid ?? Session::getUid();
+        $usernames = array_values(array_unique(array_filter(array_map('trim', $matches[1] ?? []))));
 
-        if (!empty($matches[1])) {
-            foreach ($matches[1] as $username) {
-                $member = MemberModel::getByUsername($username);
-                if ($member && (int)$member['uid'] !== $fromUid) {
-                    $thread = ThreadModel::get($tid);
-                    NotifyModel::addNotify((int)$member['uid'], $fromUid, $tid, $pid, '在 ' . ($thread['subject'] ?? '主题') . ' 中@了你');
-                }
+        if (empty($usernames)) {
+            return;
+        }
+
+        $thread = ThreadModel::get($tid);
+        $subject = (string)($thread['subject'] ?? '主题');
+        foreach ($usernames as $username) {
+            $member = MemberModel::getByUsername($username);
+            if ($member && (int)$member['uid'] !== $fromUid) {
+                NotifyModel::addNotify((int)$member['uid'], $fromUid, $tid, $pid, '在 ' . $subject . ' 中@了你');
             }
         }
     }
@@ -800,9 +803,6 @@ class ThreadController {
             Response::redirect('index.php?c=forum&a=index&fid=' . $post['fid']);
         }
 
-        $sortOrder = (int)($post['sort_order'] ?? 0);
-        $wasPending = $sortOrder === -1;
-        $wasApproved = $sortOrder >= 0;
         self::logPostAction(
             'post_delete',
             $post,
@@ -810,19 +810,14 @@ class ThreadController {
             self::buildPostArchive($post)
         );
         PostModel::delete($pid);
-        ThreadModel::rebuildReplyStats($tid);
 
-        if ($wasPending) {
-            DataModel::updateCount('pending_posts', -1);
-            AuditModel::finishPendingByTarget('post', (int)$post['tid'], $pid, -1, Session::getUid());
-        } elseif ($wasApproved) {
-            MemberModel::decrementReplyNum($post['uid']);
-            ForumModel::decrementReplyNum($post['fid']);
+        ThreadModel::decrementReplyNum($tid);
+        MemberModel::decrementReplyNum((int)$post['uid']);
+        ForumModel::decrementReplyNum((int)$post['fid']);
+        if ((int)($post['dateline'] ?? 0) >= strtotime(date('Y-m-d'))) {
+            ForumModel::decrementTodayNum((int)$post['fid']);
         }
-        $closedReports = AuditModel::finishPendingByTarget('report', (int)$post['tid'], $pid, -1, Session::getUid());
-        if ($closedReports > 0) {
-            DataModel::updateCount('pending_reports', -$closedReports);
-        }
+        AuditModel::finishPendingByTarget('report', (int)$post['tid'], $pid, -1, Session::getUid());
 
         if (Response::isAjaxRequest()) {
             Response::json(['success' => true, 'message' => '删除成功']);
@@ -839,6 +834,10 @@ class ThreadController {
         } else {
             return (int)($seconds / 3600) . '小时';
         }
+    }
+
+    private static function getClientIp(): string {
+        return $_SERVER['REMOTE_ADDR'] ?? '';
     }
 
     public static function report(int $pid): void {
@@ -890,7 +889,6 @@ class ThreadController {
                 'report_uid' => Session::getUid(),
                 'report_reason' => $reason,
             ], (int)$post['fid'], Session::getUid());
-            DataModel::updateCount('pending_reports', 1);
             if ((int)$creditRule['credit'] > 0) {
                 CreditModel::apply(CreditModel::ACTION_THREAD_REPORT, Session::getUid(), $creditMessage, $creditUrl);
             }
@@ -910,176 +908,200 @@ class ThreadController {
 
     public static function approve(int $tid): void {
         self::requirePost();
-        $thread = ThreadModel::get($tid);
-        if (!$thread || !Permission::canAuditForum((int)$thread['fid'])) {
-            Response::redirect('index.php');
-        }
-
-        self::approveThreadForAudit($thread);
-
-        Response::redirect("index.php?c=thread&a=index&tid={$tid}");
+        Response::redirect('index.php?c=admin&a=audits');
     }
 
     public static function approvePost(int $pid): void {
         self::requirePost();
-        $post = PostModel::get($pid);
-        if (!$post || !Permission::canAuditForum((int)$post['fid'])) {
-            Response::redirect('index.php');
-        }
-
-        self::approvePostForAudit($post);
-
-        Response::redirect("index.php?c=thread&a=index&tid={$post['tid']}");
+        Response::redirect('index.php?c=admin&a=audits');
     }
 
     public static function auditThread(int $tid): void {
         self::requirePost();
-        $thread = ThreadModel::get($tid);
-        if (!$thread || !Permission::canAuditForum((int)$thread['fid'])) {
-            self::auditDenied();
-        }
-
-        if ((int)($thread['sort_order'] ?? 0) === -1) {
-            $status = Request::string('status');
-            if ($status === 'pass') {
-                self::approveThreadForAudit($thread);
-            } elseif ($status === 'reject') {
-                self::rejectThreadForAudit($thread);
-            } elseif ($status === 'delete') {
-                self::deleteThreadForAudit($thread);
-            }
-        }
-
-        self::auditDone('index.php?c=forum&a=index&fid=' . (int)$thread['fid']);
+        self::auditDenied();
     }
 
     public static function auditPost(int $pid): void {
         self::requirePost();
-        $post = PostModel::get($pid);
-        if (!$post || !Permission::canAuditForum((int)$post['fid'])) {
-            self::auditDenied();
+        self::auditDenied();
+    }
+
+    public static function publishThreadAudit(array $audit): array {
+        $data = self::decodeAuditData($audit);
+        $data['fid'] = (int)($data['fid'] ?? $audit['fid'] ?? 0);
+        $data['uid'] = (int)($data['uid'] ?? $audit['uid'] ?? 0);
+        $data['subject'] = trim((string)($data['subject'] ?? ''));
+        $data['message'] = trim((string)($data['message'] ?? ''));
+        if ((int)$data['fid'] <= 0 || (int)$data['uid'] <= 0 || $data['subject'] === '' || $data['message'] === '') {
+            throw new \RuntimeException('审核数据不完整');
         }
 
-        if ((int)($post['sort_order'] ?? 0) === -1 && (int)($post['is_thread'] ?? 0) === 0) {
-            $status = Request::string('status');
-            if ($status === 'pass') {
-                self::approvePostForAudit($post);
-            } elseif ($status === 'reject') {
-                self::rejectPostForAudit($post);
-            } elseif ($status === 'delete') {
-                self::deletePostForAudit($post);
+        $published = self::publishThreadContent($data);
+        NotifyModel::addNotify((int)$published['uid'], Session::getUid(), (int)$published['tid'], (int)$published['pid'], '《' . $published['subject'] . '》已审核发布');
+        return $published;
+    }
+
+    public static function publishPostAudit(array $audit): array {
+        $data = self::decodeAuditData($audit);
+        $tid = (int)($data['tid'] ?? $audit['tid'] ?? 0);
+        $thread = ThreadModel::get($tid);
+        if (!$thread) {
+            throw new \RuntimeException('主题不存在');
+        }
+
+        $data['tid'] = $tid;
+        $data['uid'] = (int)($data['uid'] ?? $audit['uid'] ?? 0);
+        $data['message'] = trim((string)($data['message'] ?? ''));
+        if ((int)$data['uid'] <= 0 || $data['message'] === '') {
+            throw new \RuntimeException('审核数据不完整');
+        }
+
+        $published = self::publishReplyContent($thread, $data);
+        NotifyModel::addNotify((int)$published['uid'], Session::getUid(), (int)$published['tid'], (int)$published['pid'], '《' . $published['subject'] . '》的回帖已审核发布');
+        return $published;
+    }
+
+    private static function publishThreadContent(array $data): array {
+        $fid = (int)($data['fid'] ?? 0);
+        $uid = (int)($data['uid'] ?? 0);
+        $subject = trim((string)($data['subject'] ?? ''));
+        $message = trim((string)($data['message'] ?? ''));
+        if ($fid <= 0 || $uid <= 0 || $subject === '' || $message === '') {
+            throw new \RuntimeException('发布数据不完整');
+        }
+
+        $creditRule = CreditModel::getRule(CreditModel::ACTION_THREAD_CREATE);
+        $creditDid = 0;
+        if ((int)$creditRule['credit'] < 0) {
+            $creditDid = CreditModel::applyWithId(
+                CreditModel::ACTION_THREAD_CREATE,
+                $uid,
+                '发布主题：' . $subject
+            );
+            if ($creditDid === 0) {
+                throw new \RuntimeException(CreditModel::getInsufficientMessage(CreditModel::ACTION_THREAD_CREATE));
             }
         }
 
-        $redirect = 'index.php?c=thread&a=index&tid=' . (int)$post['tid'];
-        $page = Request::int('page');
-        if ($page > 1) {
-            $redirect .= '&page=' . $page;
+        $tid = ThreadModel::create([
+            'fid' => $fid,
+            'uid' => $uid,
+            'subject' => $subject,
+        ]);
+
+        $pid = PostModel::create([
+            'fid' => $fid,
+            'tid' => $tid,
+            'uid' => $uid,
+            'message' => $message,
+            'is_thread' => 1,
+            'ip' => (string)($data['ip'] ?? ''),
+        ]);
+
+        $url = "index.php?c=thread&a=index&tid={$tid}";
+        CreditModel::updateCreditUrl($creditDid, $url);
+        $creditChange = 0;
+        if ((int)$creditRule['credit'] > 0) {
+            $creditDid = CreditModel::apply(CreditModel::ACTION_THREAD_CREATE, $uid, '发布主题：' . $subject, $url);
+            if ($creditDid > 0) {
+                $creditChange = (int)$creditRule['credit'];
+            }
+        } elseif ((int)$creditRule['credit'] < 0 && $creditDid > 0) {
+            $creditChange = (int)$creditRule['credit'];
         }
-        self::auditDone($redirect);
+
+        MemberModel::incrementThreadNum($uid);
+        ForumModel::incrementThreadNum($fid, $tid);
+        ForumModel::incrementTodayNum($fid);
+        self::handleAtMentions($message, $tid, $pid, $uid);
+
+        return [
+            'tid' => $tid,
+            'pid' => $pid,
+            'fid' => $fid,
+            'uid' => $uid,
+            'subject' => $subject,
+            'message' => $message,
+            'credit_change' => $creditChange,
+        ];
     }
 
-    private static function approveThreadForAudit(array $thread): void {
-        $tid = (int)$thread['tid'];
-        if ((int)($thread['sort_order'] ?? 0) !== -1) {
-            return;
+    private static function publishReplyContent(array $thread, array $data): array {
+        $tid = (int)($data['tid'] ?? $thread['tid'] ?? 0);
+        $fid = (int)($thread['fid'] ?? 0);
+        $uid = (int)($data['uid'] ?? 0);
+        $message = trim((string)($data['message'] ?? ''));
+        if ($tid <= 0 || $fid <= 0 || $uid <= 0 || $message === '') {
+            throw new \RuntimeException('发布数据不完整');
         }
 
-        ThreadModel::update($tid, ['sort_order' => 0]);
-        PostModel::approveByTid($tid);
-        DataModel::updateCount('pending_threads', -1);
-        AuditModel::finishPendingByTarget('thread', $tid, 0, 1, Session::getUid());
-
-        $threadPost = PostModel::getThreadPost($tid);
-        MemberModel::incrementThreadNum((int)$thread['uid']);
-        ForumModel::incrementThreadNum((int)$thread['fid'], $tid);
-        ForumModel::incrementTodayNum((int)$thread['fid']);
-        if ((int)CreditModel::getRule(CreditModel::ACTION_THREAD_CREATE)['credit'] > 0) {
-            CreditModel::apply(
-                CreditModel::ACTION_THREAD_CREATE,
-                (int)$thread['uid'],
-                '发布主题：' . ($thread['subject'] ?? ''),
+        $quotePid = (int)($data['quote_pid'] ?? 0);
+        $quoteUid = (int)($data['quote_uid'] ?? 0);
+        $quoteFloor = (int)($data['quote_floor'] ?? 0);
+        $creditRule = CreditModel::getRule(CreditModel::ACTION_THREAD_REPLY);
+        $creditDid = 0;
+        if ((int)$creditRule['credit'] < 0) {
+            $creditDid = CreditModel::applyWithId(
+                CreditModel::ACTION_THREAD_REPLY,
+                $uid,
+                '回复主题：' . ($thread['subject'] ?? ''),
                 "index.php?c=thread&a=index&tid={$tid}"
             );
+            if ($creditDid === 0) {
+                throw new \RuntimeException(CreditModel::getInsufficientMessage(CreditModel::ACTION_THREAD_REPLY));
+            }
         }
-        if ($threadPost) {
-            self::handleAtMentions((string)$threadPost['message'], $tid, (int)$threadPost['pid'], (int)$thread['uid']);
+
+        $pid = PostModel::create([
+            'fid' => $fid,
+            'tid' => $tid,
+            'uid' => $uid,
+            'message' => $message,
+            'is_thread' => 0,
+            'quote_pid' => $quotePid,
+            'quote_uid' => $quoteUid,
+            'quote_floor' => $quoteFloor,
+            'ip' => (string)($data['ip'] ?? ''),
+        ]);
+
+        $url = "index.php?c=thread&a=index&tid={$tid}&pid={$pid}";
+        CreditModel::updateCreditUrl($creditDid, $url);
+        $creditChange = 0;
+        if ((int)$creditRule['credit'] > 0) {
+            $creditDid = CreditModel::apply(CreditModel::ACTION_THREAD_REPLY, $uid, '回复主题：' . ($thread['subject'] ?? ''), $url);
+            if ($creditDid > 0) {
+                $creditChange = (int)$creditRule['credit'];
+            }
+        } elseif ((int)$creditRule['credit'] < 0 && $creditDid > 0) {
+            $creditChange = (int)$creditRule['credit'];
         }
-        self::logThreadAction(
-            'thread_approve',
-            $thread,
-            '通过主题: ' . ($thread['subject'] ?? '') . " (TID: {$tid})",
-            (int)($threadPost['pid'] ?? 0)
-        );
+
+        ForumModel::incrementTodayNum($fid);
+        ThreadModel::updateReply($tid, $uid);
+        MemberModel::incrementReplyNum($uid);
+        ForumModel::incrementReplyNum($fid, $tid);
+        if ((int)$thread['uid'] !== $uid) {
+            NotifyModel::addNotify((int)$thread['uid'], $uid, $tid, $pid, '回复了你的主题');
+        }
+        if ($quoteUid > 0 && $quoteUid !== $uid && $quoteUid !== (int)$thread['uid']) {
+            NotifyModel::addNotify($quoteUid, $uid, $tid, $pid, '在 ' . ($thread['subject'] ?? '主题') . ' 中引用了你的回复');
+        }
+        self::handleAtMentions($message, $tid, $pid, $uid);
+
+        return [
+            'tid' => $tid,
+            'pid' => $pid,
+            'fid' => $fid,
+            'uid' => $uid,
+            'subject' => (string)($thread['subject'] ?? ''),
+            'message' => $message,
+            'credit_change' => $creditChange,
+        ];
     }
 
-    private static function rejectThreadForAudit(array $thread): void {
-        $tid = (int)$thread['tid'];
-        if ((int)($thread['sort_order'] ?? 0) !== -1) {
-            return;
-        }
-
-        ThreadModel::update($tid, ['sort_order' => -2]);
-        DataModel::updateCount('pending_threads', -1);
-        AuditModel::finishPendingByTarget('thread', $tid, 0, -1, Session::getUid());
-        self::logThreadAction(
-            'thread_reject',
-            $thread,
-            '拒绝主题: ' . ($thread['subject'] ?? '') . " (TID: {$tid})"
-        );
-    }
-
-    private static function approvePostForAudit(array $post): void {
-        $pid = (int)$post['pid'];
-        if ((int)($post['sort_order'] ?? 0) !== -1 || (int)($post['is_thread'] ?? 0) !== 0) {
-            return;
-        }
-
-        PostModel::update($pid, ['sort_order' => 0]);
-        DataModel::updateCount('pending_posts', -1);
-        AuditModel::finishPendingByTarget('post', (int)$post['tid'], $pid, 1, Session::getUid());
-
-        $thread = ThreadModel::get((int)$post['tid']);
-        if (!$thread) {
-            return;
-        }
-
-        ThreadModel::updateReply((int)$post['tid'], (int)$post['uid']);
-        MemberModel::incrementReplyNum((int)$post['uid']);
-        ForumModel::incrementReplyNum((int)$post['fid'], (int)$post['tid']);
-        ForumModel::incrementTodayNum((int)$post['fid']);
-        if ((int)CreditModel::getRule(CreditModel::ACTION_THREAD_REPLY)['credit'] > 0) {
-            CreditModel::apply(
-                CreditModel::ACTION_THREAD_REPLY,
-                (int)$post['uid'],
-                '回复主题：' . ($thread['subject'] ?? ''),
-                "index.php?c=thread&a=index&tid={$post['tid']}&pid={$pid}"
-            );
-        }
-        if ((int)$thread['uid'] !== (int)$post['uid']) {
-            NotifyModel::addNotify((int)$thread['uid'], (int)$post['uid'], (int)$post['tid'], $pid, '回复了你的主题');
-        }
-        $quoteUid = (int)($post['quote_uid'] ?? 0);
-        if ($quoteUid > 0 && $quoteUid !== (int)$post['uid'] && $quoteUid !== (int)$thread['uid']) {
-            NotifyModel::addNotify($quoteUid, (int)$post['uid'], (int)$post['tid'], $pid, '在 ' . ($thread['subject'] ?? '主题') . ' 中引用了你的回复');
-        }
-        self::handleAtMentions((string)$post['message'], (int)$post['tid'], $pid, (int)$post['uid']);
-    }
-
-    private static function rejectPostForAudit(array $post): void {
-        $pid = (int)$post['pid'];
-        if ((int)($post['sort_order'] ?? 0) !== -1) {
-            return;
-        }
-
-        PostModel::update($pid, ['sort_order' => -2]);
-        DataModel::updateCount('pending_posts', -1);
-        AuditModel::finishPendingByTarget('post', (int)$post['tid'], $pid, -1, Session::getUid());
-    }
-
-    private static function deleteThreadForAudit(array $thread): void {
-        $tid = (int)$thread['tid'];
-        self::deleteThreadOnly($tid);
+    public static function decodeAuditData(array $audit): array {
+        $data = json_decode((string)($audit['json_data'] ?? '{}'), true);
+        return is_array($data) ? $data : [];
     }
 
     private static function deleteThreadOnly(int $tid): void {
@@ -1087,15 +1109,39 @@ class ThreadController {
         if (!$thread) {
             return;
         }
+        $posts = PostModel::getPostsByTid($tid);
+        $replyCountsByUid = [];
+        $replyCount = 0;
+        $todayDecrement = (int)($thread['dateline'] ?? 0) >= strtotime(date('Y-m-d')) ? 1 : 0;
+        foreach ($posts as $post) {
+            if ((int)($post['is_thread'] ?? 0) !== 0) {
+                continue;
+            }
+            $replyCount++;
+            if ((int)($post['dateline'] ?? 0) >= strtotime(date('Y-m-d'))) {
+                $todayDecrement++;
+            }
+            $uid = (int)($post['uid'] ?? 0);
+            if ($uid > 0) {
+                $replyCountsByUid[$uid] = ($replyCountsByUid[$uid] ?? 0) + 1;
+            }
+        }
         ThreadModel::delete($tid);
+        PostModel::deleteByTid($tid);
         self::closeThreadAudits($tid);
-        ForumModel::rebuildStats((int)$thread['fid']);
+        MemberModel::decrementThreadNum((int)$thread['uid']);
+        ForumModel::decrementThreadNumForTid((int)$thread['fid'], $tid);
+        ForumModel::decrementReplyNum((int)$thread['fid'], $replyCount);
+        ForumModel::decrementTodayNum((int)$thread['fid'], $todayDecrement);
+        foreach ($replyCountsByUid as $uid => $count) {
+            MemberModel::decrementReplyNum((int)$uid, (int)$count);
+        }
         self::logThreadAction(
             'thread_delete',
             $thread,
             '删除主题: ' . ($thread['subject'] ?? '') . " (TID: {$tid})",
             0,
-            self::buildThreadArchive($thread)
+            self::buildThreadArchive($thread, $posts)
         );
     }
 
@@ -1115,7 +1161,10 @@ class ThreadController {
         return json_encode($post, JSON_UNESCAPED_UNICODE);
     }
 
-    private static function buildThreadArchive(array $thread): string {
+    private static function buildThreadArchive(array $thread, array $posts = []): string {
+        if (!empty($posts)) {
+            $thread['_posts'] = $posts;
+        }
         return json_encode($thread, JSON_UNESCAPED_UNICODE);
     }
 
@@ -1132,39 +1181,7 @@ class ThreadController {
     }
 
     private static function closeThreadAudits(int $tid): void {
-        $closedAudits = AuditModel::finishPendingByThread($tid, -1, Session::getUid());
-        if (($closedAudits['thread'] ?? 0) > 0) {
-            DataModel::updateCount('pending_threads', -($closedAudits['thread'] ?? 0));
-        }
-        if (($closedAudits['post'] ?? 0) > 0) {
-            DataModel::updateCount('pending_posts', -($closedAudits['post'] ?? 0));
-        }
-        if (($closedAudits['report'] ?? 0) > 0) {
-            DataModel::updateCount('pending_reports', -($closedAudits['report'] ?? 0));
-        }
-    }
-
-    private static function deletePostForAudit(array $post): void {
-        $pid = (int)$post['pid'];
-        $wasPending = (int)($post['sort_order'] ?? 0) === -1;
-        self::logPostAction(
-            'post_delete',
-            $post,
-            "删除帖子: TID: {$post['tid']}, PID: {$pid}",
-            self::buildPostArchive($post)
-        );
-        PostModel::delete($pid);
-        ThreadModel::rebuildReplyStats((int)$post['tid']);
-
-        if ($wasPending) {
-            DataModel::updateCount('pending_posts', -1);
-            AuditModel::finishPendingByTarget('post', (int)$post['tid'], $pid, -1, Session::getUid());
-        }
-
-        $closedReports = AuditModel::finishPendingByTarget('report', (int)$post['tid'], $pid, -1, Session::getUid());
-        if ($closedReports > 0) {
-            DataModel::updateCount('pending_reports', -$closedReports);
-        }
+        AuditModel::finishPendingByThread($tid, -1, Session::getUid());
     }
 
     private static function auditDenied(): void {

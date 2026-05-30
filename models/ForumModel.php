@@ -236,14 +236,14 @@ class ForumModel {
             return;
         }
 
-        $threadCount = Database::count(ThreadModel::TABLE, 'fid = :fid AND sort_order >= 0', ['fid' => $fid]);
+        $threadCount = Database::count(ThreadModel::TABLE, 'fid = :fid', ['fid' => $fid]);
         $replyRow = Database::fetch(
-            'SELECT COALESCE(SUM(reply_num), 0) AS reply_num, COALESCE(MAX(tid), 0) AS last_tid FROM ' . ThreadModel::TABLE . ' WHERE fid = :fid AND sort_order >= 0',
+            'SELECT COALESCE(SUM(reply_num), 0) AS reply_num, COALESCE(MAX(tid), 0) AS last_tid FROM ' . ThreadModel::TABLE . ' WHERE fid = :fid',
             ['fid' => $fid]
         );
         $todayTime = strtotime(date('Y-m-d'));
-        $todayThreads = Database::count(ThreadModel::TABLE, 'fid = :fid AND sort_order >= 0 AND dateline >= :today_time', ['fid' => $fid, 'today_time' => $todayTime]);
-        $todayReplies = Database::count(PostModel::TABLE, 'fid = :fid AND is_thread = 0 AND sort_order >= 0 AND dateline >= :today_time', ['fid' => $fid, 'today_time' => $todayTime]);
+        $todayThreads = Database::count(ThreadModel::TABLE, 'fid = :fid AND dateline >= :today_time', ['fid' => $fid, 'today_time' => $todayTime]);
+        $todayReplies = Database::count(PostModel::TABLE, 'fid = :fid AND is_thread = 0 AND dateline >= :today_time', ['fid' => $fid, 'today_time' => $todayTime]);
 
         Database::update(self::TABLE, [
             'thread_num' => $threadCount,
@@ -319,22 +319,63 @@ class ForumModel {
         if (!$forum) {
             return;
         }
+        $lastTid = (int)($forum['last_tid'] ?? 0);
         Database::update(self::TABLE, [
             'thread_num' => max(0, $forum['thread_num'] - 1),
+            'last_tid' => $lastTid,
         ], self::PRIMARY_KEY . " = :fid", ['fid' => $fid]);
         $forum['thread_num'] = max(0, $forum['thread_num'] - 1);
+        $forum['last_tid'] = $lastTid;
         self::updateCache($forum);
     }
 
-    public static function decrementReplyNum(int $fid): void {
+    public static function decrementThreadNumForTid(int $fid, int $tid): void {
         $forum = self::get($fid);
         if (!$forum) {
             return;
         }
+        $lastTid = (int)($forum['last_tid'] ?? 0);
+        if ($lastTid === $tid) {
+            $lastTid = ThreadModel::getLatestTidByFid($fid);
+        }
         Database::update(self::TABLE, [
-            'reply_num' => max(0, $forum['reply_num'] - 1),
+            'thread_num' => max(0, (int)$forum['thread_num'] - 1),
+            'last_tid' => $lastTid,
         ], self::PRIMARY_KEY . " = :fid", ['fid' => $fid]);
-        $forum['reply_num'] = max(0, $forum['reply_num'] - 1);
+        $forum['thread_num'] = max(0, (int)$forum['thread_num'] - 1);
+        $forum['last_tid'] = $lastTid;
+        self::updateCache($forum);
+    }
+
+    public static function decrementReplyNum(int $fid, int $amount = 1): void {
+        $forum = self::get($fid);
+        if (!$forum || $amount <= 0) {
+            return;
+        }
+        $replyNum = max(0, (int)$forum['reply_num'] - $amount);
+        Database::update(self::TABLE, [
+            'reply_num' => $replyNum,
+        ], self::PRIMARY_KEY . " = :fid", ['fid' => $fid]);
+        $forum['reply_num'] = $replyNum;
+        self::updateCache($forum);
+    }
+
+    public static function decrementTodayNum(int $fid, int $amount = 1): void {
+        $forum = self::get($fid);
+        if (!$forum || $amount <= 0) {
+            return;
+        }
+
+        $today = strtotime(date('Y-m-d'));
+        if ((int)($forum['today_time'] ?? 0) !== $today) {
+            return;
+        }
+
+        $todayNum = max(0, (int)$forum['today_num'] - $amount);
+        Database::update(self::TABLE, [
+            'today_num' => $todayNum,
+        ], self::PRIMARY_KEY . " = :fid", ['fid' => $fid]);
+        $forum['today_num'] = $todayNum;
         self::updateCache($forum);
     }
 

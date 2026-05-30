@@ -268,8 +268,10 @@ a.metric-card:hover{background:var(--hover)}
                     <div class="list-stack">
                         <?php foreach ($template_noticeThreads as $thread): ?>
                             <a href="index.php?c=thread&a=index&tid=<?php echo $thread['tid']; ?>" class="list-link list-link-sm list-link-pad">
-                                <span class="flex-1 min-w-0 font-medium truncate text-text text-sm"><?php echo htmlspecialchars($thread['subject']); ?></span>
-                                <span class="text-xs text-muted flex-shrink-0 ml-2"><?php echo \Lib\Helper::formatTime((int)$thread['dateline']); ?></span>
+                                <span class="flex-1 min-w-0">
+                                    <span class="block font-medium text-text text-sm leading-relaxed"><?php echo htmlspecialchars($thread['subject']); ?></span>
+                                    <span class="block text-xs text-muted mt-1"><?php echo \Lib\Helper::formatTime((int)$thread['dateline']); ?></span>
+                                </span>
                             </a>
                         <?php endforeach; ?>
                     </div>
@@ -298,10 +300,12 @@ a.metric-card:hover{background:var(--hover)}
                                         <?php echo (int)$forum['thread_num']; ?> 主题<?php if ((int)$forum['reply_num'] > 0): ?> · <?php echo (int)$forum['reply_num']; ?> 回复<?php endif; ?>
                                     </div>
                                 </div>
-                                <div class="text-center flex-shrink-0 ml-2">
-                                    <div class="font-semibold text-sm"><?php echo (int)$forum['today_num']; ?></div>
-                                    <div class="text-xs text-muted">今日</div>
-                                </div>
+                                <?php if ((int)($forum['today_num'] ?? 0) > 0): ?>
+                                    <div class="text-center flex-shrink-0 ml-2">
+                                        <div class="font-semibold text-sm"><?php echo (int)$forum['today_num']; ?></div>
+                                        <div class="text-xs text-muted">今日</div>
+                                    </div>
+                                <?php endif; ?>
                             </a>
                         <?php endforeach; ?>
                     </div>

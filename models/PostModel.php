@@ -20,9 +20,8 @@ class PostModel {
         return Database::fetchFilteredPage(
             "SELECT * FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid ASC LIMIT :limit OFFSET :offset",
             ['tid' => $tid],
-            static function (array $post) use ($includePending): bool {
-                $sortOrder = (int)($post['sort_order'] ?? 0);
-                return $sortOrder >= 0 || ($includePending && $sortOrder === -1);
+            static function (array $post): bool {
+                return true;
             },
             $page,
             $pageSize,
@@ -31,7 +30,7 @@ class PostModel {
     }
 
     public static function getPendingApproveCount(): int {
-        return DataModel::getInt('pending_posts');
+        return (int)(AuditModel::getPendingStats()['pending_posts'] ?? 0);
     }
 
     public static function get(int $pid): ?array {
@@ -56,10 +55,6 @@ class PostModel {
     }
 
     public static function getPostCount(int $tid, bool $includePending = false): int {
-        if ($includePending) {
-            return Database::count(self::TABLE, 'tid = :tid AND sort_order >= -1', ['tid' => $tid]);
-        }
-
         $thread = ThreadModel::get($tid);
         if (!$thread) {
             return 0;
@@ -68,16 +63,42 @@ class PostModel {
     }
 
     public static function getUserPosts(int $uid, int $page = 1, int $pageSize = self::PAGE_SIZE): array {
+        $threadCache = [];
         return Database::fetchFilteredPage(
             "SELECT * FROM " . self::TABLE . " WHERE uid = :uid ORDER BY pid DESC LIMIT :limit OFFSET :offset",
             ['uid' => $uid],
-            static function (array $post): bool {
-                return (int)($post['is_thread'] ?? 0) === 0 && (int)($post['sort_order'] ?? 0) >= 0;
+            static function (array $post) use (&$threadCache): bool {
+                if ((int)($post['is_thread'] ?? 0) !== 0) {
+                    return false;
+                }
+                $tid = (int)($post['tid'] ?? 0);
+                if (!array_key_exists($tid, $threadCache)) {
+                    $threadCache[$tid] = ThreadModel::get($tid) !== null;
+                }
+                return $threadCache[$tid];
             },
             $page,
             $pageSize,
             self::FILTER_BATCH_SIZE
         );
+    }
+
+    public static function getUserReplyRows(int $uid): array {
+        if ($uid <= 0) {
+            return [];
+        }
+        $threadCache = [];
+        $posts = Database::fetchAll(
+            "SELECT * FROM " . self::TABLE . " WHERE uid = :uid AND is_thread = 0 ORDER BY pid DESC",
+            ['uid' => $uid]
+        );
+        return array_values(array_filter($posts, static function (array $post) use (&$threadCache): bool {
+            $tid = (int)($post['tid'] ?? 0);
+            if (!array_key_exists($tid, $threadCache)) {
+                $threadCache[$tid] = ThreadModel::get($tid) !== null;
+            }
+            return $threadCache[$tid];
+        }));
     }
 
     public static function getUserPostCount(int $uid): int {
@@ -87,7 +108,7 @@ class PostModel {
 
     public static function create(array $data): int {
         $data['dateline'] = time();
-        $data['ip'] = $_SERVER['REMOTE_ADDR'];
+        $data['ip'] = $data['ip'] ?? ($_SERVER['REMOTE_ADDR'] ?? '');
         $data['credit_log'] = $data['credit_log'] ?? '[]';
         return Database::insert(self::TABLE, $data);
     }
@@ -101,12 +122,12 @@ class PostModel {
         Database::query("DELETE FROM " . self::TABLE . " WHERE tid = :tid", ['tid' => $tid]);
     }
 
-    public static function updateFidByTid(int $tid, int $fid): int {
-        return Database::update(self::TABLE, ['fid' => $fid], 'tid = :tid', ['tid' => $tid]);
+    public static function getPostsByTid(int $tid): array {
+        return Database::fetchAll("SELECT * FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid ASC", ['tid' => $tid]);
     }
 
-    public static function approveByTid(int $tid): void {
-        Database::update(self::TABLE, ['sort_order' => 0], 'tid = :tid', ['tid' => $tid]);
+    public static function updateFidByTid(int $tid, int $fid): int {
+        return Database::update(self::TABLE, ['fid' => $fid], 'tid = :tid', ['tid' => $tid]);
     }
 
     public static function getLastPostByTid(int $tid): ?array {
@@ -114,7 +135,7 @@ class PostModel {
             "SELECT * FROM " . self::TABLE . " WHERE tid = :tid ORDER BY pid DESC LIMIT :limit OFFSET :offset",
             ['tid' => $tid],
             static function (array $post): bool {
-                return (int)($post['sort_order'] ?? 0) >= 0;
+                return (int)($post['is_thread'] ?? 0) === 0;
             },
             1,
             self::FILTER_BATCH_SIZE
@@ -141,6 +162,9 @@ class PostModel {
     }
 
     public static function update(int $pid, array $data): int {
+        if (empty($data)) {
+            return 0;
+        }
         $data['pid'] = $pid;
         $data['edited'] = time();
         return Database::update(self::TABLE, $data, self::PRIMARY_KEY . " = :pid");

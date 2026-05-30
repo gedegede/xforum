@@ -75,15 +75,6 @@ class AuditModel {
         ) > 0;
     }
 
-    public static function getPendingThreadTidsByFid(int $fid, int $limit = 50): array {
-        $rows = Database::fetchAll(
-            "SELECT tid FROM " . self::TABLE . " WHERE fid = :fid AND type = 'thread' ORDER BY did DESC LIMIT :limit",
-            ['fid' => $fid, 'limit' => $limit]
-        );
-
-        return array_values(array_filter(array_unique(array_map('intval', array_column($rows, 'tid')))));
-    }
-
     public static function hasPendingByUid(string $type, int $uid): bool {
         if ($uid <= 0) {
             return false;

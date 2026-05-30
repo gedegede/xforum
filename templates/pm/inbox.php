@@ -20,7 +20,7 @@
             <div class="list-stack">
                 <?php foreach ($template_messages as $message): ?>
                     <?php $partner = $template_users[$message['partner_uid']] ?? null; ?>
-                    <a href="index.php?c=pm&a=view&uid=<?php echo (int)$message['partner_uid']; ?>&unread=<?php echo (int)($message['unread_num'] ?? 0); ?>" class="list-link">
+                    <a href="index.php?c=pm&a=view&uid=<?php echo (int)$message['partner_uid']; ?>" class="list-link">
                         <div class="avatar avatar-md text-primary">
                             <?php echo \Lib\Helper::getAvatarInitial($partner['username'] ?? '?'); ?>
                         </div>

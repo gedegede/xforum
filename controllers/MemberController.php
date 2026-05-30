@@ -342,6 +342,7 @@ class MemberController {
         $tids = array_filter($tids, function($tid) { return $tid > 0; });
         if (!empty($tids)) {
             $threads = ThreadModel::getThreadsByTids($tids);
+            $threads = ThreadHelper::maskUnauthorizedSubjects($threads);
         }
         
         foreach ($onlineUsers as &$online) {

@@ -68,6 +68,7 @@ window.showMessageModal = function(title, content, onClose) {
 
     if (onClose) {
         if (confirmBtn) {
+            confirmBtn.textContent = '确定';
             confirmBtn.onclick = function() {
                 closeMessageModal();
                 if (typeof onClose === 'function') onClose();
@@ -77,9 +78,13 @@ window.showMessageModal = function(title, content, onClose) {
         if (confirmBtn) confirmBtn.classList.remove('hidden');
         if (messageModalFooter) messageModalFooter.classList.remove('hidden');
     } else {
-        if (confirmBtn) confirmBtn.classList.add('hidden');
+        if (confirmBtn) {
+            confirmBtn.textContent = '关闭';
+            confirmBtn.onclick = closeMessageModal;
+            confirmBtn.classList.remove('hidden');
+        }
         if (cancelBtn) cancelBtn.classList.add('hidden');
-        if (messageModalFooter) messageModalFooter.classList.add('hidden');
+        if (messageModalFooter) messageModalFooter.classList.remove('hidden');
     }
 };
 
@@ -94,6 +99,7 @@ window.showConfirmModal = function(title, content, onConfirm) {
     var cancelBtn = messageModal.querySelector('.cancel-btn');
 
     if (confirmBtn) {
+        confirmBtn.textContent = '确定';
         confirmBtn.classList.remove('hidden');
         confirmBtn.onclick = function() {
             closeMessageModal();

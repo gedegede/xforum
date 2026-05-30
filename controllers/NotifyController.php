@@ -16,6 +16,7 @@ use Models\MemberModel;
 use Models\ThreadModel;
 use Models\UsergroupModel;
 use Lib\Permission;
+use Lib\ThreadHelper;
 
 class NotifyController {
     public static function index(): void {
@@ -38,7 +39,7 @@ class NotifyController {
                 $users = MemberModel::getMembersByUids(array_unique($fromUids));
             }
             if (!empty($tids)) {
-                $threads = ThreadModel::getThreadsByTids(array_unique($tids));
+                $threads = ThreadHelper::maskUnauthorizedSubjects(ThreadModel::getThreadsByTids(array_unique($tids)));
             }
         }
 

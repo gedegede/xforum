@@ -16,7 +16,6 @@ use Models\ThreadModel;
 use Models\MemberModel;
 use Models\ModeratorModel;
 use Models\SettingModel;
-use Models\AuditModel;
 use Lib\Permission;
 use Lib\ThreadHelper;
 
@@ -30,7 +29,7 @@ class ForumController {
                 return $from === 'create' ? Permission::canPostThread($fid) : Permission::canViewForum($fid);
             }));
             $lastTids = array_values(array_filter(array_unique(array_map('intval', array_column($forums, 'last_tid')))));
-            $lastThreads = ThreadModel::getThreadsByTids($lastTids);
+            $lastThreads = ThreadHelper::maskUnauthorizedSubjects(ThreadModel::getThreadsByTids($lastTids));
 
             Template::set('title', $from === 'create' ? '选择版块' : '论坛导航');
             Template::set('forums', $forums);
@@ -57,7 +56,7 @@ class ForumController {
         $page = Request::getInt('page', 1);
         $order = Request::getString('order', 'reply_time');
         $allowedOrders = ['reply_time', 'dateline', 'reply_num', 'view_num'];
-        if (!in_array($order, $allowedOrders)) {
+        if (!in_array($order, $allowedOrders, true)) {
             $order = 'reply_time';
         }
         $keyword = Request::getString('keyword');
@@ -74,20 +73,19 @@ class ForumController {
         $threadsPerPage = (int)SettingModel::get('threads_per_page', '20');
         $threads = ThreadModel::getThreads($fid, $page, $order, $keyword, $threadsPerPage);
         $canAuditForum = Permission::canAuditForum($fid);
-        $pendingThreads = $canAuditForum ? self::getPendingThreads($fid, $threadsPerPage) : [];
         $total = empty($keyword) ? (int)($forum['thread_num'] ?? 0) : ThreadModel::getThreadCount($fid, $keyword);
         $pages = (int)ceil($total / $threadsPerPage);
 
         $users = [];
-        if (!empty($threads) || !empty($pendingThreads)) {
-            $users = MemberModel::getMembersByUids(ThreadHelper::collectUserIds(array_merge($threads, $pendingThreads)));
+        if (!empty($threads)) {
+            $users = MemberModel::getMembersByUids(ThreadHelper::collectUserIds($threads));
         }
 
         $orderOptions = [
             ['value' => 'reply_time', 'label' => '最后回复'],
             ['value' => 'dateline', 'label' => '最新发布'],
             ['value' => 'reply_num', 'label' => '回复数'],
-            ['value' => 'view_num', 'label' => '查看数']
+            ['value' => 'view_num', 'label' => '查看数'],
         ];
 
         $moderators = ModeratorModel::getByFid($fid);
@@ -108,7 +106,6 @@ class ForumController {
             return Permission::canViewForum((int)($subForum['fid'] ?? 0));
         })));
         Template::set('threads', $threads);
-        Template::set('pendingThreads', $pendingThreads);
         Template::set('canAuditForum', $canAuditForum);
         Template::set('users', $users);
         Template::set('page', $page);
@@ -117,7 +114,7 @@ class ForumController {
         Template::set('keyword', $keyword);
         Template::set('searchError', $searchError);
         Template::set('orderOptions', $orderOptions);
-        Template::set('hotThreads', ThreadModel::getHotThreadsByFid($fid, 5));
+        Template::set('hotThreads', ThreadHelper::maskUnauthorizedSubjects(ThreadModel::getHotThreadsByFid($fid, 5)));
         Template::set('moderators', $moderators);
         Template::set('moderatorUsers', $moderatorUsers);
         Template::set('user', Session::getUser());
@@ -148,24 +145,5 @@ class ForumController {
         return $_SERVER['REMOTE_ADDR'] ?? '';
     }
 
-    private static function getPendingThreads(int $fid, int $limit): array {
-        $tids = AuditModel::getPendingThreadTidsByFid($fid, $limit);
-        if (empty($tids)) {
-            return [];
-        }
-
-        $threads = ThreadModel::getPendingThreadsByTids($tids);
-        $result = [];
-        foreach ($tids as $tid) {
-            $thread = $threads[$tid] ?? null;
-            if ($thread && (int)($thread['fid'] ?? 0) === $fid && (int)($thread['sort_order'] ?? 0) === -1) {
-                $result[] = $thread;
-                if (count($result) >= $limit) {
-                    break;
-                }
-            }
-        }
-        return $result;
-    }
 }
 ?>

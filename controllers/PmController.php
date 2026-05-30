@@ -194,8 +194,9 @@ class PmController {
         $pages = max(1, (int)ceil($total / PmModel::PAGE_SIZE));
         $page = $page > 0 ? min($page, $pages) : $pages;
         $messages = PmModel::getConversation($uid, $partnerUid, $page);
-        $unreadNum = Request::getInt('unread', (int)($dialog['unread_num'] ?? 0));
-        PmModel::markConversationAsRead(Session::getUid(), $partnerUid);
+        $unreadNum = (int)($dialog['unread_num'] ?? 0);
+        PmModel::markConversationAsRead($uid, $partnerUid);
+        $currentUser = Session::getUser();
 
         Template::set('title', '私信');
         Template::set('messages', $messages);
@@ -206,9 +207,9 @@ class PmController {
         Template::set('pageSize', PmModel::PAGE_SIZE);
         Template::set('lastPmid', (int)($dialog['last_pmid'] ?? 0));
         Template::set('partner', $partner);
-        Template::set('user', Session::getUser());
-        Template::set('member', Session::getUser());
-        Template::set('memberGroup', UsergroupModel::get((int)(Session::getUser()['gid'] ?? 0)));
+        Template::set('user', $currentUser);
+        Template::set('member', $currentUser);
+        Template::set('memberGroup', UsergroupModel::get((int)($currentUser['gid'] ?? 0)));
         Template::set('isSelf', true);
         Template::display('pm/view', 'layout/plain');
     }

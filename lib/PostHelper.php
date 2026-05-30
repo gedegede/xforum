@@ -23,7 +23,6 @@ class PostHelper {
             'quote_pid' => 0,
             'quote_uid' => 0,
             'quote_floor' => 0,
-            'sort_order' => 0,
             'message' => '',
         ];
 
@@ -33,16 +32,13 @@ class PostHelper {
         $quoteUid = (int)($post['quote_uid'] ?? 0);
         $quotePid = (int)($post['quote_pid'] ?? 0);
         $quoteFloor = (int)($post['quote_floor'] ?? 0);
-        $sortOrder = (int)($post['sort_order'] ?? 0);
         $rateNum = (int)($post['rate_num'] ?? 0);
         $isThreadPost = (int)($post['is_thread'] ?? 0) === 1;
         $isRated = isset($ratedPids[$postPid]) || in_array($postPid, $ratedPids, true);
-        $isPending = $sortOrder === -1;
-        $canViewContent = !$isPending || $isModerator;
         $canEdit = $currentUser ? Permission::canEditPost($post) : false;
         $canDelete = $currentUser ? Permission::canDeletePost($post) : false;
-        $canCreditPost = $currentUser && (int)$currentUser['uid'] !== $postUid && $canViewContent && ($isModerator || Permission::canCreditPost($post));
-        $canReport = $currentUser && Permission::canReport() && $canViewContent;
+        $canCreditPost = $currentUser && (int)$currentUser['uid'] !== $postUid && ($isModerator || Permission::canCreditPost($post));
+        $canReport = $currentUser && Permission::canReport();
         $canQuote = $currentUser && Permission::canReplyThread((int)($post['fid'] ?? 0));
         $creditLogs = json_decode((string)($post['credit_log'] ?? '[]'), true);
         $creditLogs = is_array($creditLogs) ? $creditLogs : [];
@@ -66,9 +62,6 @@ class PostHelper {
                     <?php if ($isFirst): ?>
                         <span class="badge badge-xs badge-primary">楼主</span>
                     <?php endif; ?>
-                    <?php if ($isPending): ?>
-                        <span class="badge badge-xs badge-warning">待审核</span>
-                    <?php endif; ?>
                 </div>
                 <div class="post-meta">
                     <?php echo Helper::formatTime($postDateline); ?> · #<?php echo $index; ?>
@@ -76,14 +69,6 @@ class PostHelper {
             </div>
         </div>
         <div class="post-actions">
-            <?php if ($isPending && !$isThreadPost && $isModerator): ?>
-            <div class="post-audit-actions">
-                <a href="index.php?c=thread&a=auditPost&pid=<?php echo $postPid; ?>&status=reject&page=<?php echo $page; ?>" class="btn btn-soft btn-sm" data-post-link="1">拒绝</a>
-                <a href="index.php?c=thread&a=auditPost&pid=<?php echo $postPid; ?>&status=pass&page=<?php echo $page; ?>" class="btn btn-primary btn-sm" data-post-link="1">通过</a>
-                <a href="index.php?c=thread&a=auditPost&pid=<?php echo $postPid; ?>&status=delete&page=<?php echo $page; ?>" class="btn btn-danger btn-sm" data-post-link="1">删除</a>
-            </div>
-            <?php endif; ?>
-            <?php if ($canViewContent): ?>
             <?php if ($canCreditPost): ?>
             <button type="button" class="post-action" data-action="credit-post" data-pid="<?php echo $postPid; ?>" title="评分">
                 <svg class="post-credit-action-icon" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true">
@@ -109,7 +94,6 @@ class PostHelper {
                     <path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/>
                 </svg>
             </a>
-            <?php endif; ?>
             <?php endif; ?>
             <?php if ($canEdit): ?>
             <a href="index.php?c=thread&a=edit&pid=<?php echo $postPid; ?>" class="post-action" title="编辑">
@@ -141,32 +125,26 @@ class PostHelper {
         </div>
     </div>
     <div class="post-content">
-        <?php if ($canViewContent): ?>
-            <?php if (!empty($creditLogs)): ?>
-                <div class="post-credit-log">
-                    <?php foreach ($creditLogs as $creditLog): ?>
-                        <?php
-                        $creditAmount = (int)($creditLog['credit'] ?? 0);
-                        $creditUid = (int)($creditLog['uid'] ?? 0);
-                        $creditUsername = (string)($creditLog['username'] ?? ($users[$creditUid]['username'] ?? '未知用户'));
-                        ?>
-                        <div class="post-credit-log-item <?php echo $creditAmount >= 0 ? 'is-plus' : 'is-minus'; ?>">
-                            <span class="post-credit-log-coin"><?php echo $creditAmount > 0 ? '+' . $creditAmount : $creditAmount; ?></span>
-                            <span class="post-credit-log-main">
-                                <a href="index.php?c=member&a=profile&uid=<?php echo $creditUid; ?>" class="post-credit-log-user"><?php echo htmlspecialchars($creditUsername); ?></a>
-                                <span><?php echo htmlspecialchars((string)($creditLog['reason'] ?? '评分')); ?></span>
-                            </span>
-                            <span class="post-credit-log-time"><?php echo Helper::formatTime((int)($creditLog['time'] ?? 0)); ?></span>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-            <?php echo MarkdownHelper::parse((string)$post['message']); ?>
-        <?php else: ?>
-            <div class="post-pending">
-                <p class="text-muted">该内容正在审核中，仅管理员和版主可见</p>
+        <?php if (!empty($creditLogs)): ?>
+            <div class="post-credit-log">
+                <?php foreach ($creditLogs as $creditLog): ?>
+                    <?php
+                    $creditAmount = (int)($creditLog['credit'] ?? 0);
+                    $creditUid = (int)($creditLog['uid'] ?? 0);
+                    $creditUsername = (string)($creditLog['username'] ?? ($users[$creditUid]['username'] ?? '未知用户'));
+                    ?>
+                    <div class="post-credit-log-item <?php echo $creditAmount >= 0 ? 'is-plus' : 'is-minus'; ?>">
+                        <span class="post-credit-log-coin"><?php echo $creditAmount > 0 ? '+' . $creditAmount : $creditAmount; ?></span>
+                        <span class="post-credit-log-main">
+                            <a href="index.php?c=member&a=profile&uid=<?php echo $creditUid; ?>" class="post-credit-log-user"><?php echo htmlspecialchars($creditUsername); ?></a>
+                            <span><?php echo htmlspecialchars((string)($creditLog['reason'] ?? '评分')); ?></span>
+                        </span>
+                        <span class="post-credit-log-time"><?php echo Helper::formatTime((int)($creditLog['time'] ?? 0)); ?></span>
+                    </div>
+                <?php endforeach; ?>
             </div>
         <?php endif; ?>
+        <?php echo MarkdownHelper::parse((string)$post['message']); ?>
     </div>
 </div>
         <?php

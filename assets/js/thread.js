@@ -314,10 +314,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        addReplyToPage(data.html, data.pid);
+                        if (data.pending) {
+                            showMessageModal('提示', '已经提交，审核通过后才会显示在主题中哦');
+                        } else {
+                            addReplyToPage(data.html, data.pid);
+                            updateReplyCount();
+                        }
                         messageInput.value = '';
                         clearQuoteReply();
-                        updateReplyCount();
                         if (data.credit_change && typeof window.showCreditToast === 'function') {
                             window.showCreditToast(data.credit_change);
                         }
@@ -335,9 +339,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function showThreadTip(message) {
+    function showThreadTip(message, type) {
         if (typeof window.showTip === 'function') {
-            window.showTip(message, 'danger');
+            window.showTip(message, type || 'danger');
             return;
         }
         showMessageModal('提示', message);

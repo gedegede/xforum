@@ -36,22 +36,34 @@ class FavModel {
     }
 
     public static function addFavorite(int $uid, int $tid): int {
-        $result = Database::insert(self::TABLE, [
-            'uid' => $uid,
-            'tid' => $tid,
-            'dateline' => time(),
-        ]);
-        if ($result) {
+        if ($uid <= 0 || $tid <= 0) {
+            return 0;
+        }
+
+        $stmt = Database::query(
+            "INSERT INTO " . self::TABLE . " (`uid`, `tid`, `dateline`) VALUES (:uid, :tid, :dateline)",
+            ['uid' => $uid, 'tid' => $tid, 'dateline' => time()]
+        );
+        $inserted = $stmt->rowCount();
+        if ($inserted > 0) {
             ThreadModel::incrementFavNum($tid);
             MemberModel::incrementFavNum($uid);
         }
-        return $result;
+        return $inserted;
     }
 
-    public static function removeFavorite(int $uid, int $tid): void {
-        Database::query("DELETE FROM " . self::TABLE . " WHERE uid = :uid AND tid = :tid", ['uid' => $uid, 'tid' => $tid]);
-        ThreadModel::decrementFavNum($tid);
-        MemberModel::decrementFavNum($uid);
+    public static function removeFavorite(int $uid, int $tid): bool {
+        $deleted = Database::delete(
+            self::TABLE,
+            'uid = :uid AND tid = :tid',
+            ['uid' => $uid, 'tid' => $tid]
+        );
+        if ($deleted > 0) {
+            ThreadModel::decrementFavNum($tid);
+            MemberModel::decrementFavNum($uid);
+            return true;
+        }
+        return false;
     }
 
     public static function isFavorite(int $uid, int $tid): bool {
