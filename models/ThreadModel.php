@@ -196,14 +196,28 @@ class ThreadModel {
     }
 
     public static function getHomeThreadsWithFilter(int $page = 1, string $order = 'tid', string $keyword = '', int $pageSize = self::PAGE_SIZE, array $includeFids = []): array {
-        [$where, $params] = self::buildFidFilter($includeFids);
-        [$sql, $params] = self::buildListQuery($where, $params, $keyword);
+        $includeMap = self::buildFidMap($includeFids);
+        if (empty($includeMap)) {
+            return [];
+        }
+
+        if ($keyword === '') {
+            [$sql, $params] = self::buildListQuery([], []);
+            $filter = static function (array $thread) use ($includeMap): bool {
+                return self::isApproved($thread) && isset($includeMap[(int)$thread['fid']]);
+            };
+        } else {
+            [$where, $params] = self::buildFidFilter($includeFids);
+            [$sql, $params] = self::buildListQuery($where, $params, $keyword);
+            $filter = static function (array $thread): bool {
+                return self::isApproved($thread);
+            };
+        }
+
         $threads = Database::fetchFilteredPage(
             $sql,
             $params,
-            static function (array $thread): bool {
-                return self::isApproved($thread);
-            },
+            $filter,
             $page,
             $pageSize,
             self::FILTER_BATCH_SIZE
@@ -213,14 +227,20 @@ class ThreadModel {
     }
 
     public static function getHomeThreadCount(string $keyword = '', array $includeFids = []): int {
-        if (empty($includeFids)) {
+        $includeMap = self::buildFidMap($includeFids);
+        if (empty($includeMap)) {
             return 0;
         }
 
         if ($keyword === '') {
-            [$where, $params] = self::buildFidFilter($includeFids);
-            $where[] = 'sort_order >= 0';
-            return Database::count(self::TABLE, implode(' AND ', $where), $params);
+            [$sql, $params] = self::buildListQuery([], [], '', 'tid, fid, sort_order');
+            return Database::countFiltered(
+                $sql,
+                $params,
+                static function (array $thread) use ($includeMap): bool {
+                    return self::isApproved($thread) && isset($includeMap[(int)$thread['fid']]);
+                }
+            );
         }
 
         [$where, $params] = self::buildFidFilter($includeFids);
@@ -428,6 +448,11 @@ class ThreadModel {
         }
 
         return self::buildListQuery([], [], $keyword, $columns);
+    }
+
+    private static function buildFidMap(array $fids): array {
+        $fids = array_values(array_filter(array_unique(array_map('intval', $fids))));
+        return empty($fids) ? [] : array_fill_keys($fids, true);
     }
 
     private static function buildFidFilter(array $fids): array {
