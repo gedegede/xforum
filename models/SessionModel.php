@@ -95,12 +95,7 @@ class SessionModel {
             return self::$onlineCountCache;
         }
 
-        $timeout = time() - self::ONLINE_TIMEOUT;
-        $result = Database::fetch(
-            "SELECT COUNT(*) as count FROM " . self::TABLE . " WHERE dateline > :timeout",
-            ['timeout' => $timeout]
-        );
-        self::$onlineCountCache = (int)($result['count'] ?? 0);
+        self::$onlineCountCache = count(self::getOnlineRows());
         self::$cacheTime = time();
         return self::$onlineCountCache;
     }
@@ -128,11 +123,7 @@ class SessionModel {
             return self::$onlineUsersCache;
         }
 
-        $timeout = time() - self::ONLINE_TIMEOUT;
-        self::$onlineUsersCache = Database::fetchAll(
-            "SELECT uid, gid, fid, tid, dateline, ip FROM " . self::TABLE . " WHERE dateline > :timeout ORDER BY dateline DESC",
-            ['timeout' => $timeout]
-        );
+        self::$onlineUsersCache = self::getOnlineRows();
         self::$cacheTime = time();
         return self::$onlineUsersCache;
     }
@@ -147,6 +138,28 @@ class SessionModel {
         self::$onlineUsersCache = [];
         self::$onlineCountCache = null;
         self::$cacheTime = 0;
+    }
+
+    private static function getOnlineRows(): array {
+        $timeout = time() - self::ONLINE_TIMEOUT;
+        $rows = Database::fetchAll(
+            "SELECT uid, gid, fid, tid, dateline, ip FROM " . self::TABLE . " WHERE dateline > :timeout ORDER BY dateline DESC",
+            ['timeout' => $timeout]
+        );
+
+        $result = [];
+        $seenUids = [];
+        foreach ($rows as $row) {
+            $uid = (int)($row['uid'] ?? 0);
+            if ($uid > 0) {
+                if (isset($seenUids[$uid])) {
+                    continue;
+                }
+                $seenUids[$uid] = true;
+            }
+            $result[] = $row;
+        }
+        return $result;
     }
 }
 ?>

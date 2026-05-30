@@ -68,13 +68,14 @@
                 <?php echo \Lib\Helper::renderPagination($template_page, $template_pages, 'index.php?c=thread&a=index&tid=' . $template_thread['tid']); ?>
             <?php endif; ?>
         </div>
+        <?php if (isset($template_user)): ?>
         <div class="card">
             <!-- Reply Form -->
             <div class="card-header">
                 <h3 id="reply-title">回复</h3>
             </div>
             <div class="card-body">
-                <?php if (isset($template_user) && \Lib\Permission::canReplyThread((int)$template_thread['fid'])): ?>
+                <?php if (\Lib\Permission::canReplyThread((int)$template_thread['fid'])): ?>
                     <form id="reply-form" action="index.php?c=thread&a=reply&tid=<?php echo $template_thread['tid']; ?>" method="post">
                         <input type="hidden" name="quote_pid" id="quote-pid" value="">
                         <input type="hidden" name="quote_uid" id="quote-uid" value="">
@@ -86,14 +87,10 @@
                             <button type="submit" id="reply-submit" class="btn btn-primary">发表回复</button>
                         </div>
                     </form>
-                <?php elseif (!isset($template_user)): ?>
-                    <div class="text-center py-8">
-                        <p class="text-muted mb-4">请先登录后回复</p>
-                        <a href="index.php?c=auth&a=login" class="btn btn-primary">立即登录</a>
-                    </div>
                 <?php endif; ?>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- Sidebar -->

@@ -186,7 +186,7 @@ class ForumModel {
     }
 
     public static function canGroup(int $fid, int $gid, string $action): bool {
-        if ($gid <= 0 || !in_array($action, self::GROUP_PERMISSION_KEYS, true)) {
+        if (!in_array($action, self::GROUP_PERMISSION_KEYS, true)) {
             return false;
         }
 
@@ -196,7 +196,10 @@ class ForumModel {
         }
 
         $permissions = $forum['group_permissions'][$action] ?? [];
-        return empty($permissions) || in_array($gid, array_map('intval', (array)$permissions), true);
+        if (empty($permissions)) {
+            return true;
+        }
+        return $gid > 0 && in_array($gid, array_map('intval', (array)$permissions), true);
     }
 
     public static function getForumName(int $fid): string {

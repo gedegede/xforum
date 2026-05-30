@@ -43,6 +43,7 @@ class PostHelper {
         $canDelete = $currentUser ? Permission::canDeletePost($post) : false;
         $canCreditPost = $currentUser && (int)$currentUser['uid'] !== $postUid && $canViewContent && ($isModerator || Permission::canCreditPost($post));
         $canReport = $currentUser && Permission::canReport() && $canViewContent;
+        $canQuote = $currentUser && Permission::canReplyThread((int)($post['fid'] ?? 0));
         $creditLogs = json_decode((string)($post['credit_log'] ?? '[]'), true);
         $creditLogs = is_array($creditLogs) ? $creditLogs : [];
         ob_start();
@@ -99,21 +100,16 @@ class PostHelper {
                         <path d="M15 5.5 14 10h5.7a2 2 0 0 1 1.9 2.5l-2 7A2 2 0 0 1 17.7 21H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3l4.6-7a1.8 1.8 0 0 1 3.4 1.1v1.4z"></path>
                     </svg>
                 </a>
-                <?php else: ?>
-                <a href="index.php?c=auth&a=login" class="post-action" title="登录后点赞<?php echo $rateNum > 0 ? ' (' . $rateNum . ')' : ''; ?>">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M7 10v11"></path>
-                        <path d="M15 5.5 14 10h5.7a2 2 0 0 1 1.9 2.5l-2 7A2 2 0 0 1 17.7 21H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3l4.6-7a1.8 1.8 0 0 1 3.4 1.1v1.4z"></path>
-                    </svg>
-                </a>
                 <?php endif; ?>
                 <span class="post-rate-count <?php echo $rateNum > 0 ? '' : 'hidden'; ?>" data-role="rate-count"><?php echo $rateNum > 0 ? $rateNum : ''; ?></span>
             </div>
+            <?php if ($canQuote): ?>
             <a href="#reply-section" class="post-action" data-action="quote" data-pid="<?php echo $postPid; ?>" data-uid="<?php echo $postUid; ?>" data-floor="<?php echo $index; ?>" data-username="<?php echo htmlspecialchars($users[$postUid]['username'] ?? ''); ?>" title="引用">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/>
                 </svg>
             </a>
+            <?php endif; ?>
             <?php endif; ?>
             <?php if ($canEdit): ?>
             <a href="index.php?c=thread&a=edit&pid=<?php echo $postPid; ?>" class="post-action" title="编辑">

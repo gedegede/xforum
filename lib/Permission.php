@@ -116,7 +116,7 @@ class Permission {
     public static function canViewForum(int $fid): bool {
         $user = Session::getUser();
         if (!$user) {
-            return false;
+            return ForumModel::canGroup($fid, 0, 'view');
         }
 
         if (self::hasGroupPermission('admin_thread') || self::hasGroupPermission('admin_forum')) {
