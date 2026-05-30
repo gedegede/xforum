@@ -59,6 +59,21 @@
     color:var(--muted);
     font-size:12px;
 }
+.admin-warning-box{
+    padding:var(--space-4);
+    border:1px solid color-mix(in srgb,var(--danger) 28%,var(--border));
+    border-radius:var(--radius);
+    background:var(--danger-light);
+    color:var(--danger);
+}
+.admin-warning-title{
+    margin-bottom:var(--space-2);
+    font-weight:700;
+}
+.admin-warning-list{
+    margin:0;
+    padding-left:var(--space-5);
+}
 .table-wrap .table{min-width:720px}
 .table-nowrap{min-width:72px;white-space:nowrap}
 @media (min-width:769px){

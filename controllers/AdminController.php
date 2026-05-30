@@ -54,10 +54,13 @@ class AdminController {
             'forums' => ForumModel::count(),
         ];
 
+        $systemInfo = self::getSystemInfo();
+
         Template::set('title', '管理后台');
         Template::set('stats', $stats);
         Template::set('success', Request::getString('success'));
-        Template::set('systemInfo', self::getSystemInfo());
+        Template::set('systemInfo', $systemInfo);
+        Template::set('cacheWarnings', self::getCacheRequirementWarnings($systemInfo));
         Template::set('user', Session::getUser());
         Template::display('admin/index');
     }
@@ -95,6 +98,16 @@ class AdminController {
         }
         $version = phpversion('apcu') ?: '';
         return '已启用' . ($version !== '' ? ', 版本' . $version : '');
+    }
+
+    private static function getCacheRequirementWarnings(array $systemInfo): array {
+        $warnings = [];
+        foreach (['OPcache', 'APCu'] as $name) {
+            if (!str_starts_with((string)($systemInfo[$name] ?? ''), '已启用')) {
+                $warnings[] = $name . ' 未开启，必须开启后再运行本站。';
+            }
+        }
+        return $warnings;
     }
 
     private static function getMysqlVersion(): string {
